@@ -27,6 +27,11 @@ public class AutoPilot
 
     private bool hasUsedWp;
     private List<TaskNode> tasks = new List<TaskNode>();
+
+    /// <summary>
+    /// Public accessor for the tasks list (read-only)
+    /// </summary>
+    public IReadOnlyList<TaskNode> Tasks => tasks;
     internal DateTime lastDashTime = DateTime.MinValue; // Track last dash time for cooldown
     private bool instantPathOptimization = false; // Flag for instant response when path efficiency is detected
     private DateTime lastPathClearTime = DateTime.MinValue; // Track last path clear to prevent spam
