@@ -81,6 +81,7 @@ internal static class SkillInfo
 
     // Link Skills
     internal static Skill flameLink = new Skill();
+    internal static Skill smite = new Skill();
 
     internal static void ResetSkills()
     {
@@ -142,6 +143,7 @@ internal static class SkillInfo
         auraWrath = new Skill();
         auraEnvy = new Skill();
         flameLink = new Skill();
+        smite = new Skill();
     }
 
     public static void GetDeltaTime()
@@ -472,6 +474,10 @@ internal static class SkillInfo
                 case "flame_link":
                     flameLink.Id = skill.Id;
                     flameLink.BuffName = "flame_link_source";
+                    break;
+                case "smite":
+                    smite.Id = skill.Id;
+                    smite.BuffName = "smite_buff";
                     break;
             }
         }

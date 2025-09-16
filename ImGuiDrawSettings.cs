@@ -323,8 +323,19 @@ internal class ImGuiDrawSettings
             // Error handling without logging
         }
 
-
-
+        try
+        {
+            ImGui.PushID(29);
+            if (ImGui.TreeNodeEx("Smite Buff", collapsingHeaderFlags))
+            {
+                CoPilot.Instance.Settings.smiteEnabled.Value = ImGuiExtension.Checkbox("Enabled",
+                    CoPilot.Instance.Settings.smiteEnabled.Value);
+            }
+        }
+        catch (Exception e)
+        {
+            // Error handling without logging
+        }
 
         //ImGui.End();
     }

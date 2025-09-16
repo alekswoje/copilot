@@ -76,6 +76,12 @@ public class CoPilotSettings : ISettings
 
     #endregion
 
+    #region Smite Buff
+
+    public ToggleNode smiteEnabled = new ToggleNode(false);
+
+    #endregion
+
     #region Input Keys
 
     public HotkeyNode inputKey1 = new HotkeyNode(Keys.Z);

@@ -517,6 +517,90 @@ public class CoPilot : BaseSettingsPlugin<CoPilotSettings>
 
                 #endregion
 
+                #region Smite Buff
+
+                if (Settings.smiteEnabled)
+                    try
+                    {
+                        if (skill.Id == SkillInfo.smite.Id)
+                        {
+                            CoPilot.Instance.LogMessage("SMITE: Smite skill detected");
+
+                            if (SkillInfo.ManageCooldown(SkillInfo.smite, skill))
+                            {
+                                CoPilot.Instance.LogMessage("SMITE: Cooldown check passed");
+
+                                // Check if we don't have the smite buff
+                                var hasSmiteBuff = buffs.Exists(x => x.Name == "smite_buff");
+                                CoPilot.Instance.LogMessage($"SMITE: Has smite buff: {hasSmiteBuff}");
+
+                                if (!hasSmiteBuff)
+                                {
+                                    CoPilot.Instance.LogMessage("SMITE: No smite buff found, looking for targets");
+
+                                    // Find monsters within 40 units that are within 50 units of cursor
+                                    var mouseScreenPos = GetMousePosition();
+                                    var targetMonster = enemys
+                                        .Where(monster =>
+                                        {
+                                            // Check if monster is within 40 units of player
+                                            var distanceToPlayer = Vector3.Distance(playerPosition, monster.Pos);
+                                            if (distanceToPlayer > 40) return false;
+
+                                            // Check if monster is within 50 units of cursor (in screen space)
+                                            var monsterScreenPos = Helper.WorldToValidScreenPosition(monster.Pos);
+                                            var distanceToCursor = Vector2.Distance(mouseScreenPos, monsterScreenPos);
+
+                                            CoPilot.Instance.LogMessage($"SMITE: Monster at distance {distanceToPlayer:F1} from player, {distanceToCursor:F1} from cursor");
+                                            return distanceToCursor < 50;
+                                        })
+                                        .OrderBy(monster => Vector3.Distance(playerPosition, monster.Pos)) // Closest first
+                                        .FirstOrDefault();
+
+                                    if (targetMonster != null)
+                                    {
+                                        CoPilot.Instance.LogMessage("SMITE: Found suitable target, activating smite!");
+
+                                        // Move mouse to monster position
+                                        var monsterScreenPos = GameController.IngameState.Camera.WorldToScreen(targetMonster.Pos);
+                                        Mouse.SetCursorPos(monsterScreenPos);
+
+                                        // Small delay to ensure mouse movement is registered
+                                        System.Threading.Thread.Sleep(50);
+
+                                        // Activate the skill
+                                        Keyboard.KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
+                                        SkillInfo.smite.Cooldown = 100;
+
+                                        CoPilot.Instance.LogMessage("SMITE: Smite activated successfully");
+                                    }
+                                    else
+                                    {
+                                        CoPilot.Instance.LogMessage("SMITE: No suitable targets found within range");
+                                    }
+                                }
+                                else
+                                {
+                                    CoPilot.Instance.LogMessage("SMITE: Already have smite buff, skipping");
+                                }
+                            }
+                            else
+                            {
+                                CoPilot.Instance.LogMessage("SMITE: Cooldown check failed");
+                            }
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        // Error handling without logging
+                    }
+                else
+                {
+                    CoPilot.Instance.LogMessage("SMITE: Smite is not enabled");
+                }
+
+                #endregion
+
                 /*
                 #region Spider
 
