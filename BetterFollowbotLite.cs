@@ -348,37 +348,42 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                         // Holy Relic summoning logic
                         if (skill.Id == SkillInfo.holyRelict.Id)
                         {
-                            BetterFollowbotLite.Instance.LogMessage($"HOLY RELIC: Detected Holy Relic skill (ID: {skill.Id}), CanBeUsed: {skill.CanBeUsed}, RemainingUses: {skill.RemainingUses}, IsOnCooldown: {skill.IsOnCooldown}");
-
-                            var lowestMinionHp = Summons.GetLowestMinionHpp();
-                            // Convert HP percentage from 0-1 range to 0-100 range for comparison
-                            var lowestMinionHpPercent = lowestMinionHp * 100f;
-                            // Check for Holy Relic minion presence
-                            // Prioritize ReAgent buff names, then check for other indicators
-                            // Note: Avoid "guardian_life_regen" as it's just the life regen effect, not minion presence
-                            var hasGuardianBlessingMinion = buffs.Exists(x =>
-                                x.Name == "has_guardians_blessing_minion" ||
-                                (x.Name.Contains("holy") && x.Name.Contains("relic") && !x.Name.Contains("life")) ||
-                                x.Name.Contains("guardian_blessing_minion"));
-                            var threshold = Settings.holyRelicHealthThreshold;
-
-                            BetterFollowbotLite.Instance.LogMessage($"HOLY RELIC: Lowest minion HP: {lowestMinionHpPercent:F1}%, Threshold: {threshold}%, Has minion buff: {hasGuardianBlessingMinion}");
-
-                            // Check conditions
-                            var healthLow = lowestMinionHpPercent < threshold;
-                            var missingBuff = !hasGuardianBlessingMinion;
-
-                            BetterFollowbotLite.Instance.LogMessage($"HOLY RELIC: Health low: {healthLow}, Missing buff: {missingBuff}, Should summon: {healthLow || missingBuff}");
-
-                            // If Holy Relic health is below threshold OR we don't have any minion buff, summon new Holy Relic
-                            if (healthLow || missingBuff)
+                            // Check cooldown to prevent double-spawning
+                            if (SkillInfo.ManageCooldown(SkillInfo.holyRelict, skill))
                             {
-                                BetterFollowbotLite.Instance.LogMessage($"HOLY RELIC: Summoning new Holy Relic (reason: {(healthLow ? "health low" : "missing buff")})");
-                                Keyboard.KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
-                            }
-                            else
-                            {
-                                BetterFollowbotLite.Instance.LogMessage("HOLY RELIC: Conditions not met, not summoning");
+                                BetterFollowbotLite.Instance.LogMessage($"HOLY RELIC: Detected Holy Relic skill (ID: {skill.Id}), CanBeUsed: {skill.CanBeUsed}, RemainingUses: {skill.RemainingUses}, IsOnCooldown: {skill.IsOnCooldown}");
+
+                                var lowestMinionHp = Summons.GetLowestMinionHpp();
+                                // Convert HP percentage from 0-1 range to 0-100 range for comparison
+                                var lowestMinionHpPercent = lowestMinionHp * 100f;
+                                // Check for Holy Relic minion presence
+                                // Prioritize ReAgent buff names, then check for other indicators
+                                // Note: Avoid "guardian_life_regen" as it's just the life regen effect, not minion presence
+                                var hasGuardianBlessingMinion = buffs.Exists(x =>
+                                    x.Name == "has_guardians_blessing_minion" ||
+                                    (x.Name.Contains("holy") && x.Name.Contains("relic") && !x.Name.Contains("life")) ||
+                                    x.Name.Contains("guardian_blessing_minion"));
+                                var threshold = Settings.holyRelicHealthThreshold;
+
+                                BetterFollowbotLite.Instance.LogMessage($"HOLY RELIC: Lowest minion HP: {lowestMinionHpPercent:F1}%, Threshold: {threshold}%, Has minion buff: {hasGuardianBlessingMinion}");
+
+                                // Check conditions
+                                var healthLow = lowestMinionHpPercent < threshold;
+                                var missingBuff = !hasGuardianBlessingMinion;
+
+                                BetterFollowbotLite.Instance.LogMessage($"HOLY RELIC: Health low: {healthLow}, Missing buff: {missingBuff}, Should summon: {healthLow || missingBuff}");
+
+                                // If Holy Relic health is below threshold OR we don't have any minion buff, summon new Holy Relic
+                                if (healthLow || missingBuff)
+                                {
+                                    BetterFollowbotLite.Instance.LogMessage($"HOLY RELIC: Summoning new Holy Relic (reason: {(healthLow ? "health low" : "missing buff")})");
+                                    Keyboard.KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
+                                    SkillInfo.holyRelict.Cooldown = 200; // 2 second cooldown to prevent double-spawning
+                                }
+                                else
+                                {
+                                    BetterFollowbotLite.Instance.LogMessage("HOLY RELIC: Conditions not met, not summoning");
+                                }
                             }
                         }
 
