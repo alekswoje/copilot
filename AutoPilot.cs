@@ -328,16 +328,20 @@ public class AutoPilot
     /// </summary>
     private void ClearPathForEfficiency()
     {
-        // CRITICAL: Preserve transition tasks during efficiency clears
-        // Remove all tasks except transition tasks to maintain zone transition priority
-        var transitionTasks = tasks.Where(t => t.Type == TaskNodeType.Transition).ToList();
+        // CRITICAL: Preserve ALL transition-related tasks during efficiency clears
+        // This includes portal transitions, teleport confirmations, and teleport buttons
+        var transitionTasks = tasks.Where(t =>
+            t.Type == TaskNodeType.Transition ||
+            t.Type == TaskNodeType.TeleportConfirm ||
+            t.Type == TaskNodeType.TeleportButton).ToList();
+
         tasks.Clear();
 
         // Re-add transition tasks to preserve zone transition functionality
         foreach (var transitionTask in transitionTasks)
         {
             tasks.Add(transitionTask);
-            BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Preserved transition task during efficiency clear");
+            BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Preserved {transitionTask.Type} task during efficiency clear");
         }
 
         hasUsedWp = false; // Allow waypoint usage again
@@ -1624,11 +1628,14 @@ public class AutoPilot
                 //We are NOT within clear path distance range of leader. Logic can continue
                 if (distanceToLeader >= BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance.Value)
                 {
-                    // IMPORTANT: Don't process large movements if we already have a transition task active
-                    // This prevents the zone transition detection from interfering with an active transition
-                    if (tasks.Any(t => t.Type == TaskNodeType.Transition))
+                    // IMPORTANT: Don't process large movements if we already have any transition-related task active
+                    // This prevents zone transition detection from interfering with active transitions/teleports
+                    if (tasks.Any(t =>
+                        t.Type == TaskNodeType.Transition ||
+                        t.Type == TaskNodeType.TeleportConfirm ||
+                        t.Type == TaskNodeType.TeleportButton))
                     {
-                        BetterFollowbotLite.Instance.LogMessage("ZONE TRANSITION: Transition task already active, skipping movement processing");
+                        BetterFollowbotLite.Instance.LogMessage("ZONE TRANSITION: Transition/teleport task already active, skipping movement processing");
                         return; // Exit early to prevent interference
                     }
 
@@ -1703,8 +1710,9 @@ public class AutoPilot
 
                                     BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Selected portal '{selectedPortal.Label?.Text}' at distance {selectedDistance:F1}");
 
-                                    // If the selected portal is reasonably close (within 500 units), it's likely the one the leader used
-                                    if (selectedDistance < 500)
+                                    // If the selected portal is reasonably close (within 800 units), it's likely the one the leader used
+                                    // Increased from 500 to 800 to handle cases where leader transitions quickly
+                                    if (selectedDistance < 800)
                                     {
                                         BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Using selected portal '{selectedPortal.Label?.Text}' as likely destination");
                                         transition = selectedPortal; // Set transition so we use this portal
@@ -1787,10 +1795,13 @@ public class AutoPilot
                             // If very far away, add dash task instead of movement task
                             if (distanceToLeader > 1000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 700 to 1000
                             {
-                                // CRITICAL: Don't add dash tasks if we have an active transition task
-                                if (tasks.Any(t => t.Type == TaskNodeType.Transition))
+                                // CRITICAL: Don't add dash tasks if we have any active transition-related task
+                                if (tasks.Any(t =>
+                                    t.Type == TaskNodeType.Transition ||
+                                    t.Type == TaskNodeType.TeleportConfirm ||
+                                    t.Type == TaskNodeType.TeleportButton))
                                 {
-                                    BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Skipping dash task creation - transition task active");
+                                    BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Skipping dash task creation - transition/teleport task active");
                                 }
                                 else
                                 {
