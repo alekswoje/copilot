@@ -63,8 +63,12 @@ public class AutoPilot
     {
         try
         {
+            if (leaderPartyElement == null)
+                return null;
+                
             var currentZoneName = CoPilot.Instance.GameController?.Area.CurrentArea.DisplayName;
-            if(leaderPartyElement.ZoneName.Equals(currentZoneName) || (!leaderPartyElement.ZoneName.Equals(currentZoneName) && (bool)CoPilot.Instance?.GameController?.Area?.CurrentArea?.IsHideout) || CoPilot.Instance.GameController?.Area?.CurrentArea?.RealLevel >= 68) // TODO: or is chamber of sins a7 or is epilogue
+            // Look for portals when leader is in different zone, or when in hideout, or in high level areas
+            if(!leaderPartyElement.ZoneName.Equals(currentZoneName) || (bool)CoPilot.Instance?.GameController?.Area?.CurrentArea?.IsHideout || CoPilot.Instance.GameController?.Area?.CurrentArea?.RealLevel >= 68) // TODO: or is chamber of sins a7 or is epilogue
             {
                 var portalLabels =
                     CoPilot.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels.Where(x =>
@@ -88,6 +92,9 @@ public class AutoPilot
     {
         try
         {
+            if (leaderPartyElement == null)
+                return Vector2.Zero;
+                
             var windowOffset = CoPilot.Instance.GameController.Window.GetWindowRectangle().TopLeft;
             var elemCenter = (Vector2) leaderPartyElement?.TpButton?.GetClientRectCache.Center;
             var finalPos = new Vector2(elemCenter.X + windowOffset.X, elemCenter.Y + windowOffset.Y);
@@ -196,7 +203,7 @@ public class AutoPilot
             followTarget = GetFollowingTarget();
             var leaderPartyElement = GetLeaderPartyElement();
 
-            if (followTarget == null && !leaderPartyElement.ZoneName.Equals(CoPilot.Instance.GameController?.Area.CurrentArea.DisplayName)) {
+            if (followTarget == null && leaderPartyElement != null && !leaderPartyElement.ZoneName.Equals(CoPilot.Instance.GameController?.Area.CurrentArea.DisplayName)) {
                 var portal = GetBestPortalLabel(leaderPartyElement);
                 if (portal != null) {
                     // Hideout -> Map || Chamber of Sins A7 -> Map
@@ -215,7 +222,7 @@ public class AutoPilot
                     }
 						
                     // TODO: change to tasks.Add
-                    var tpButton = GetTpButton(leaderPartyElement);
+                    var tpButton = leaderPartyElement != null ? GetTpButton(leaderPartyElement) : Vector2.Zero;
                     if(!tpButton.Equals(Vector2.Zero))
                     {
                         yield return Mouse.SetCursorPosHuman(tpButton, false);
@@ -223,6 +230,24 @@ public class AutoPilot
                         yield return Mouse.LeftClick();
                         yield return new WaitTime(200);
                     }
+                }
+            } else if (followTarget == null) {
+                // Leader is not in current zone - look for portals to follow them
+                if (leaderPartyElement != null && !leaderPartyElement.ZoneName.Equals(CoPilot.Instance.GameController?.Area.CurrentArea.DisplayName))
+                {
+                    // Leader is in different zone, look for portals
+                    var portal = GetBestPortalLabel(leaderPartyElement);
+                    if (portal != null)
+                    {
+                        // Clear any existing movement tasks and add portal task
+                        tasks.RemoveAll(t => t.Type == TaskNodeType.Movement);
+                        tasks.Add(new TaskNode(portal, CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
+                    }
+                }
+                else
+                {
+                    // Leader party element not available or in same zone, clear movement tasks
+                    tasks.RemoveAll(t => t.Type == TaskNodeType.Movement);
                 }
             } else if (followTarget != null) {
                 // TODO: If in town, do not follow (optional)
