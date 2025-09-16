@@ -384,7 +384,8 @@ public class AutoPilot
                 if (tpConfirmation != null)
                 {
                     // Add teleport confirmation task
-                    tasks.Add(new TaskNode(tpConfirmation.GetClientRect().Center, 0, TaskNodeType.TeleportConfirm));
+                    var center = tpConfirmation.GetClientRect().Center;
+                    tasks.Add(new TaskNode(new Vector3(center.X, center.Y, 0), 0, TaskNodeType.TeleportConfirm));
                 }
                 else
                 {
@@ -392,7 +393,7 @@ public class AutoPilot
                     var tpButton = leaderPartyElement != null ? GetTpButton(leaderPartyElement) : Vector2.Zero;
                     if(!tpButton.Equals(Vector2.Zero))
                     {
-                        tasks.Add(new TaskNode(tpButton, 0, TaskNodeType.TeleportButton));
+                        tasks.Add(new TaskNode(new Vector3(tpButton.X, tpButton.Y, 0), 0, TaskNodeType.TeleportButton));
                     }
                 }
             }
@@ -495,8 +496,7 @@ public class AutoPilot
             }
         }
     }
-        // ReSharper disable once IteratorNeverReturns
-    }
+    // ReSharper disable once IteratorNeverReturns
         
     private bool CheckDashTerrain(Vector2 targetPosition)
     {
