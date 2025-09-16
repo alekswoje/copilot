@@ -79,7 +79,11 @@ internal static class SkillInfo
     internal static Skill auraWrath = new Skill();
     internal static Skill auraEnvy = new Skill();
 
-
+    // Link Skills
+    internal static Skill flameLink = new Skill();
+    internal static Skill frostLink = new Skill();
+    internal static Skill lightningLink = new Skill();
+    internal static Skill chaosLink = new Skill();
 
     internal static void ResetSkills()
     {
@@ -140,6 +144,10 @@ internal static class SkillInfo
         auraPride = new Skill();
         auraWrath = new Skill();
         auraEnvy = new Skill();
+        flameLink = new Skill();
+        frostLink = new Skill();
+        lightningLink = new Skill();
+        chaosLink = new Skill();
     }
 
     public static void GetDeltaTime()
@@ -466,6 +474,22 @@ internal static class SkillInfo
                             auraEnvy.IsBlessing = 1;
                         CachedAuraSkills.Add(auraEnvy);
                     }
+                    break;
+                case "flame_link":
+                    flameLink.Id = skill.Id;
+                    flameLink.BuffName = "flame_link_source";
+                    break;
+                case "frost_link":
+                    frostLink.Id = skill.Id;
+                    frostLink.BuffName = "frost_link_source";
+                    break;
+                case "lightning_link":
+                    lightningLink.Id = skill.Id;
+                    lightningLink.BuffName = "lightning_link_source";
+                    break;
+                case "chaos_link":
+                    chaosLink.Id = skill.Id;
+                    chaosLink.BuffName = "chaos_link_source";
                     break;
             }
         }

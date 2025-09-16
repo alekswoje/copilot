@@ -1209,6 +1209,79 @@ public class CoPilot : BaseSettingsPlugin<CoPilotSettings>
 
                 #endregion
 
+                #region Link Skills
+
+                if (Settings.flameLinkEnabled)
+                    try
+                    {
+                        // Check for any link skill
+                        Skill linkSkill = null;
+                        string targetBuffName = "";
+                        
+                        if (skill.Id == SkillInfo.flameLink.Id)
+                        {
+                            linkSkill = SkillInfo.flameLink;
+                            targetBuffName = "flame_link_target";
+                        }
+                        else if (skill.Id == SkillInfo.frostLink.Id)
+                        {
+                            linkSkill = SkillInfo.frostLink;
+                            targetBuffName = "frost_link_target";
+                        }
+                        else if (skill.Id == SkillInfo.lightningLink.Id)
+                        {
+                            linkSkill = SkillInfo.lightningLink;
+                            targetBuffName = "lightning_link_target";
+                        }
+                        else if (skill.Id == SkillInfo.chaosLink.Id)
+                        {
+                            linkSkill = SkillInfo.chaosLink;
+                            targetBuffName = "chaos_link_target";
+                        }
+                        
+                        if (linkSkill != null && SkillInfo.ManageCooldown(linkSkill, skill))
+                        {
+                            // Get party leader
+                            var leaderPartyElement = PartyElements.GetPlayerInfoElementList()
+                                .FirstOrDefault(x => string.Equals(x?.PlayerName?.ToLower(), 
+                                    Settings.autoPilotLeader.Value.ToLower(), StringComparison.CurrentCultureIgnoreCase));
+                            
+                            if (leaderPartyElement?.Data?.PlayerEntity != null)
+                            {
+                                var leader = leaderPartyElement.Data.PlayerEntity;
+                                var leaderBuffs = leader.GetComponent<Buffs>().BuffsList;
+                                
+                                // Check if leader has the target buff
+                                var hasLinkTarget = leaderBuffs.Exists(x => x.Name == targetBuffName);
+                                
+                                // Check if we have the source buff and its timer
+                                var linkSourceBuff = buffs.FirstOrDefault(x => x.Name == linkSkill.BuffName);
+                                var linkSourceTimeLeft = linkSourceBuff?.Timer ?? 0;
+                                
+                                // Check distance to leader
+                                var distanceToLeader = Vector3.Distance(playerPosition, leader.Pos);
+                                
+                                // Logic: (!PartyLeader.Buffs.Has("link_target") || Buffs["link_source"].TimeLeft < threshold) && PartyLeader.DistanceToCursor < range
+                                if ((!hasLinkTarget || linkSourceTimeLeft < Settings.flameLinkTimeThreshold) && distanceToLeader < Settings.flameLinkRange)
+                                {
+                                    // Move mouse to leader position
+                                    var leaderScreenPos = GameController.IngameState.Camera.WorldToScreen(leader.Pos);
+                                    Mouse.SetCursorPos(leaderScreenPos);
+                                    
+                                    // Activate the skill
+                                    Keyboard.KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
+                                    linkSkill.Cooldown = 100;
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        LogError(e.ToString());
+                    }
+
+                #endregion
+
                 /*
                 #region Spider
 
