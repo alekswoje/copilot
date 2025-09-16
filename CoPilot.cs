@@ -397,56 +397,92 @@ public class CoPilot : BaseSettingsPlugin<CoPilotSettings>
                                 CoPilot.Instance.LogMessage("FLAME LINK: Cooldown check passed");
 
                                 // Get party leader
-                                var leaderPartyElement = PartyElements.GetPlayerInfoElementList()
+                                var partyElements = PartyElements.GetPlayerInfoElementList();
+                                CoPilot.Instance.LogMessage($"FLAME LINK: Found {partyElements.Count} party members");
+
+                                foreach (var elem in partyElements)
+                                {
+                                    CoPilot.Instance.LogMessage($"FLAME LINK: Party member: {elem.PlayerName}");
+                                }
+
+                                CoPilot.Instance.LogMessage($"FLAME LINK: Looking for leader: '{Settings.autoPilotLeader.Value}'");
+
+                                var leaderPartyElement = partyElements
                                     .FirstOrDefault(x => string.Equals(x?.PlayerName?.ToLower(),
                                         Settings.autoPilotLeader.Value.ToLower(), StringComparison.CurrentCultureIgnoreCase));
 
-                                if (leaderPartyElement?.Data?.PlayerEntity != null)
+                                if (leaderPartyElement != null)
                                 {
-                                    CoPilot.Instance.LogMessage("FLAME LINK: Leader found");
-                                    var leader = leaderPartyElement.Data.PlayerEntity;
-                                    var leaderBuffs = leader.GetComponent<Buffs>().BuffsList;
+                                    CoPilot.Instance.LogMessage($"FLAME LINK: Found leader element: {leaderPartyElement.PlayerName}");
 
-                                    // Check if leader has the target buff
-                                    var hasLinkTarget = leaderBuffs.Exists(x => x.Name == targetBuffName);
+                                    // Find the actual player entity by name
+                                    var playerEntities = GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Player]
+                                        .Where(x => x != null && x.IsValid && !x.IsHostile);
 
-                                    // Check if we have the source buff and its timer
-                                    var linkSourceBuff = buffs.FirstOrDefault(x => x.Name == linkSkill.BuffName);
-                                    var linkSourceTimeLeft = linkSourceBuff?.Timer ?? 0;
-
-                                    CoPilot.Instance.LogMessage($"FLAME LINK: Buff status - Leader has target: {hasLinkTarget}, Source timer: {linkSourceTimeLeft}");
-
-                                    // Check distance from leader to mouse cursor in screen space
-                                    var mouseScreenPos = GetMousePosition();
-                                    var leaderScreenPos = Helper.WorldToValidScreenPosition(leader.Pos);
-                                    var distanceToCursor = Vector2.Distance(mouseScreenPos, leaderScreenPos);
-
-                                    CoPilot.Instance.LogMessage($"FLAME LINK: Distance to cursor: {distanceToCursor}");
-
-                                    // Logic: SinceLastActivation(1) && ((!PartyLeader.Buffs.Has("flame_link_target") || Buffs["flame_link_source"].Timer < 4) && PartyLeader.DistanceToCursor < 40)
-                                    var shouldActivate = (!hasLinkTarget || linkSourceTimeLeft < 4) && distanceToCursor < 40;
-
-                                    CoPilot.Instance.LogMessage($"FLAME LINK: Activation check - Should activate: {shouldActivate}, !hasLinkTarget: {!hasLinkTarget}, linkSourceTimeLeft < 4: {linkSourceTimeLeft < 4}, distanceToCursor < 40: {distanceToCursor < 40}");
-
-                                    if (shouldActivate)
+                                    foreach (var player in playerEntities)
                                     {
-                                        CoPilot.Instance.LogMessage("FLAME LINK: Activating flame link!");
-                                        // Move mouse to leader position
-                                        var leaderScreenPosForMouse = GameController.IngameState.Camera.WorldToScreen(leader.Pos);
-                                        Mouse.SetCursorPos(leaderScreenPosForMouse);
+                                        CoPilot.Instance.LogMessage($"FLAME LINK: Available player entity: {player.GetComponent<Player>()?.PlayerName ?? "Unknown"}");
+                                    }
 
-                                        // Activate the skill
-                                        Keyboard.KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
-                                        linkSkill.Cooldown = 100;
+                                    var leaderEntity = playerEntities
+                                        .FirstOrDefault(x => string.Equals(x.GetComponent<Player>()?.PlayerName?.ToLower(),
+                                            Settings.autoPilotLeader.Value.ToLower(), StringComparison.CurrentCultureIgnoreCase));
+
+                                    if (leaderEntity != null)
+                                    {
+                                        CoPilot.Instance.LogMessage("FLAME LINK: Found leader entity");
+                                        // Set the player entity
+                                        leaderPartyElement.Data.PlayerEntity = leaderEntity;
+
+                                        CoPilot.Instance.LogMessage("FLAME LINK: Leader found");
+                                        var leader = leaderPartyElement.Data.PlayerEntity;
+                                        var leaderBuffs = leader.GetComponent<Buffs>().BuffsList;
+
+                                        // Check if leader has the target buff
+                                        var hasLinkTarget = leaderBuffs.Exists(x => x.Name == targetBuffName);
+
+                                        // Check if we have the source buff and its timer
+                                        var linkSourceBuff = buffs.FirstOrDefault(x => x.Name == linkSkill.BuffName);
+                                        var linkSourceTimeLeft = linkSourceBuff?.Timer ?? 0;
+
+                                        CoPilot.Instance.LogMessage($"FLAME LINK: Buff status - Leader has target: {hasLinkTarget}, Source timer: {linkSourceTimeLeft}");
+
+                                        // Check distance from leader to mouse cursor in screen space
+                                        var mouseScreenPos = GetMousePosition();
+                                        var leaderScreenPos = Helper.WorldToValidScreenPosition(leader.Pos);
+                                        var distanceToCursor = Vector2.Distance(mouseScreenPos, leaderScreenPos);
+
+                                        CoPilot.Instance.LogMessage($"FLAME LINK: Distance to cursor: {distanceToCursor}");
+
+                                        // Logic: SinceLastActivation(1) && ((!PartyLeader.Buffs.Has("flame_link_target") || Buffs["flame_link_source"].Timer < 4) && PartyLeader.DistanceToCursor < 40)
+                                        var shouldActivate = (!hasLinkTarget || linkSourceTimeLeft < 4) && distanceToCursor < 40;
+
+                                        CoPilot.Instance.LogMessage($"FLAME LINK: Activation check - Should activate: {shouldActivate}, !hasLinkTarget: {!hasLinkTarget}, linkSourceTimeLeft < 4: {linkSourceTimeLeft < 4}, distanceToCursor < 40: {distanceToCursor < 40}");
+
+                                        if (shouldActivate)
+                                        {
+                                            CoPilot.Instance.LogMessage("FLAME LINK: Activating flame link!");
+                                            // Move mouse to leader position
+                                            var leaderScreenPosForMouse = GameController.IngameState.Camera.WorldToScreen(leader.Pos);
+                                            Mouse.SetCursorPos(leaderScreenPosForMouse);
+
+                                            // Activate the skill
+                                            Keyboard.KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
+                                            linkSkill.Cooldown = 100;
+                                        }
+                                        else
+                                        {
+                                            CoPilot.Instance.LogMessage("FLAME LINK: Activation conditions not met");
+                                        }
                                     }
                                     else
                                     {
-                                        CoPilot.Instance.LogMessage("FLAME LINK: Activation conditions not met");
+                                        CoPilot.Instance.LogMessage("FLAME LINK: Leader entity not found");
                                     }
                                 }
                                 else
                                 {
-                                    CoPilot.Instance.LogMessage("FLAME LINK: Leader not found in party list");
+                                    CoPilot.Instance.LogMessage("FLAME LINK: Leader element not found in party list");
                                 }
                             }
                             else
