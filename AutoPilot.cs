@@ -980,6 +980,9 @@ public class AutoPilot
                         {
                             BetterFollowbotLite.Instance.LogMessage($"TRANSITION: Executing transition task - Attempt {currentTask.AttemptCount + 1}/6");
 
+                            // Initialize flag to true - will be set to false if portal is invalid
+                            shouldTransitionAndContinue = true;
+
                             // Log portal information
                             var portalLabel = currentTask.LabelOnGround?.Label?.Text ?? "NULL";
                             var portalPos = currentTask.LabelOnGround?.ItemOnGround?.Pos ?? Vector3.Zero;
@@ -997,8 +1000,8 @@ public class AutoPilot
                             {
                                 BetterFollowbotLite.Instance.LogMessage("TRANSITION: Portal no longer visible or valid, removing task");
                                 tasks.RemoveAt(0);
-                                yield return new WaitTime(100);
-                                continue;
+                                shouldTransitionAndContinue = false; // Don't continue with transition
+                                break; // Exit the switch case
                             }
 
                             //Click the transition
@@ -1089,6 +1092,14 @@ public class AutoPilot
                     {
                         tasks.RemoveAt(0);
                     }
+                }
+
+                // Handle portal invalidation after try-catch
+                if (currentTask != null && currentTask.Type == TaskNodeType.Transition && !shouldTransitionAndContinue)
+                {
+                    // Portal was invalidated, wait and continue
+                    yield return new WaitTime(100);
+                    continue;
                 }
                 // Execute actions outside try-catch blocks
                 else
