@@ -101,8 +101,6 @@ internal class ImGuiDrawSettings
                     "Move Key: " + BetterFollowbotLite.Instance.Settings.autoPilotMoveKey.Value, BetterFollowbotLite.Instance.Settings.autoPilotMoveKey);
                 BetterFollowbotLite.Instance.Settings.autoPilotToggleKey.Value = ImGuiExtension.HotkeySelector(
                     "Toggle Key: " + BetterFollowbotLite.Instance.Settings.autoPilotToggleKey.Value, BetterFollowbotLite.Instance.Settings.autoPilotToggleKey);
-                BetterFollowbotLite.Instance.Settings.autoPilotTakeWaypoints.Value = ImGuiExtension.Checkbox(
-                    "Take Waypoints", BetterFollowbotLite.Instance.Settings.autoPilotTakeWaypoints.Value);
                 /*
                 BetterFollowbotLite.instance.Settings.autoPilotRandomClickOffset.Value =
                     ImGuiExtension.IntSlider("Random Click Offset", BetterFollowbotLite.instance.Settings.autoPilotRandomClickOffset);

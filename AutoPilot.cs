@@ -1280,18 +1280,6 @@ public class AutoPilot
                         tasks.FirstOrDefault(I => I.Type == TaskNodeType.Loot) == null)
                         tasks.Add(new TaskNode(questLoot.Pos, BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance, TaskNodeType.Loot));
 
-                    else if (!hasUsedWp && BetterFollowbotLite.Instance.Settings.autoPilotTakeWaypoints)
-                    {
-                        //Check if there's a waypoint nearby
-                        var waypoint = BetterFollowbotLite.Instance.GameController.EntityListWrapper.Entities.SingleOrDefault(I => I.Type ==EntityType.Waypoint &&
-                                                                                                                       Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, I.Pos) < BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance);
-
-                        if (waypoint != null)
-                        {
-                            hasUsedWp = true;
-                            tasks.Add(new TaskNode(waypoint.Pos, BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance, TaskNodeType.ClaimWaypoint));
-                        }
-                    }
                 }
             }
             if (followTarget?.Pos != null)
