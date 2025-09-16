@@ -195,23 +195,23 @@ public class AutoPilot
         CoPilot.Instance.LogMessage("AutoPilotLogic: Coroutine started");
         while (true)
         {
-            try
+            if (!CoPilot.Instance.Settings.Enable.Value || !CoPilot.Instance.Settings.autoPilotEnabled.Value || CoPilot.Instance.localPlayer == null || !CoPilot.Instance.localPlayer.IsAlive || 
+                !CoPilot.Instance.GameController.IsForeGroundCache || MenuWindow.IsOpened || CoPilot.Instance.GameController.IsLoading || !CoPilot.Instance.GameController.InGame)
             {
-                if (!CoPilot.Instance.Settings.Enable.Value || !CoPilot.Instance.Settings.autoPilotEnabled.Value || CoPilot.Instance.localPlayer == null || !CoPilot.Instance.localPlayer.IsAlive || 
-                    !CoPilot.Instance.GameController.IsForeGroundCache || MenuWindow.IsOpened || CoPilot.Instance.GameController.IsLoading || !CoPilot.Instance.GameController.InGame)
-                {
-                    yield return new WaitTime(100);
-                    continue;
-                }
+                yield return new WaitTime(100);
+                continue;
+            }
 		        
             // Only execute input tasks here - decision making moved to Render method
             if (tasks?.Count > 0)
             {
-                var currentTask = tasks.First();
-                var taskDistance = Vector3.Distance(CoPilot.Instance.playerPosition, currentTask.WorldPosition);
-                var playerDistanceMoved = Vector3.Distance(CoPilot.Instance.playerPosition, lastPlayerPosition);
-                
-                CoPilot.Instance.LogMessage($"Coroutine executing task: {currentTask.Type}, Task count: {tasks.Count}, Distance: {taskDistance:F1}");
+                try
+                {
+                    var currentTask = tasks.First();
+                    var taskDistance = Vector3.Distance(CoPilot.Instance.playerPosition, currentTask.WorldPosition);
+                    var playerDistanceMoved = Vector3.Distance(CoPilot.Instance.playerPosition, lastPlayerPosition);
+                    
+                    CoPilot.Instance.LogMessage($"Coroutine executing task: {currentTask.Type}, Task count: {tasks.Count}, Distance: {taskDistance:F1}");
 
                 //We are using a same map transition and have moved significnatly since last tick. Mark the transition task as done.
                 if (currentTask.Type == TaskNodeType.Transition && 
@@ -412,16 +412,20 @@ public class AutoPilot
                         continue;
                     }
                 }
+                }
+                catch (Exception e)
+                {
+                    CoPilot.Instance.LogError($"Task execution error: {e}");
+                    // Remove the problematic task and continue
+                    if (tasks.Count > 0)
+                    {
+                        tasks.RemoveAt(0);
+                    }
+                }
             }
             
             lastPlayerPosition = CoPilot.Instance.playerPosition;
             yield return new WaitTime(50);
-            }
-            catch (Exception e)
-            {
-                CoPilot.Instance.LogError($"AutoPilotLogic Error: {e}");
-                yield return new WaitTime(100);
-            }
         }
         // ReSharper disable once IteratorNeverReturns
     }
