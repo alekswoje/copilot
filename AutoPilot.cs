@@ -1576,6 +1576,14 @@ public class AutoPilot
                 //We are NOT within clear path distance range of leader. Logic can continue
                 if (distanceToLeader >= BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance.Value)
                 {
+                    // IMPORTANT: Don't process large movements if we already have a transition task active
+                    // This prevents the zone transition detection from interfering with an active transition
+                    if (tasks.Any(t => t.Type == TaskNodeType.Transition))
+                    {
+                        BetterFollowbotLite.Instance.LogMessage("ZONE TRANSITION: Transition task already active, skipping movement processing");
+                        return; // Exit early to prevent interference
+                    }
+                {
                     //Leader moved VERY far in one frame. Check for transition to use to follow them.
                     var distanceMoved = Vector3.Distance(lastTargetPosition, followTarget.Pos);
                     if (lastTargetPosition != Vector3.Zero && distanceMoved > BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance.Value)
@@ -1652,8 +1660,14 @@ public class AutoPilot
                                     {
                                         BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Using selected portal '{selectedPortal.Label?.Text}' as likely destination");
                                         transition = selectedPortal; // Set transition so we use this portal
+
+                                        // CRITICAL: Clear all existing tasks when adding a transition task to ensure it executes immediately
+                                        BetterFollowbotLite.Instance.LogMessage("ZONE TRANSITION: Clearing all existing tasks to prioritize transition");
+                                        tasks.Clear();
+
                                         // Add the transition task immediately since we found a suitable portal
                                         tasks.Add(new TaskNode(selectedPortal, 200, TaskNodeType.Transition));
+                                        BetterFollowbotLite.Instance.LogMessage("ZONE TRANSITION: Transition task added and prioritized");
                                     }
                                     else
                                     {
@@ -1665,19 +1679,16 @@ public class AutoPilot
                             // Check for Portal within Screen Distance (original logic) - only if we haven't already added a task
                             if (transition != null && transition.ItemOnGround.DistancePlayer < 80)
                             {
-                                // Check if we already have a transition task for this portal
-                                bool alreadyHasTask = tasks.Any(t => t.Type == TaskNodeType.Transition &&
-                                                                   t.LabelOnGround != null &&
-                                                                   t.LabelOnGround.ItemOnGround.Id == transition.ItemOnGround.Id);
-
-                                if (!alreadyHasTask)
+                                // Since we cleared all tasks above when adding the transition task, this check is now simpler
+                                // We only add if we don't have any transition tasks (which we shouldn't after clearing)
+                                if (!tasks.Any(t => t.Type == TaskNodeType.Transition))
                                 {
                                     BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Found nearby portal '{transition.Label?.Text}', adding transition task");
                                     tasks.Add(new TaskNode(transition,200, TaskNodeType.Transition));
                                 }
                                 else
                                 {
-                                    BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Portal '{transition.Label?.Text}' task already exists, skipping duplicate");
+                                    BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Transition task already exists, portal handling already in progress");
                                 }
                             }
                             else
