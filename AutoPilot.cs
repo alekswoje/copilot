@@ -18,7 +18,7 @@ public class AutoPilot
     // Most Logic taken from Alpha Plugin
     private Coroutine autoPilotCoroutine;
     private readonly Random random = new Random();
-        
+
     private Vector3 lastTargetPosition;
     private Vector3 lastPlayerPosition;
     private Entity followTarget;
@@ -65,7 +65,7 @@ public class AutoPilot
         {
             if (leaderPartyElement == null)
                 return null;
-                
+
             var currentZoneName = CoPilot.Instance.GameController?.Area.CurrentArea.DisplayName;
             // Look for portals when leader is in different zone, or when in hideout, or in high level areas
             if(!leaderPartyElement.ZoneName.Equals(currentZoneName) || (bool)CoPilot.Instance?.GameController?.Area?.CurrentArea?.IsHideout || CoPilot.Instance.GameController?.Area?.CurrentArea?.RealLevel >= 68) // TODO: or is chamber of sins a7 or is epilogue
@@ -94,11 +94,11 @@ public class AutoPilot
         {
             if (leaderPartyElement == null)
                 return Vector2.Zero;
-                
+
             var windowOffset = CoPilot.Instance.GameController.Window.GetWindowRectangle().TopLeft;
             var elemCenter = (Vector2) leaderPartyElement?.TpButton?.GetClientRectCache.Center;
             var finalPos = new Vector2(elemCenter.X + windowOffset.X, elemCenter.Y + windowOffset.Y);
-				
+
             return finalPos;
         }
         catch
@@ -125,7 +125,7 @@ public class AutoPilot
     public void AreaChange()
     {
         ResetPathing();
-            
+
         var terrain = CoPilot.Instance.GameController.IngameState.Data.Terrain;
         var terrainBytes = CoPilot.Instance.GameController.Memory.ReadBytes(terrain.LayerMelee.First, terrain.LayerMelee.Size);
         numCols = (int)(terrain.NumCols - 1) * 23;
@@ -187,7 +187,7 @@ public class AutoPilot
                 clickPos.Value.X + random.Next(-15, 15),
                 clickPos.Value.Y + random.Next(-10, 10)));
         }
-	        
+
         yield return new WaitTime(30 + random.Next(CoPilot.Instance.Settings.autoPilotInputFrequency));
     }
     private IEnumerator AutoPilotLogic()
@@ -201,17 +201,15 @@ public class AutoPilot
                 yield return new WaitTime(100);
                 continue;
             }
-		        
+
             // Only execute input tasks here - decision making moved to Render method
             if (tasks?.Count > 0)
             {
-                try
-                {
-                    var currentTask = tasks.First();
-                    var taskDistance = Vector3.Distance(CoPilot.Instance.playerPosition, currentTask.WorldPosition);
-                    var playerDistanceMoved = Vector3.Distance(CoPilot.Instance.playerPosition, lastPlayerPosition);
-                    
-                    CoPilot.Instance.LogMessage($"Coroutine executing task: {currentTask.Type}, Task count: {tasks.Count}, Distance: {taskDistance:F1}");
+                var currentTask = tasks.First();
+                var taskDistance = Vector3.Distance(CoPilot.Instance.playerPosition, currentTask.WorldPosition);
+                var playerDistanceMoved = Vector3.Distance(CoPilot.Instance.playerPosition, lastPlayerPosition);
+
+                CoPilot.Instance.LogMessage($"Coroutine executing task: {currentTask.Type}, Task count: {tasks.Count}, Distance: {taskDistance:F1}");
 
                 //We are using a same map transition and have moved significnatly since last tick. Mark the transition task as done.
                 if (currentTask.Type == TaskNodeType.Transition && 
@@ -226,7 +224,7 @@ public class AutoPilot
                 {
                     case TaskNodeType.Movement:
                         CoPilot.Instance.LogMessage($"Movement task executing - Distance to target: {taskDistance:F1}, Required: {CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance.Value * 1.5:F1}");
-                        
+
                         // Check for distance-based dashing to keep up with leader
                         if (CoPilot.Instance.Settings.autoPilotDashEnabled && followTarget != null)
                         {
@@ -253,7 +251,7 @@ public class AutoPilot
                         {
                             CoPilot.Instance.LogMessage($"Movement task: Dash check skipped - Dash enabled: {CoPilot.Instance.Settings.autoPilotDashEnabled}, Follow target: {followTarget != null}");
                         }
-                        
+
                         // Check for terrain-based dashing
                         if (CoPilot.Instance.Settings.autoPilotDashEnabled)
                         {
@@ -269,7 +267,7 @@ public class AutoPilot
                                 CoPilot.Instance.LogMessage("Movement task: No terrain dash needed");
                             }
                         }
-                        
+
                         CoPilot.Instance.LogMessage($"Movement task: Moving to {currentTask.WorldPosition}");
                         var movementScreenPos = Helper.WorldToValidScreenPosition(currentTask.WorldPosition);
                         CoPilot.Instance.LogMessage($"Movement task: Screen position: {movementScreenPos}");
@@ -277,11 +275,28 @@ public class AutoPilot
                         CoPilot.Instance.LogMessage("Movement task: Mouse positioned, pressing move key down");
                         CoPilot.Instance.LogMessage($"Movement task: Move key: {CoPilot.Instance.Settings.autoPilotMoveKey}");
                         yield return new WaitTime(random.Next(25) + 30);
-                        Input.KeyDown(CoPilot.Instance.Settings.autoPilotMoveKey);
-                        CoPilot.Instance.LogMessage("Movement task: Move key down pressed, waiting");
+
+                        try
+                        {
+                            Input.KeyDown(CoPilot.Instance.Settings.autoPilotMoveKey);
+                            CoPilot.Instance.LogMessage("Movement task: Move key down pressed, waiting");
+                        }
+                        catch (Exception e)
+                        {
+                            CoPilot.Instance.LogError($"Movement task: KeyDown error: {e}");
+                        }
+
                         yield return new WaitTime(random.Next(25) + 30);
-                        Input.KeyUp(CoPilot.Instance.Settings.autoPilotMoveKey);
-                        CoPilot.Instance.LogMessage("Movement task: Move key released");
+
+                        try
+                        {
+                            Input.KeyUp(CoPilot.Instance.Settings.autoPilotMoveKey);
+                            CoPilot.Instance.LogMessage("Movement task: Move key released");
+                        }
+                        catch (Exception e)
+                        {
+                            CoPilot.Instance.LogError($"Movement task: KeyUp error: {e}");
+                        }
 
                         //Within bounding range. Task is complete
                         //Note: Was getting stuck on close objects... testing hacky fix.
@@ -339,7 +354,7 @@ public class AutoPilot
                     }
                     case TaskNodeType.Transition:
                     {
-							
+
                         //Click the transition
                         Input.KeyUp(CoPilot.Instance.Settings.autoPilotMoveKey);
                         yield return new WaitTime(60);
@@ -373,7 +388,7 @@ public class AutoPilot
                             continue;
                         }
                     }
-                    
+
                      case TaskNodeType.Dash:
                      {
                          CoPilot.Instance.LogMessage($"Executing Dash task - Target: {currentTask.WorldPosition}, Distance: {Vector3.Distance(CoPilot.Instance.playerPosition, currentTask.WorldPosition):F1}");
@@ -389,7 +404,7 @@ public class AutoPilot
                          yield return null;
                          continue;
                      }
-                    
+
                     case TaskNodeType.TeleportConfirm:
                     {
                         yield return Mouse.SetCursorPosHuman(new Vector2(currentTask.WorldPosition.X, currentTask.WorldPosition.Y));
@@ -400,7 +415,7 @@ public class AutoPilot
                         yield return null;
                         continue;
                     }
-                    
+
                     case TaskNodeType.TeleportButton:
                     {
                         yield return Mouse.SetCursorPosHuman(new Vector2(currentTask.WorldPosition.X, currentTask.WorldPosition.Y), false);
@@ -412,24 +427,14 @@ public class AutoPilot
                         continue;
                     }
                 }
-                }
-                catch (Exception e)
-                {
-                    CoPilot.Instance.LogError($"Task execution error: {e}");
-                    // Remove the problematic task and continue
-                    if (tasks.Count > 0)
-                    {
-                        tasks.RemoveAt(0);
-                    }
-                }
             }
-            
+
             lastPlayerPosition = CoPilot.Instance.playerPosition;
             yield return new WaitTime(50);
         }
         // ReSharper disable once IteratorNeverReturns
     }
-    
+
     // New method for decision making that runs every game tick
     public void UpdateAutoPilotLogic()
     {
@@ -440,132 +445,138 @@ public class AutoPilot
             {
                 return;
             }
-            
+
             //Cache the current follow target (if present)
             followTarget = GetFollowingTarget();
             var leaderPartyElement = GetLeaderPartyElement();
 
-        if (followTarget == null && leaderPartyElement != null && !leaderPartyElement.ZoneName.Equals(CoPilot.Instance.GameController?.Area.CurrentArea.DisplayName)) {
-            var portal = GetBestPortalLabel(leaderPartyElement);
-            if (portal != null) {
-                // Hideout -> Map || Chamber of Sins A7 -> Map
-                tasks.Add(new TaskNode(portal, CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
-            } else {
-                // Swirly-able (inverted due to overlay)
-                var tpConfirmation = GetTpConfirmation();
-                if (tpConfirmation != null)
+            if (followTarget == null && leaderPartyElement != null && !leaderPartyElement.ZoneName.Equals(CoPilot.Instance.GameController?.Area.CurrentArea.DisplayName)) 
+            {
+                var portal = GetBestPortalLabel(leaderPartyElement);
+                if (portal != null) 
                 {
-                    // Add teleport confirmation task
-                    var center = tpConfirmation.GetClientRect().Center;
-                    tasks.Add(new TaskNode(new Vector3(center.X, center.Y, 0), 0, TaskNodeType.TeleportConfirm));
+                    // Hideout -> Map || Chamber of Sins A7 -> Map
+                    tasks.Add(new TaskNode(portal, CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
+                } 
+                else 
+                {
+                    // Swirly-able (inverted due to overlay)
+                    var tpConfirmation = GetTpConfirmation();
+                    if (tpConfirmation != null)
+                    {
+                        // Add teleport confirmation task
+                        var center = tpConfirmation.GetClientRect().Center;
+                        tasks.Add(new TaskNode(new Vector3(center.X, center.Y, 0), 0, TaskNodeType.TeleportConfirm));
+                    }
+                    else
+                    {
+                        // Add teleport button task
+                        var tpButton = leaderPartyElement != null ? GetTpButton(leaderPartyElement) : Vector2.Zero;
+                        if(!tpButton.Equals(Vector2.Zero))
+                        {
+                            tasks.Add(new TaskNode(new Vector3(tpButton.X, tpButton.Y, 0), 0, TaskNodeType.TeleportButton));
+                        }
+                    }
+                }
+            }
+            else if (followTarget == null) 
+            {
+                // Leader is not in current zone - look for portals to follow them
+                if (leaderPartyElement != null && !leaderPartyElement.ZoneName.Equals(CoPilot.Instance.GameController?.Area.CurrentArea.DisplayName))
+                {
+                    // Leader is in different zone, look for portals
+                    var portal = GetBestPortalLabel(leaderPartyElement);
+                    if (portal != null)
+                    {
+                        // Clear any existing movement tasks and add portal task
+                        tasks.RemoveAll(t => t.Type == TaskNodeType.Movement);
+                        tasks.Add(new TaskNode(portal, CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
+                    }
                 }
                 else
                 {
-                    // Add teleport button task
-                    var tpButton = leaderPartyElement != null ? GetTpButton(leaderPartyElement) : Vector2.Zero;
-                    if(!tpButton.Equals(Vector2.Zero))
-                    {
-                        tasks.Add(new TaskNode(new Vector3(tpButton.X, tpButton.Y, 0), 0, TaskNodeType.TeleportButton));
-                    }
-                }
-            }
-        } else if (followTarget == null) {
-            // Leader is not in current zone - look for portals to follow them
-            if (leaderPartyElement != null && !leaderPartyElement.ZoneName.Equals(CoPilot.Instance.GameController?.Area.CurrentArea.DisplayName))
-            {
-                // Leader is in different zone, look for portals
-                var portal = GetBestPortalLabel(leaderPartyElement);
-                if (portal != null)
-                {
-                    // Clear any existing movement tasks and add portal task
+                    // Leader party element not available or in same zone, clear movement tasks
                     tasks.RemoveAll(t => t.Type == TaskNodeType.Movement);
-                    tasks.Add(new TaskNode(portal, CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
                 }
-            }
-            else
+            } 
+            else if (followTarget != null) 
             {
-                // Leader party element not available or in same zone, clear movement tasks
-                tasks.RemoveAll(t => t.Type == TaskNodeType.Movement);
-            }
-        } else if (followTarget != null) {
-            // TODO: If in town, do not follow (optional)
-            var distanceToLeader = Vector3.Distance(CoPilot.Instance.playerPosition, followTarget.Pos);
-            //We are NOT within clear path distance range of leader. Logic can continue
-            if (distanceToLeader >= CoPilot.Instance.Settings.autoPilotClearPathDistance.Value)
-            {
-                //Leader moved VERY far in one frame. Check for transition to use to follow them.
-                var distanceMoved = Vector3.Distance(lastTargetPosition, followTarget.Pos);
-                if (lastTargetPosition != Vector3.Zero && distanceMoved > CoPilot.Instance.Settings.autoPilotClearPathDistance.Value)
+                // TODO: If in town, do not follow (optional)
+                var distanceToLeader = Vector3.Distance(CoPilot.Instance.playerPosition, followTarget.Pos);
+                //We are NOT within clear path distance range of leader. Logic can continue
+                if (distanceToLeader >= CoPilot.Instance.Settings.autoPilotClearPathDistance.Value)
                 {
-                    var transition = GetBestPortalLabel(leaderPartyElement);
-                    // Check for Portal within Screen Distance.
-                    if (transition != null && transition.ItemOnGround.DistancePlayer < 80)
-                        tasks.Add(new TaskNode(transition,200, TaskNodeType.Transition));
-                }
-                 //We have no path, set us to go to leader pos.
-                 else if (tasks.Count == 0 && distanceMoved < 2000 && distanceToLeader > 200 && distanceToLeader < 2000)
-                 {
-                     // If very far away, add dash task instead of movement task
-                     if (distanceToLeader > 700 && CoPilot.Instance.Settings.autoPilotDashEnabled)
-                     {
-                         CoPilot.Instance.LogMessage($"Adding Dash task - Distance: {distanceToLeader:F1}, Dash enabled: {CoPilot.Instance.Settings.autoPilotDashEnabled}");
-                         tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
-                     }
-                     else
-                     {
-                         CoPilot.Instance.LogMessage($"Adding Movement task - Distance: {distanceToLeader:F1}, Dash enabled: {CoPilot.Instance.Settings.autoPilotDashEnabled}, Dash threshold: 700");
-                         tasks.Add(new TaskNode(followTarget.Pos, CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance));
-                     }
-                 }
-						
-                //We have a path. Check if the last task is far enough away from current one to add a new task node.
-                else if (tasks.Count > 0)
-                {
-                    var distanceFromLastTask = Vector3.Distance(tasks.Last().WorldPosition, followTarget.Pos);
-                    if (distanceFromLastTask >= CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance)
-                        tasks.Add(new TaskNode(followTarget.Pos, CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance));
-                }
-            }
-            else
-            {
-                //Clear all tasks except for looting/claim portal (as those only get done when we're within range of leader. 
-                if (tasks.Count > 0)
-                {
-                    for (var i = tasks.Count - 1; i >= 0; i--)
-                        if (tasks[i].Type == TaskNodeType.Movement || tasks[i].Type == TaskNodeType.Transition)
-                            tasks.RemoveAt(i);
-                }
-                if (CoPilot.Instance.Settings.autoPilotCloseFollow.Value)
-                {
-                    //Close follow logic. We have no current tasks. Check if we should move towards leader
-                    if (distanceToLeader >= CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance.Value)
-                        tasks.Add(new TaskNode(followTarget.Pos, CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance));
-                }
-
-                //Check if we should add quest loot logic. We're close to leader already
-                var questLoot = GetQuestItem();
-                if (questLoot != null &&
-                    Vector3.Distance(CoPilot.Instance.playerPosition, questLoot.Pos) < CoPilot.Instance.Settings.autoPilotClearPathDistance.Value &&
-                    tasks.FirstOrDefault(I => I.Type == TaskNodeType.Loot) == null)
-                    tasks.Add(new TaskNode(questLoot.Pos, CoPilot.Instance.Settings.autoPilotClearPathDistance, TaskNodeType.Loot));
-
-                else if (!hasUsedWp && CoPilot.Instance.Settings.autoPilotTakeWaypoints)
-                {
-                    //Check if there's a waypoint nearby
-                    var waypoint = CoPilot.Instance.GameController.EntityListWrapper.Entities.SingleOrDefault(I => I.Type ==EntityType.Waypoint &&
-                                                                                                                   Vector3.Distance(CoPilot.Instance.playerPosition, I.Pos) < CoPilot.Instance.Settings.autoPilotClearPathDistance);
-
-                    if (waypoint != null)
+                    //Leader moved VERY far in one frame. Check for transition to use to follow them.
+                    var distanceMoved = Vector3.Distance(lastTargetPosition, followTarget.Pos);
+                    if (lastTargetPosition != Vector3.Zero && distanceMoved > CoPilot.Instance.Settings.autoPilotClearPathDistance.Value)
                     {
-                        hasUsedWp = true;
-                        tasks.Add(new TaskNode(waypoint.Pos, CoPilot.Instance.Settings.autoPilotClearPathDistance, TaskNodeType.ClaimWaypoint));
+                        var transition = GetBestPortalLabel(leaderPartyElement);
+                        // Check for Portal within Screen Distance.
+                        if (transition != null && transition.ItemOnGround.DistancePlayer < 80)
+                            tasks.Add(new TaskNode(transition,200, TaskNodeType.Transition));
+                    }
+                    //We have no path, set us to go to leader pos.
+                    else if (tasks.Count == 0 && distanceMoved < 2000 && distanceToLeader > 200 && distanceToLeader < 2000)
+                    {
+                        // If very far away, add dash task instead of movement task
+                        if (distanceToLeader > 700 && CoPilot.Instance.Settings.autoPilotDashEnabled)
+                        {
+                            CoPilot.Instance.LogMessage($"Adding Dash task - Distance: {distanceToLeader:F1}, Dash enabled: {CoPilot.Instance.Settings.autoPilotDashEnabled}");
+                            tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
+                        }
+                        else
+                        {
+                            CoPilot.Instance.LogMessage($"Adding Movement task - Distance: {distanceToLeader:F1}, Dash enabled: {CoPilot.Instance.Settings.autoPilotDashEnabled}, Dash threshold: 700");
+                            tasks.Add(new TaskNode(followTarget.Pos, CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance));
+                        }
+                    }
+                    //We have a path. Check if the last task is far enough away from current one to add a new task node.
+                    else if (tasks.Count > 0)
+                    {
+                        var distanceFromLastTask = Vector3.Distance(tasks.Last().WorldPosition, followTarget.Pos);
+                        if (distanceFromLastTask >= CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance)
+                            tasks.Add(new TaskNode(followTarget.Pos, CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance));
+                    }
+                }
+                else
+                {
+                    //Clear all tasks except for looting/claim portal (as those only get done when we're within range of leader. 
+                    if (tasks.Count > 0)
+                    {
+                        for (var i = tasks.Count - 1; i >= 0; i--)
+                            if (tasks[i].Type == TaskNodeType.Movement || tasks[i].Type == TaskNodeType.Transition)
+                                tasks.RemoveAt(i);
+                    }
+                    if (CoPilot.Instance.Settings.autoPilotCloseFollow.Value)
+                    {
+                        //Close follow logic. We have no current tasks. Check if we should move towards leader
+                        if (distanceToLeader >= CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance.Value)
+                            tasks.Add(new TaskNode(followTarget.Pos, CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance));
                     }
 
+                    //Check if we should add quest loot logic. We're close to leader already
+                    var questLoot = GetQuestItem();
+                    if (questLoot != null &&
+                        Vector3.Distance(CoPilot.Instance.playerPosition, questLoot.Pos) < CoPilot.Instance.Settings.autoPilotClearPathDistance.Value &&
+                        tasks.FirstOrDefault(I => I.Type == TaskNodeType.Loot) == null)
+                        tasks.Add(new TaskNode(questLoot.Pos, CoPilot.Instance.Settings.autoPilotClearPathDistance, TaskNodeType.Loot));
+
+                    else if (!hasUsedWp && CoPilot.Instance.Settings.autoPilotTakeWaypoints)
+                    {
+                        //Check if there's a waypoint nearby
+                        var waypoint = CoPilot.Instance.GameController.EntityListWrapper.Entities.SingleOrDefault(I => I.Type ==EntityType.Waypoint &&
+                                                                                                                       Vector3.Distance(CoPilot.Instance.playerPosition, I.Pos) < CoPilot.Instance.Settings.autoPilotClearPathDistance);
+
+                        if (waypoint != null)
+                        {
+                            hasUsedWp = true;
+                            tasks.Add(new TaskNode(waypoint.Pos, CoPilot.Instance.Settings.autoPilotClearPathDistance, TaskNodeType.ClaimWaypoint));
+                        }
+                    }
                 }
             }
             if (followTarget?.Pos != null)
                 lastTargetPosition = followTarget.Pos;
-        }
         }
         catch (Exception e)
         {
@@ -573,7 +584,7 @@ public class AutoPilot
         }
     }
     // ReSharper disable once IteratorNeverReturns
-        
+
     private bool CheckDashTerrain(Vector2 targetPosition)
     {
         if (tiles == null)
@@ -669,7 +680,7 @@ public class AutoPilot
             return null;
         }
     }
-		
+
     public void Render()
     {
         if (CoPilot.Instance.Settings.autoPilotToggleKey.PressedOnce())
@@ -677,7 +688,7 @@ public class AutoPilot
             CoPilot.Instance.Settings.autoPilotEnabled.SetValueNoEvent(!CoPilot.Instance.Settings.autoPilotEnabled.Value);
             tasks = new List<TaskNode>();				
         }
-        
+
         // Restart coroutine if it died
         if (CoPilot.Instance.Settings.autoPilotEnabled && (autoPilotCoroutine == null || !autoPilotCoroutine.Running))
         {
@@ -695,7 +706,7 @@ public class AutoPilot
                 CoPilot.Instance.LogMessage($"AutoPilot: Coroutine status - Running: {autoPilotCoroutine?.Running}, Task count: {tasks?.Count ?? 0}");
             }
         }
-			
+
         if (!CoPilot.Instance.Settings.autoPilotEnabled || CoPilot.Instance.GameController.IsLoading || !CoPilot.Instance.GameController.InGame)
             return;
 
@@ -741,7 +752,7 @@ public class AutoPilot
 
         }
         */
-			
+
         // Cache Task to prevent access while Collection is changing.
         try
         {
@@ -779,7 +790,7 @@ public class AutoPilot
                 CoPilot.Instance.Graphics.DrawText(
                     $"Task Count: {taskCount:D} Next WP Distance: {dist:F} Target Distance: {targetDist:F}",
                     new System.Numerics.Vector2(500, 140));
-					
+
             }
         }
         catch (Exception)
