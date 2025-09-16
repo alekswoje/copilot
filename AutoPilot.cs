@@ -266,9 +266,9 @@ public class AutoPilot
                         }
                         
                         CoPilot.Instance.LogMessage($"Movement task: Moving to {currentTask.WorldPosition}");
-                        var screenPos = Helper.WorldToValidScreenPosition(currentTask.WorldPosition);
-                        CoPilot.Instance.LogMessage($"Movement task: Screen position: {screenPos}");
-                        yield return Mouse.SetCursorPosHuman(screenPos);
+                        var movementScreenPos = Helper.WorldToValidScreenPosition(currentTask.WorldPosition);
+                        CoPilot.Instance.LogMessage($"Movement task: Screen position: {movementScreenPos}");
+                        yield return Mouse.SetCursorPosHuman(movementScreenPos);
                         CoPilot.Instance.LogMessage("Movement task: Mouse positioned, pressing move key down");
                         CoPilot.Instance.LogMessage($"Movement task: Move key: {CoPilot.Instance.Settings.autoPilotMoveKey}");
                         yield return new WaitTime(random.Next(25) + 30);
