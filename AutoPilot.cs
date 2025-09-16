@@ -83,6 +83,98 @@ public class AutoPilot
     }
 
     /// <summary>
+    /// Calculates the efficiency of the current path compared to moving directly to player
+    /// Returns efficiency ratio: direct_distance / path_distance
+    /// Lower values mean the direct path is much shorter (more efficient)
+    /// </summary>
+    private float CalculatePathEfficiency()
+    {
+        try
+        {
+            if (tasks.Count == 0 || followTarget == null)
+                return 1.0f; // No path or no target, consider efficient
+
+            // Calculate direct distance from bot to player
+            float directDistance = Vector3.Distance(CoPilot.Instance.playerPosition, CoPilot.Instance.localPlayer?.Pos ?? CoPilot.Instance.playerPosition);
+
+            // Calculate distance along current path
+            float pathDistance = 0f;
+            Vector3 currentPos = CoPilot.Instance.localPlayer?.Pos ?? CoPilot.Instance.playerPosition;
+
+            // Add distance to each path node
+            foreach (var task in tasks)
+            {
+                if (task.WorldPosition != null)
+                {
+                    pathDistance += Vector3.Distance(currentPos, task.WorldPosition);
+                    currentPos = task.WorldPosition;
+                }
+            }
+
+            // If no valid path distance, return 1.0 (neutral)
+            if (pathDistance <= 0)
+                return 1.0f;
+
+            // Calculate efficiency ratio
+            float efficiency = directDistance / pathDistance;
+
+            CoPilot.Instance.LogMessage($"Path efficiency: Direct={directDistance:F1}, Path={pathDistance:F1}, Ratio={efficiency:F2}");
+            return efficiency;
+        }
+        catch (Exception e)
+        {
+            CoPilot.Instance.LogError($"Path efficiency calculation error: {e}");
+            return 1.0f; // Default to neutral on error
+        }
+    }
+
+    /// <summary>
+    /// Checks if the current path is inefficient and should be abandoned
+    /// Returns true if path should be cleared for direct movement to player
+    /// </summary>
+    private bool ShouldAbandonPathForEfficiency()
+    {
+        try
+        {
+            float efficiency = CalculatePathEfficiency();
+
+            // If direct path is more than 40% shorter than following current path
+            if (efficiency < 0.6f)
+            {
+                CoPilot.Instance.LogMessage($"Path abandoned for efficiency: {efficiency:F2} < 0.6");
+                return true;
+            }
+
+            // Also check if player is now behind us relative to path direction
+            if (tasks.Count > 0 && tasks[0].WorldPosition != null)
+            {
+                Vector3 botPos = CoPilot.Instance.localPlayer?.Pos ?? CoPilot.Instance.playerPosition;
+                Vector3 playerPos = CoPilot.Instance.playerPosition;
+                Vector3 pathTarget = tasks[0].WorldPosition;
+
+                // Calculate vectors
+                Vector3 botToPath = pathTarget - botPos;
+                Vector3 botToPlayer = playerPos - botPos;
+
+                // If player is behind us on the path (negative dot product)
+                float dotProduct = Vector3.Dot(Vector3.Normalize(botToPath), Vector3.Normalize(botToPlayer));
+                if (dotProduct < -0.3f) // Player is more than 107 degrees behind us
+                {
+                    CoPilot.Instance.LogMessage($"Path abandoned: Player behind bot (dot={dotProduct:F2})");
+                    return true;
+                }
+            }
+
+            return false;
+        }
+        catch (Exception e)
+        {
+            CoPilot.Instance.LogError($"Path abandonment check error: {e}");
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Clears all pathfinding values. Used on area transitions primarily.
     /// </summary>
     private void ResetPathing()
@@ -93,6 +185,16 @@ public class AutoPilot
         lastPlayerPosition = Vector3.Zero;
         hasUsedWp = false;
         lastDashTime = DateTime.MinValue; // Reset dash cooldown on area change
+    }
+
+    /// <summary>
+    /// Clears path due to efficiency optimization (not area change)
+    /// </summary>
+    private void ClearPathForEfficiency()
+    {
+        tasks.Clear();
+        hasUsedWp = false; // Allow waypoint usage again
+        // Note: Don't reset dash cooldown for efficiency clears
     }
 
     private PartyElementWindow GetLeaderPartyElement()
@@ -291,6 +393,15 @@ public class AutoPilot
                 var playerDistanceMoved = Vector3.Distance(CoPilot.Instance.playerPosition, lastPlayerPosition);
 
                 CoPilot.Instance.LogMessage($"Coroutine executing task: {currentTask.Type}, Task count: {tasks.Count}, Distance: {taskDistance:F1}");
+
+                // Check if current path is inefficient and should be abandoned
+                if (ShouldAbandonPathForEfficiency())
+                {
+                    CoPilot.Instance.LogMessage("Clearing inefficient path for direct movement to player");
+                    ClearPathForEfficiency(); // Clear all tasks and reset related state
+                    yield return new WaitTime(100); // Brief pause before new path calculation
+                    continue; // Skip current task processing, will recalculate path in next UpdateAutoPilotLogic call
+                }
 
                 //We are using a same map transition and have moved significnatly since last tick. Mark the transition task as done.
                 if (currentTask.Type == TaskNodeType.Transition &&
