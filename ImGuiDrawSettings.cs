@@ -131,20 +131,9 @@ internal class ImGuiDrawSettings
             {
                 BetterFollowbotLite.Instance.Settings.auraBlessingEnabled.Value = ImGuiExtension.Checkbox("Enabled",
                     BetterFollowbotLite.Instance.Settings.auraBlessingEnabled.Value);
-                BetterFollowbotLite.Instance.Settings.auraBlessingWitheringStep.Value = 
-                    ImGuiExtension.Checkbox("Do Not Override Withering Step", BetterFollowbotLite.Instance.Settings.auraBlessingWitheringStep.Value);
-                BetterFollowbotLite.Instance.Settings.auraBlessingHpp.Value =
-                    ImGuiExtension.IntSlider("HP%", BetterFollowbotLite.Instance.Settings.auraBlessingHpp);
-                BetterFollowbotLite.Instance.Settings.auraBlessingEsp.Value =
-                    ImGuiExtension.IntSlider("ES%", BetterFollowbotLite.Instance.Settings.auraBlessingEsp);
-                BetterFollowbotLite.Instance.Settings.auraBlessingRange.Value =
-                    ImGuiExtension.IntSlider("Range", BetterFollowbotLite.Instance.Settings.auraBlessingRange);
-                BetterFollowbotLite.Instance.Settings.auraBlessingMinAny.Value =
-                    ImGuiExtension.IntSlider("min Enemy Any", BetterFollowbotLite.Instance.Settings.auraBlessingMinAny);
-                BetterFollowbotLite.Instance.Settings.auraBlessingMinRare.Value = ImGuiExtension.IntSlider("min Enemy Rare",
-                    BetterFollowbotLite.Instance.Settings.auraBlessingMinRare);
-                BetterFollowbotLite.Instance.Settings.auraBlessingMinUnique.Value = ImGuiExtension.IntSlider("min Enemy Unique",
-                    BetterFollowbotLite.Instance.Settings.auraBlessingMinUnique);
+                BetterFollowbotLite.Instance.Settings.holyRelicHealthThreshold.Value =
+                    ImGuiExtension.IntSlider("Holy Relic Health Threshold %", BetterFollowbotLite.Instance.Settings.holyRelicHealthThreshold);
+                ImGui.TextWrapped("Logic:\n• Summon Holy Relic when health < threshold OR missing minion buff\n• Cast Zealotry when Holy Relic exists but missing aura buff");
             }
         }
         catch (Exception e)

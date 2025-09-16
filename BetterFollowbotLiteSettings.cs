@@ -44,15 +44,7 @@ public class BetterFollowbotLiteSettings : ISettings
     #region Aura Blessing
 
     public ToggleNode auraBlessingEnabled = new ToggleNode(false);
-    public ToggleNode auraBlessingWitheringStep = new ToggleNode(false);
-    public RangeNode<int> auraBlessingRange = new RangeNode<int>(550, 100, 1000);
-    public RangeNode<int> auraBlessingHpp = new RangeNode<int>(100, 0, 100);
-    public RangeNode<int> auraBlessingEsp = new RangeNode<int>(0, 0, 100);
-    public RangeNode<int> auraBlessingMinAny = new RangeNode<int>(1, 0, 50);
-    public RangeNode<int> auraBlessingMinRare = new RangeNode<int>(0, 0, 50);
-    public RangeNode<int> auraBlessingMinUnique = new RangeNode<int>(0, 0, 50);
-    public TextNode auraBlessingName = new TextNode("");
-    public TextNode auraBlessing = new TextNode("");
+    public RangeNode<int> holyRelicHealthThreshold = new RangeNode<int>(25, 1, 100);
 
     #endregion
 

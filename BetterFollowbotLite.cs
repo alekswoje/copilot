@@ -326,19 +326,36 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                 if (Settings.auraBlessingEnabled)
                     try
                     {
-                        if (SkillInfo.ManageCooldown(SkillInfo.blessing, skill))
+                        // Holy Relic summoning logic - check if Holy Relic health is below 25%
+                        if (skill.Id == SkillInfo.holyRelict.Id)
                         {
-                            //guard statement to check for withering step
-                            if (Settings.auraBlessingWitheringStep && buffs.Exists(b => b.Name == SkillInfo.witherStep.BuffName)) return;
-                            var cachedSkill = SkillInfo.CachedAuraSkills.Find(s => s.IsBlessing > 0 && s.Id == skill.Id);
-                            if (cachedSkill != null && !buffs.Exists(x => x.Name == cachedSkill.BuffName && x.Timer > 0.2))
-                                if (MonsterCheck(Settings.auraBlessingRange, Settings.auraBlessingMinAny,
-                                        Settings.auraBlessingMinRare, Settings.auraBlessingMinUnique) &&
-                                    (player.HPPercentage <=
-                                     (float)Settings.auraBlessingHpp / 100 ||
-                                     player.MaxES > 0 && player.ESPercentage <
-                                     (float)Settings.auraBlessingEsp / 100))
-                                    Keyboard.KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
+                            var lowestMinionHp = Summons.GetLowestMinionHpp();
+                            var hasGuardianBlessingMinion = buffs.Exists(x => x.Name == "has_guardians_blessing_minion");
+
+                            BetterFollowbotLite.Instance.LogMessage($"HOLY RELIC: Lowest minion HP: {lowestMinionHp:F1}%, Has guardian blessing minion: {hasGuardianBlessingMinion}");
+
+                            // If Holy Relic health is below threshold OR we don't have the guardian blessing minion buff, summon new Holy Relic
+                            if (lowestMinionHp < Settings.holyRelicHealthThreshold || !hasGuardianBlessingMinion)
+                            {
+                                BetterFollowbotLite.Instance.LogMessage("HOLY RELIC: Summoning new Holy Relic (health low or missing buff)");
+                                Keyboard.KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
+                            }
+                        }
+
+                        // Zealotry casting logic - check if we don't have guardian blessing aura
+                        if (skill.Id == SkillInfo.auraZealotry.Id)
+                        {
+                            var hasGuardianBlessingAura = buffs.Exists(x => x.Name == "has_guardians_blessing_aura");
+                            var hasGuardianBlessingMinion = buffs.Exists(x => x.Name == "has_guardians_blessing_minion");
+
+                            BetterFollowbotLite.Instance.LogMessage($"ZEALOTRY: Has guardian blessing aura: {hasGuardianBlessingAura}, Has minion: {hasGuardianBlessingMinion}");
+
+                            // If we have the minion but don't have the aura buff, cast Zealotry
+                            if (!hasGuardianBlessingAura && hasGuardianBlessingMinion)
+                            {
+                                BetterFollowbotLite.Instance.LogMessage("ZEALOTRY: Casting Zealotry (have minion but missing aura)");
+                                Keyboard.KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
+                            }
                         }
                     }
                     catch (Exception e)

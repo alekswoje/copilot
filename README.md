@@ -33,7 +33,7 @@ A Path of Exile plugin for ExileCore/PoeHelper that provides automated follow bo
 - **Pathfinding**: Adjust node distance and clear path settings
 
 #### Skill Automation
-- **Aura Blessing**: Automated aura and blessing casting
+- **Aura Blessing**: Smart Holy Relic + Zealotry management (proactive minion health monitoring)
 - **Flame Link**: Party member linking functionality
 - **Smite**: Automated smite buff maintenance
 - **Vaal Haste**: Automated vaal haste activation when available
@@ -44,7 +44,7 @@ A Path of Exile plugin for ExileCore/PoeHelper that provides automated follow bo
 Access plugin settings through the ExileCore menu:
 - Enable/Disable individual features
 - Configure hotkeys and thresholds
-- Adjust automation parameters (e.g., Vaal Discipline ES% threshold)
+- Adjust automation parameters (e.g., Holy Relic health threshold, Vaal Discipline ES% threshold)
 - Debug mode for troubleshooting
 
 ## Credits
