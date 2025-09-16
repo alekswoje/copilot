@@ -889,15 +889,8 @@ public class AutoPilot
                             continue;
                         }
 
-                        CoPilot.Instance.LogMessage("Movement task: Mouse positioned, pressing move key down");
-                        CoPilot.Instance.LogMessage($"Movement task: Move key: {CoPilot.Instance.Settings.autoPilotMoveKey}");
-                        CoPilot.Instance.LogMessage($"DEBUG: About to click at screen position: {movementScreenPos}, World position: {currentTask.WorldPosition}");
-                        CoPilot.Instance.LogMessage($"DEBUG: Current player position: {CoPilot.Instance.playerPosition}");
-                        CoPilot.Instance.LogMessage($"DEBUG: Current followTarget position: {followTarget?.Pos}");
-                        yield return Mouse.SetCursorPosHuman(movementScreenPos);
-                        
-                        // IMMEDIATE OVERRIDE CHECK: After clicking, check if we need to override with new position
-                        CoPilot.Instance.LogMessage("DEBUG: Checking for immediate override after click...");
+                        // PRE-MOVEMENT OVERRIDE CHECK: Check if we should override BEFORE executing movement
+                        CoPilot.Instance.LogMessage("DEBUG: Checking for pre-movement override...");
                         
                         // SIMPLIFIED OVERRIDE: Just check if target is far from current player position
                         var playerPos = CoPilot.Instance.playerPosition;
@@ -930,17 +923,15 @@ public class AutoPilot
                             }
                         }
                         
-                        CoPilot.Instance.LogMessage($"DEBUG: Override check - {overrideReason}, Should override: {shouldOverride}");
+                        CoPilot.Instance.LogMessage($"DEBUG: Pre-movement override check - {overrideReason}, Should override: {shouldOverride}");
                         
                         if (shouldOverride)
                         {
-                            CoPilot.Instance.LogMessage($"IMMEDIATE OVERRIDE: 180 detected after click - overriding with new position! (Reason: {overrideReason})");
+                            CoPilot.Instance.LogMessage($"PRE-MOVEMENT OVERRIDE: 180 detected before movement - overriding with new position! (Reason: {overrideReason})");
                             CoPilot.Instance.LogMessage($"DEBUG: Override triggered - clearing path and clicking new position");
                             ClearPathForEfficiency();
                             
                             // INSTANT OVERRIDE: Click towards the player's current position instead of stale followTarget
-                            // playerPos and botPos already declared above
-                            
                             // Calculate a position closer to the player (not the exact player position to avoid issues)
                             var directionToPlayer = playerPos - botPos;
                             if (directionToPlayer.Length() > 10f) // Only if player is far enough away
@@ -952,19 +943,24 @@ public class AutoPilot
                                 CoPilot.Instance.LogMessage($"DEBUG: Override click - Old position: {currentTask.WorldPosition}, Player position: {playerPos}");
                                 CoPilot.Instance.LogMessage($"DEBUG: Override click - Correction target: {correctionTarget}, Screen position: {correctScreenPos}");
                                 yield return Mouse.SetCursorPosHuman(correctScreenPos);
-                                CoPilot.Instance.LogMessage("MOVEMENT OVERRIDE: Clicked towards player position to override old movement");
+                                CoPilot.Instance.LogMessage("PRE-MOVEMENT OVERRIDE: Clicked towards player position to override old movement");
+                                
+                                // Skip the rest of this movement task since we've overridden it
+                                continue;
                             }
                             else
                             {
                                 CoPilot.Instance.LogMessage("DEBUG: Override skipped - player too close to bot");
                             }
-                            yield return null;
-                            continue;
                         }
-                        else
-                        {
-                            CoPilot.Instance.LogMessage("DEBUG: No override needed - continuing with normal movement");
-                        }
+                        
+                        // Only execute normal movement if we didn't override
+                        CoPilot.Instance.LogMessage("Movement task: Mouse positioned, pressing move key down");
+                        CoPilot.Instance.LogMessage($"Movement task: Move key: {CoPilot.Instance.Settings.autoPilotMoveKey}");
+                        CoPilot.Instance.LogMessage($"DEBUG: About to click at screen position: {movementScreenPos}, World position: {currentTask.WorldPosition}");
+                        CoPilot.Instance.LogMessage($"DEBUG: Current player position: {CoPilot.Instance.playerPosition}");
+                        CoPilot.Instance.LogMessage($"DEBUG: Current followTarget position: {followTarget?.Pos}");
+                        yield return Mouse.SetCursorPosHuman(movementScreenPos);
                         
                         if (instantPathOptimization)
                         {
