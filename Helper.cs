@@ -2,12 +2,12 @@
 using SharpDX;
 using ExileCore.PoEMemory.MemoryObjects;
 
-namespace CoPilot;
+namespace BetterFollowbotLite;
 
 public static class Helper
 {
     internal static Random random = new Random();
-    private static Camera Camera => CoPilot.Instance.GameController.Game.IngameState.Camera;
+    private static Camera Camera => BetterFollowbotLite.Instance.GameController.Game.IngameState.Camera;
         
     internal static float MoveTowards(float cur, float tar, float max)
     {
@@ -17,7 +17,7 @@ public static class Helper
     }
     internal static Vector2 WorldToValidScreenPosition(Vector3 worldPos)
     {
-        var windowRect = CoPilot.Instance.GameController.Window.GetWindowRectangle();
+        var windowRect = BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle();
         var screenPos = Camera.WorldToScreen(worldPos);
         var result = screenPos + windowRect.Location;
 

@@ -1,4 +1,4 @@
-﻿namespace CoPilot;
+﻿namespace BetterFollowbotLite;
 
 internal class Skill
 {

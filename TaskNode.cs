@@ -1,7 +1,7 @@
 ﻿using ExileCore.PoEMemory.Elements;
 using SharpDX;
 
-namespace CoPilot;
+namespace BetterFollowbotLite;
 
 public class TaskNode
 {

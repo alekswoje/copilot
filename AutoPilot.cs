@@ -11,7 +11,7 @@ using ExileCore.Shared;
 using ExileCore.Shared.Enums;
 using SharpDX;
 
-namespace CoPilot;
+namespace BetterFollowbotLite;
 
 public class AutoPilot
 {
@@ -42,10 +42,10 @@ public class AutoPilot
         try
         {
             // Get the current mouse position in screen coordinates
-            var mouseScreenPos = CoPilot.Instance.GetMousePosition();
+            var mouseScreenPos = BetterFollowbotLite.Instance.GetMousePosition();
 
             // Get the player's screen position
-            var playerScreenPos = Helper.WorldToValidScreenPosition(CoPilot.Instance.playerPosition);
+            var playerScreenPos = Helper.WorldToValidScreenPosition(BetterFollowbotLite.Instance.playerPosition);
 
             // Get the target's screen position
             var targetScreenPos = Helper.WorldToValidScreenPosition(targetPosition);
@@ -120,7 +120,7 @@ public class AutoPilot
                 return false;
 
             // Calculate how much the player has moved since last update
-            var playerMovement = Vector3.Distance(CoPilot.Instance.playerPosition, lastPlayerPosition);
+            var playerMovement = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, lastPlayerPosition);
             
             // More aggressive: If player moved more than 30 units, clear path for responsiveness
             if (playerMovement > 30f)
@@ -134,8 +134,8 @@ public class AutoPilot
             // Check for 180-degree turn detection - VERY AGGRESSIVE
             if (tasks.Count > 0 && tasks[0].WorldPosition != null)
             {
-                Vector3 botPos = CoPilot.Instance.localPlayer?.Pos ?? CoPilot.Instance.playerPosition;
-                Vector3 playerPos = CoPilot.Instance.playerPosition;
+                Vector3 botPos = BetterFollowbotLite.Instance.localPlayer?.Pos ?? BetterFollowbotLite.Instance.playerPosition;
+                Vector3 playerPos = BetterFollowbotLite.Instance.playerPosition;
                 Vector3 currentTaskTarget = tasks[0].WorldPosition;
 
                 // Calculate direction from bot to current task
@@ -162,7 +162,7 @@ public class AutoPilot
             }
 
             // Also check if we're following an old position that's now far from current player position
-            var distanceToCurrentPlayer = Vector3.Distance(CoPilot.Instance.localPlayer?.Pos ?? CoPilot.Instance.playerPosition, followTarget.Pos);
+            var distanceToCurrentPlayer = Vector3.Distance(BetterFollowbotLite.Instance.localPlayer?.Pos ?? BetterFollowbotLite.Instance.playerPosition, followTarget.Pos);
             if (distanceToCurrentPlayer > 80f) // More aggressive - reduced from 100f
             {
                 lastPathClearTime = DateTime.Now;
@@ -194,7 +194,7 @@ public class AutoPilot
             bool hasMovementTask = tasks.Any(t => t.Type == TaskNodeType.Movement);
 
             // Calculate direct distance from bot to player
-            float directDistance = Vector3.Distance(CoPilot.Instance.localPlayer?.Pos ?? CoPilot.Instance.playerPosition, followTarget?.Pos ?? CoPilot.Instance.playerPosition);
+            float directDistance = Vector3.Distance(BetterFollowbotLite.Instance.localPlayer?.Pos ?? BetterFollowbotLite.Instance.playerPosition, followTarget?.Pos ?? BetterFollowbotLite.Instance.playerPosition);
 
             // If we're already very close to the player, don't bother with efficiency calculations
             if (directDistance < 30f) // Reduced from 50f
@@ -202,7 +202,7 @@ public class AutoPilot
 
             // Calculate distance along current path
             float pathDistance = 0f;
-            Vector3 currentPos = CoPilot.Instance.localPlayer?.Pos ?? CoPilot.Instance.playerPosition;
+            Vector3 currentPos = BetterFollowbotLite.Instance.localPlayer?.Pos ?? BetterFollowbotLite.Instance.playerPosition;
 
             // Add distance to each path node
             foreach (var task in tasks)
@@ -267,8 +267,8 @@ public class AutoPilot
             // Also check if player is now behind us relative to path direction (more aggressive check)
             if (tasks.Count >= 1 && tasks[0].WorldPosition != null)
             {
-                Vector3 botPos = CoPilot.Instance.localPlayer?.Pos ?? CoPilot.Instance.playerPosition;
-                Vector3 playerPos = CoPilot.Instance.playerPosition;
+                Vector3 botPos = BetterFollowbotLite.Instance.localPlayer?.Pos ?? BetterFollowbotLite.Instance.playerPosition;
+                Vector3 playerPos = BetterFollowbotLite.Instance.playerPosition;
                 Vector3 pathTarget = tasks[0].WorldPosition;
 
                 // Calculate vectors
@@ -333,7 +333,7 @@ public class AutoPilot
         {
             foreach (var partyElementWindow in PartyElements.GetPlayerInfoElementList())
             {
-                if (string.Equals(partyElementWindow?.PlayerName?.ToLower(), CoPilot.Instance.Settings.autoPilotLeader.Value.ToLower(), StringComparison.CurrentCultureIgnoreCase))
+                if (string.Equals(partyElementWindow?.PlayerName?.ToLower(), BetterFollowbotLite.Instance.Settings.autoPilotLeader.Value.ToLower(), StringComparison.CurrentCultureIgnoreCase))
                 {
                     return partyElementWindow;
                 }
@@ -353,18 +353,18 @@ public class AutoPilot
             if (leaderPartyElement == null)
                 return null;
 
-            var currentZoneName = CoPilot.Instance.GameController?.Area.CurrentArea.DisplayName;
+            var currentZoneName = BetterFollowbotLite.Instance.GameController?.Area.CurrentArea.DisplayName;
             // Look for portals when leader is in different zone, or when in hideout, or in high level areas
-            if(!leaderPartyElement.ZoneName.Equals(currentZoneName) || (bool)CoPilot.Instance?.GameController?.Area?.CurrentArea?.IsHideout || CoPilot.Instance.GameController?.Area?.CurrentArea?.RealLevel >= 68) // TODO: or is chamber of sins a7 or is epilogue
+            if(!leaderPartyElement.ZoneName.Equals(currentZoneName) || (bool)BetterFollowbotLite.Instance?.GameController?.Area?.CurrentArea?.IsHideout || BetterFollowbotLite.Instance.GameController?.Area?.CurrentArea?.RealLevel >= 68) // TODO: or is chamber of sins a7 or is epilogue
             {
                 var portalLabels =
-                    CoPilot.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels.Where(x =>
+                    BetterFollowbotLite.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels.Where(x =>
                             x != null && x.IsVisible && x.Label != null && x.Label.IsValid && x.Label.IsVisible && x.ItemOnGround != null && 
                             (x.ItemOnGround.Metadata.ToLower().Contains("areatransition") || x.ItemOnGround.Metadata.ToLower().Contains("portal") ))
                         .OrderBy(x => Vector3.Distance(lastTargetPosition, x.ItemOnGround.Pos)).ToList();
 
 
-                return CoPilot.Instance?.GameController?.Area?.CurrentArea?.IsHideout != null && (bool)CoPilot.Instance.GameController?.Area?.CurrentArea?.IsHideout
+                return BetterFollowbotLite.Instance?.GameController?.Area?.CurrentArea?.IsHideout != null && (bool)BetterFollowbotLite.Instance.GameController?.Area?.CurrentArea?.IsHideout
                     ? portalLabels?[random.Next(portalLabels.Count)]
                     : portalLabels?.FirstOrDefault();
             }
@@ -382,7 +382,7 @@ public class AutoPilot
             if (leaderPartyElement == null)
                 return Vector2.Zero;
 
-            var windowOffset = CoPilot.Instance.GameController.Window.GetWindowRectangle().TopLeft;
+            var windowOffset = BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().TopLeft;
             var elemCenter = (Vector2) leaderPartyElement?.TpButton?.GetClientRectCache.Center;
             var finalPos = new Vector2(elemCenter.X + windowOffset.X, elemCenter.Y + windowOffset.Y);
 
@@ -397,7 +397,7 @@ public class AutoPilot
     {
         try
         {
-            var ui = CoPilot.Instance.GameController?.IngameState?.IngameUi?.PopUpWindow;
+            var ui = BetterFollowbotLite.Instance.GameController?.IngameState?.IngameUi?.PopUpWindow;
 
             if (ui.Children[0].Children[0].Children[0].Text.Equals("Are you sure you want to teleport to this player's location?"))
                 return ui.Children[0].Children[0].Children[3].Children[0];
@@ -413,8 +413,8 @@ public class AutoPilot
     {
         ResetPathing();
 
-        var terrain = CoPilot.Instance.GameController.IngameState.Data.Terrain;
-        var terrainBytes = CoPilot.Instance.GameController.Memory.ReadBytes(terrain.LayerMelee.First, terrain.LayerMelee.Size);
+        var terrain = BetterFollowbotLite.Instance.GameController.IngameState.Data.Terrain;
+        var terrainBytes = BetterFollowbotLite.Instance.GameController.Memory.ReadBytes(terrain.LayerMelee.First, terrain.LayerMelee.Size);
         numCols = (int)(terrain.NumCols - 1) * 23;
         numRows = (int)(terrain.NumRows - 1) * 23;
         if ((numCols & 1) > 0)
@@ -433,7 +433,7 @@ public class AutoPilot
             dataIndex += terrain.BytesPerRow;
         }
 
-        terrainBytes = CoPilot.Instance.GameController.Memory.ReadBytes(terrain.LayerRanged.First, terrain.LayerRanged.Size);
+        terrainBytes = BetterFollowbotLite.Instance.GameController.Memory.ReadBytes(terrain.LayerRanged.First, terrain.LayerRanged.Size);
         numCols = (int)(terrain.NumCols - 1) * 23;
         numRows = (int)(terrain.NumRows - 1) * 23;
         if ((numCols & 1) > 0)
@@ -458,12 +458,12 @@ public class AutoPilot
 
     public void StartCoroutine()
     {
-        autoPilotCoroutine = new Coroutine(AutoPilotLogic(), CoPilot.Instance, "AutoPilot");
+        autoPilotCoroutine = new Coroutine(AutoPilotLogic(), BetterFollowbotLite.Instance, "AutoPilot");
         Core.ParallelRunner.Run(autoPilotCoroutine);
     }
     private IEnumerator MouseoverItem(Entity item)
     {
-        var uiLoot = CoPilot.Instance.GameController.IngameState.IngameUi.ItemsOnGroundLabels.FirstOrDefault(I => I.IsVisible && I.ItemOnGround.Id == item.Id);
+        var uiLoot = BetterFollowbotLite.Instance.GameController.IngameState.IngameUi.ItemsOnGroundLabels.FirstOrDefault(I => I.IsVisible && I.ItemOnGround.Id == item.Id);
         if (uiLoot == null) yield return null;
         var clickPos = uiLoot?.Label?.GetClientRect().Center;
         if (clickPos != null)
@@ -473,14 +473,14 @@ public class AutoPilot
                 clickPos.Value.Y + random.Next(-10, 10)));
         }
 
-        yield return new WaitTime(30 + random.Next(CoPilot.Instance.Settings.autoPilotInputFrequency));
+        yield return new WaitTime(30 + random.Next(BetterFollowbotLite.Instance.Settings.autoPilotInputFrequency));
     }
     private IEnumerator AutoPilotLogic()
     {
         while (true)
         {
-            if (!CoPilot.Instance.Settings.Enable.Value || !CoPilot.Instance.Settings.autoPilotEnabled.Value || CoPilot.Instance.localPlayer == null || !CoPilot.Instance.localPlayer.IsAlive ||
-                !CoPilot.Instance.GameController.IsForeGroundCache || MenuWindow.IsOpened || CoPilot.Instance.GameController.IsLoading || !CoPilot.Instance.GameController.InGame)
+            if (!BetterFollowbotLite.Instance.Settings.Enable.Value || !BetterFollowbotLite.Instance.Settings.autoPilotEnabled.Value || BetterFollowbotLite.Instance.localPlayer == null || !BetterFollowbotLite.Instance.localPlayer.IsAlive ||
+                !BetterFollowbotLite.Instance.GameController.IsForeGroundCache || MenuWindow.IsOpened || BetterFollowbotLite.Instance.GameController.IsLoading || !BetterFollowbotLite.Instance.GameController.InGame)
             {
                 yield return new WaitTime(100);
                 continue;
@@ -514,8 +514,8 @@ public class AutoPilot
                     continue;
                 }
 
-                var taskDistance = Vector3.Distance(CoPilot.Instance.playerPosition, currentTask.WorldPosition);
-                var playerDistanceMoved = Vector3.Distance(CoPilot.Instance.playerPosition, lastPlayerPosition);
+                var taskDistance = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, currentTask.WorldPosition);
+                var playerDistanceMoved = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, lastPlayerPosition);
 
                 // Check if we should clear path for better responsiveness to player movement
                 if (ShouldClearPathForResponsiveness())
@@ -526,15 +526,15 @@ public class AutoPilot
                     // FORCE IMMEDIATE PATH CREATION - Don't wait for UpdateAutoPilotLogic
                     if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
                     {
-                        var instantDistanceToLeader = Vector3.Distance(CoPilot.Instance.playerPosition, followTarget.Pos);
+                        var instantDistanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, followTarget.Pos);
 
-                        if (instantDistanceToLeader > 1000 && CoPilot.Instance.Settings.autoPilotDashEnabled) // Increased from 700 to 1000
+                        if (instantDistanceToLeader > 1000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 700 to 1000
                         {
                             tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
                         }
                         else
                         {
-                            tasks.Add(new TaskNode(followTarget.Pos, CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance));
+                            tasks.Add(new TaskNode(followTarget.Pos, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
                         }
                     }
                     
@@ -551,15 +551,15 @@ public class AutoPilot
                     // FORCE IMMEDIATE PATH CREATION - Don't wait for UpdateAutoPilotLogic
                     if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
                     {
-                        var instantDistanceToLeader = Vector3.Distance(CoPilot.Instance.playerPosition, followTarget.Pos);
+                        var instantDistanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, followTarget.Pos);
 
-                        if (instantDistanceToLeader > 1000 && CoPilot.Instance.Settings.autoPilotDashEnabled) // Increased from 700 to 1000
+                        if (instantDistanceToLeader > 1000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 700 to 1000
                         {
                             tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
                         }
                         else
                         {
-                            tasks.Add(new TaskNode(followTarget.Pos, CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance));
+                            tasks.Add(new TaskNode(followTarget.Pos, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
                         }
                     }
                     
@@ -569,10 +569,10 @@ public class AutoPilot
 
                 //We are using a same map transition and have moved significnatly since last tick. Mark the transition task as done.
                 if (currentTask.Type == TaskNodeType.Transition &&
-                    playerDistanceMoved >= CoPilot.Instance.Settings.autoPilotClearPathDistance.Value)
+                    playerDistanceMoved >= BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance.Value)
                 {
                     tasks.RemoveAt(0);
-                    lastPlayerPosition = CoPilot.Instance.playerPosition;
+                    lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
                     yield return null;
                     continue;
                 }
@@ -609,8 +609,8 @@ public class AutoPilot
                 if (currentTask.Type == TaskNodeType.Movement)
                 {
                     // SIMPLIFIED OVERRIDE: Just check if target is far from current player position
-                    var playerPos = CoPilot.Instance.playerPosition;
-                    var botPos = CoPilot.Instance.localPlayer?.Pos ?? CoPilot.Instance.playerPosition;
+                    var playerPos = BetterFollowbotLite.Instance.playerPosition;
+                    var botPos = BetterFollowbotLite.Instance.localPlayer?.Pos ?? BetterFollowbotLite.Instance.playerPosition;
                     var targetPos = currentTask.WorldPosition;
                     
                     // Calculate direction from bot to target vs bot to player
@@ -666,11 +666,11 @@ public class AutoPilot
                     {
                         case TaskNodeType.Movement:
                             // Check for distance-based dashing to keep up with leader
-                            if (CoPilot.Instance.Settings.autoPilotDashEnabled && followTarget != null && followTarget.Pos != null && CanDash())
+                            if (BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled && followTarget != null && followTarget.Pos != null && CanDash())
                             {
                                 try
                                 {
-                                    var distanceToLeader = Vector3.Distance(CoPilot.Instance.playerPosition, followTarget.Pos);
+                                    var distanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, followTarget.Pos);
                                     if (distanceToLeader > 700 && IsCursorPointingTowardsTarget(followTarget.Pos)) // Dash if more than 700 units away and cursor is pointing towards leader
                                     {
                                         shouldDashToLeader = true;
@@ -687,7 +687,7 @@ public class AutoPilot
                             }
 
                             // Check for terrain-based dashing
-                            if (CoPilot.Instance.Settings.autoPilotDashEnabled && CanDash())
+                            if (BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled && CanDash())
                             {
                                 // Terrain dash check
                                 if (CheckDashTerrain(currentTask.WorldPosition.WorldToGrid()) && IsCursorPointingTowardsTarget(currentTask.WorldPosition))
@@ -723,33 +723,33 @@ public class AutoPilot
                                     
                                     try
                                     {
-                                        Input.KeyDown(CoPilot.Instance.Settings.autoPilotMoveKey);
-                                        CoPilot.Instance.LogMessage("Movement task: Move key down pressed, waiting");
+                                        Input.KeyDown(BetterFollowbotLite.Instance.Settings.autoPilotMoveKey);
+                                        BetterFollowbotLite.Instance.LogMessage("Movement task: Move key down pressed, waiting");
                                     }
                                     catch (Exception e)
                                     {
-                                        CoPilot.Instance.LogError($"Movement task: KeyDown error: {e}");
+                                        BetterFollowbotLite.Instance.LogError($"Movement task: KeyDown error: {e}");
                                         keyDownError = true;
                                     }
 
                                     try
                                     {
-                                        Input.KeyUp(CoPilot.Instance.Settings.autoPilotMoveKey);
-                                        CoPilot.Instance.LogMessage("Movement task: Move key released");
+                                        Input.KeyUp(BetterFollowbotLite.Instance.Settings.autoPilotMoveKey);
+                                        BetterFollowbotLite.Instance.LogMessage("Movement task: Move key released");
                                     }
                                     catch (Exception e)
                                     {
-                                        CoPilot.Instance.LogError($"Movement task: KeyUp error: {e}");
+                                        BetterFollowbotLite.Instance.LogError($"Movement task: KeyUp error: {e}");
                                         keyUpError = true;
                                     }
 
                                     //Within bounding range. Task is complete
                                     //Note: Was getting stuck on close objects... testing hacky fix.
-                                    if (taskDistance <= CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance.Value * 1.5)
+                                    if (taskDistance <= BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value * 1.5)
                                     {
-                                        CoPilot.Instance.LogMessage($"Movement task completed - Distance: {taskDistance:F1}");
+                                        BetterFollowbotLite.Instance.LogMessage($"Movement task completed - Distance: {taskDistance:F1}");
                                         tasks.RemoveAt(0);
-                                        lastPlayerPosition = CoPilot.Instance.playerPosition;
+                                        lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
                                     }
                                     else
                                     {
@@ -757,9 +757,9 @@ public class AutoPilot
                                         currentTask.AttemptCount++;
                                         if (currentTask.AttemptCount > 10) // 10 attempts = ~5 seconds
                                         {
-                                            CoPilot.Instance.LogMessage($"Movement task timeout - Distance: {taskDistance:F1}, Attempts: {currentTask.AttemptCount}");
+                                            BetterFollowbotLite.Instance.LogMessage($"Movement task timeout - Distance: {taskDistance:F1}, Attempts: {currentTask.AttemptCount}");
                                             tasks.RemoveAt(0);
-                                            lastPlayerPosition = CoPilot.Instance.playerPosition;
+                                            lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
                                         }
                                     }
                                     shouldMovementContinue = true;
@@ -772,15 +772,15 @@ public class AutoPilot
                             questLoot = GetQuestItem();
                             if (questLoot == null
                                 || currentTask.AttemptCount > 2
-                                || Vector3.Distance(CoPilot.Instance.playerPosition, questLoot.Pos) >=
-                                CoPilot.Instance.Settings.autoPilotClearPathDistance.Value)
+                                || Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, questLoot.Pos) >=
+                                BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance.Value)
                             {
                                 tasks.RemoveAt(0);
                                 shouldLootAndContinue = true;
                             }
                             else
                             {
-                                Input.KeyUp(CoPilot.Instance.Settings.autoPilotMoveKey);
+                                Input.KeyUp(BetterFollowbotLite.Instance.Settings.autoPilotMoveKey);
                                 if (questLoot != null)
                                 {
                                     targetInfo = questLoot.GetComponent<Targetable>();
@@ -791,7 +791,7 @@ public class AutoPilot
                         case TaskNodeType.Transition:
                         {
                             //Click the transition
-                            Input.KeyUp(CoPilot.Instance.Settings.autoPilotMoveKey);
+                            Input.KeyUp(BetterFollowbotLite.Instance.Settings.autoPilotMoveKey);
                             transitionPos = new Vector2(currentTask.LabelOnGround.Label.GetClientRect().Center.X, currentTask.LabelOnGround.Label.GetClientRect().Center.Y);
 
                             currentTask.AttemptCount++;
@@ -803,10 +803,10 @@ public class AutoPilot
 
                         case TaskNodeType.ClaimWaypoint:
                         {
-                            if (Vector3.Distance(CoPilot.Instance.playerPosition, currentTask.WorldPosition) > 150)
+                            if (Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, currentTask.WorldPosition) > 150)
                             {
                                 waypointScreenPos = Helper.WorldToValidScreenPosition(currentTask.WorldPosition);
-                                Input.KeyUp(CoPilot.Instance.Settings.autoPilotMoveKey);
+                                Input.KeyUp(BetterFollowbotLite.Instance.Settings.autoPilotMoveKey);
                             }
                             currentTask.AttemptCount++;
                             if (currentTask.AttemptCount > 3)
@@ -817,21 +817,21 @@ public class AutoPilot
 
                          case TaskNodeType.Dash:
                          {
-                             CoPilot.Instance.LogMessage($"Executing Dash task - Target: {currentTask.WorldPosition}, Distance: {Vector3.Distance(CoPilot.Instance.playerPosition, currentTask.WorldPosition):F1}");
+                             BetterFollowbotLite.Instance.LogMessage($"Executing Dash task - Target: {currentTask.WorldPosition}, Distance: {Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, currentTask.WorldPosition):F1}");
                              if (CanDash() && IsCursorPointingTowardsTarget(currentTask.WorldPosition))
                              {
                                  tasks.RemoveAt(0);
-                                 lastPlayerPosition = CoPilot.Instance.playerPosition;
-                                 CoPilot.Instance.LogMessage("Dash task completed successfully - Cursor direction valid");
+                                 lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
+                                 BetterFollowbotLite.Instance.LogMessage("Dash task completed successfully - Cursor direction valid");
                                  shouldDashAndContinue = true;
                              }
                              else if (!CanDash())
                              {
-                                 CoPilot.Instance.LogMessage("Dash task blocked - Cooldown active");
+                                 BetterFollowbotLite.Instance.LogMessage("Dash task blocked - Cooldown active");
                              }
                              else if (!IsCursorPointingTowardsTarget(currentTask.WorldPosition))
                              {
-                                 CoPilot.Instance.LogMessage("Dash task blocked - Cursor not pointing towards target");
+                                 BetterFollowbotLite.Instance.LogMessage("Dash task blocked - Cursor not pointing towards target");
                              }
                              break;
                          }
@@ -853,7 +853,7 @@ public class AutoPilot
                 }
                 catch (Exception e)
                 {
-                    CoPilot.Instance.LogError($"Task execution error: {e}");
+                    BetterFollowbotLite.Instance.LogError($"Task execution error: {e}");
                     taskExecutionError = true;
                 }
 
@@ -872,12 +872,12 @@ public class AutoPilot
                     if (shouldDashToLeader)
                     {
                         yield return Mouse.SetCursorPosHuman(Helper.WorldToValidScreenPosition(followTarget.Pos));
-                        CoPilot.Instance.LogMessage("Movement task: Dash mouse positioned, pressing key");
+                        BetterFollowbotLite.Instance.LogMessage("Movement task: Dash mouse positioned, pressing key");
                         if (instantPathOptimization)
                         {
                             // INSTANT MODE: Skip delays for immediate path correction
-                            CoPilot.Instance.LogMessage("INSTANT PATH OPTIMIZATION: Dash with no delays");
-                            Keyboard.KeyPress(CoPilot.Instance.Settings.autoPilotDashKey);
+                            BetterFollowbotLite.Instance.LogMessage("INSTANT PATH OPTIMIZATION: Dash with no delays");
+                            Keyboard.KeyPress(BetterFollowbotLite.Instance.Settings.autoPilotDashKey);
                             lastDashTime = DateTime.Now; // Record dash time for cooldown
                             instantPathOptimization = false; // Reset flag after use
                         }
@@ -885,7 +885,7 @@ public class AutoPilot
                         {
                             // Normal delays
                             yield return new WaitTime(random.Next(25) + 30);
-                            Keyboard.KeyPress(CoPilot.Instance.Settings.autoPilotDashKey);
+                            Keyboard.KeyPress(BetterFollowbotLite.Instance.Settings.autoPilotDashKey);
                             lastDashTime = DateTime.Now; // Record dash time for cooldown
                             yield return new WaitTime(random.Next(25) + 30);
                         }
@@ -911,23 +911,23 @@ public class AutoPilot
                         // LAST CHANCE CHECK: Before executing movement, check if player has turned around
                         if (ShouldClearPathForResponsiveness())
                         {
-                            CoPilot.Instance.LogMessage("LAST CHANCE 180 CHECK: Player direction changed before movement execution, aborting current task");
+                            BetterFollowbotLite.Instance.LogMessage("LAST CHANCE 180 CHECK: Player direction changed before movement execution, aborting current task");
                             ClearPathForEfficiency();
                             yield return null; // Skip this movement and recalculate
                             continue;
                         }
 
-                        CoPilot.Instance.LogMessage("Movement task: Mouse positioned, pressing move key down");
-                        CoPilot.Instance.LogMessage($"Movement task: Move key: {CoPilot.Instance.Settings.autoPilotMoveKey}");
-                        CoPilot.Instance.LogMessage($"DEBUG: About to click at screen position: {movementScreenPos}, World position: {currentTask.WorldPosition}");
-                        CoPilot.Instance.LogMessage($"DEBUG: Current player position: {CoPilot.Instance.playerPosition}");
-                        CoPilot.Instance.LogMessage($"DEBUG: Current followTarget position: {followTarget?.Pos}");
+                        BetterFollowbotLite.Instance.LogMessage("Movement task: Mouse positioned, pressing move key down");
+                        BetterFollowbotLite.Instance.LogMessage($"Movement task: Move key: {BetterFollowbotLite.Instance.Settings.autoPilotMoveKey}");
+                        BetterFollowbotLite.Instance.LogMessage($"DEBUG: About to click at screen position: {movementScreenPos}, World position: {currentTask.WorldPosition}");
+                        BetterFollowbotLite.Instance.LogMessage($"DEBUG: Current player position: {BetterFollowbotLite.Instance.playerPosition}");
+                        BetterFollowbotLite.Instance.LogMessage($"DEBUG: Current followTarget position: {followTarget?.Pos}");
                         yield return Mouse.SetCursorPosHuman(movementScreenPos);
                         
                         if (instantPathOptimization)
                         {
                             // INSTANT MODE: Skip delays for immediate path correction
-                            CoPilot.Instance.LogMessage("INSTANT PATH OPTIMIZATION: Movement with no delays");
+                            BetterFollowbotLite.Instance.LogMessage("INSTANT PATH OPTIMIZATION: Movement with no delays");
                             instantPathOptimization = false; // Reset flag after use
                         }
                         else
@@ -948,7 +948,7 @@ public class AutoPilot
 
                     if (currentTask.Type == TaskNodeType.Loot && questLoot != null)
                     {
-                        yield return new WaitTime(CoPilot.Instance.Settings.autoPilotInputFrequency);
+                        yield return new WaitTime(BetterFollowbotLite.Instance.Settings.autoPilotInputFrequency);
                         if (targetInfo != null)
                         {
                             switch (targetInfo.isTargeted)
@@ -975,9 +975,9 @@ public class AutoPilot
 
                     if (shouldClaimWaypointAndContinue)
                     {
-                        if (Vector3.Distance(CoPilot.Instance.playerPosition, currentTask.WorldPosition) > 150)
+                        if (Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, currentTask.WorldPosition) > 150)
                         {
-                            yield return new WaitTime(CoPilot.Instance.Settings.autoPilotInputFrequency);
+                            yield return new WaitTime(BetterFollowbotLite.Instance.Settings.autoPilotInputFrequency);
                             yield return Mouse.SetCursorPosAndLeftClickHuman(waypointScreenPos, 100);
                             yield return new WaitTime(1000);
                         }
@@ -990,24 +990,24 @@ public class AutoPilot
                         // LAST CHANCE CHECK: Before executing dash, check if player has turned around
                         if (ShouldClearPathForResponsiveness())
                         {
-                            CoPilot.Instance.LogMessage("LAST CHANCE 180 CHECK: Player direction changed before dash execution, aborting current task");
+                            BetterFollowbotLite.Instance.LogMessage("LAST CHANCE 180 CHECK: Player direction changed before dash execution, aborting current task");
                             ClearPathForEfficiency();
                             yield return null; // Skip this dash and recalculate
                             continue;
                         }
 
                         yield return Mouse.SetCursorPosHuman(Helper.WorldToValidScreenPosition(currentTask.WorldPosition));
-                        CoPilot.Instance.LogMessage("Dash: Mouse positioned, pressing dash key");
+                        BetterFollowbotLite.Instance.LogMessage("Dash: Mouse positioned, pressing dash key");
                         
                         // IMMEDIATE OVERRIDE CHECK: After positioning cursor, check if we need to override
                         if (ShouldClearPathForResponsiveness(true)) // Use aggressive override timing
                         {
-                            CoPilot.Instance.LogMessage("IMMEDIATE OVERRIDE: 180 detected after dash positioning - overriding with new position!");
+                            BetterFollowbotLite.Instance.LogMessage("IMMEDIATE OVERRIDE: 180 detected after dash positioning - overriding with new position!");
                             ClearPathForEfficiency();
                             
                             // INSTANT OVERRIDE: Position cursor towards player and dash there instead
-                            var playerPos = CoPilot.Instance.playerPosition;
-                            var botPos = CoPilot.Instance.localPlayer?.Pos ?? CoPilot.Instance.playerPosition;
+                            var playerPos = BetterFollowbotLite.Instance.playerPosition;
+                            var botPos = BetterFollowbotLite.Instance.localPlayer?.Pos ?? BetterFollowbotLite.Instance.playerPosition;
                             
                             // Calculate a position closer to the player for dash correction
                             var directionToPlayer = playerPos - botPos;
@@ -1017,16 +1017,16 @@ public class AutoPilot
                                 var correctionTarget = botPos + (directionToPlayer * 400f); // Dash 400 units towards player
                                 
                                 var correctScreenPos = Helper.WorldToValidScreenPosition(correctionTarget);
-                                CoPilot.Instance.LogMessage($"DEBUG: Dash override - Old position: {currentTask.WorldPosition}, Player position: {playerPos}");
-                                CoPilot.Instance.LogMessage($"DEBUG: Dash override - Correction target: {correctionTarget}");
+                                BetterFollowbotLite.Instance.LogMessage($"DEBUG: Dash override - Old position: {currentTask.WorldPosition}, Player position: {playerPos}");
+                                BetterFollowbotLite.Instance.LogMessage($"DEBUG: Dash override - Correction target: {correctionTarget}");
                                 yield return Mouse.SetCursorPosHuman(correctScreenPos);
-                                Keyboard.KeyPress(CoPilot.Instance.Settings.autoPilotDashKey);
+                                Keyboard.KeyPress(BetterFollowbotLite.Instance.Settings.autoPilotDashKey);
                                 lastDashTime = DateTime.Now; // Record dash time for cooldown
-                                CoPilot.Instance.LogMessage("DASH OVERRIDE: Dashed towards player position to override old dash");
+                                BetterFollowbotLite.Instance.LogMessage("DASH OVERRIDE: Dashed towards player position to override old dash");
                             }
                             else
                             {
-                                CoPilot.Instance.LogMessage("DEBUG: Dash override skipped - player too close to bot");
+                                BetterFollowbotLite.Instance.LogMessage("DEBUG: Dash override skipped - player too close to bot");
                             }
                             yield return null;
                             continue;
@@ -1035,8 +1035,8 @@ public class AutoPilot
                         if (instantPathOptimization)
                         {
                             // INSTANT MODE: Skip delays for immediate path correction
-                            CoPilot.Instance.LogMessage("INSTANT PATH OPTIMIZATION: Dash task with no delays");
-                            Keyboard.KeyPress(CoPilot.Instance.Settings.autoPilotDashKey);
+                            BetterFollowbotLite.Instance.LogMessage("INSTANT PATH OPTIMIZATION: Dash task with no delays");
+                            Keyboard.KeyPress(BetterFollowbotLite.Instance.Settings.autoPilotDashKey);
                             lastDashTime = DateTime.Now; // Record dash time for cooldown
                             instantPathOptimization = false; // Reset flag after use
                         }
@@ -1044,7 +1044,7 @@ public class AutoPilot
                         {
                             // Normal delays
                             yield return new WaitTime(random.Next(25) + 30);
-                            Keyboard.KeyPress(CoPilot.Instance.Settings.autoPilotDashKey);
+                            Keyboard.KeyPress(BetterFollowbotLite.Instance.Settings.autoPilotDashKey);
                             lastDashTime = DateTime.Now; // Record dash time for cooldown
                             yield return new WaitTime(random.Next(25) + 30);
                         }
@@ -1074,7 +1074,7 @@ public class AutoPilot
                 }
             }
 
-            lastPlayerPosition = CoPilot.Instance.playerPosition;
+            lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
             yield return new WaitTime(50);
         }
         // ReSharper disable once IteratorNeverReturns
@@ -1085,26 +1085,26 @@ public class AutoPilot
     {
         try
         {
-            if (!CoPilot.Instance.Settings.Enable.Value || !CoPilot.Instance.Settings.autoPilotEnabled.Value || CoPilot.Instance.localPlayer == null || !CoPilot.Instance.localPlayer.IsAlive || 
-                !CoPilot.Instance.GameController.IsForeGroundCache || MenuWindow.IsOpened || CoPilot.Instance.GameController.IsLoading || !CoPilot.Instance.GameController.InGame)
+            if (!BetterFollowbotLite.Instance.Settings.Enable.Value || !BetterFollowbotLite.Instance.Settings.autoPilotEnabled.Value || BetterFollowbotLite.Instance.localPlayer == null || !BetterFollowbotLite.Instance.localPlayer.IsAlive || 
+                !BetterFollowbotLite.Instance.GameController.IsForeGroundCache || MenuWindow.IsOpened || BetterFollowbotLite.Instance.GameController.IsLoading || !BetterFollowbotLite.Instance.GameController.InGame)
             {
                 return;
             }
 
             // Update player position for responsiveness detection - MORE FREQUENT UPDATES
-            lastPlayerPosition = CoPilot.Instance.playerPosition;
+            lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
 
             //Cache the current follow target (if present)
             followTarget = GetFollowingTarget();
             var leaderPartyElement = GetLeaderPartyElement();
 
-            if (followTarget == null && leaderPartyElement != null && !leaderPartyElement.ZoneName.Equals(CoPilot.Instance.GameController?.Area.CurrentArea.DisplayName)) 
+            if (followTarget == null && leaderPartyElement != null && !leaderPartyElement.ZoneName.Equals(BetterFollowbotLite.Instance.GameController?.Area.CurrentArea.DisplayName)) 
             {
                 var portal = GetBestPortalLabel(leaderPartyElement);
                 if (portal != null) 
                 {
                     // Hideout -> Map || Chamber of Sins A7 -> Map
-                    tasks.Add(new TaskNode(portal, CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
+                    tasks.Add(new TaskNode(portal, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
                 } 
                 else 
                 {
@@ -1130,7 +1130,7 @@ public class AutoPilot
             else if (followTarget == null) 
             {
                 // Leader is not in current zone - look for portals to follow them
-                if (leaderPartyElement != null && !leaderPartyElement.ZoneName.Equals(CoPilot.Instance.GameController?.Area.CurrentArea.DisplayName))
+                if (leaderPartyElement != null && !leaderPartyElement.ZoneName.Equals(BetterFollowbotLite.Instance.GameController?.Area.CurrentArea.DisplayName))
                 {
                     // Leader is in different zone, look for portals
                     var portal = GetBestPortalLabel(leaderPartyElement);
@@ -1138,7 +1138,7 @@ public class AutoPilot
                     {
                         // Clear any existing movement tasks and add portal task
                         tasks.RemoveAll(t => t.Type == TaskNodeType.Movement);
-                        tasks.Add(new TaskNode(portal, CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
+                        tasks.Add(new TaskNode(portal, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
                     }
                 }
                 else
@@ -1152,23 +1152,23 @@ public class AutoPilot
                 // CHECK RESPONSIVENESS FIRST - Clear paths when player moves significantly
                 if (ShouldClearPathForResponsiveness())
                 {
-                    CoPilot.Instance.LogMessage("RESPONSIVENESS: Preventing inefficient path creation - clearing for better tracking");
+                    BetterFollowbotLite.Instance.LogMessage("RESPONSIVENESS: Preventing inefficient path creation - clearing for better tracking");
                     instantPathOptimization = true; // Enable instant mode for immediate response
                     ClearPathForEfficiency();
                     
                     // FORCE IMMEDIATE PATH RECALCULATION - Skip normal logic and create direct path
                     if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
                     {
-                        var instantDistanceToLeader = Vector3.Distance(CoPilot.Instance.playerPosition, followTarget.Pos);
-                        CoPilot.Instance.LogMessage($"RESPONSIVENESS: Creating direct path to leader - Distance: {instantDistanceToLeader:F1}");
+                        var instantDistanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, followTarget.Pos);
+                        BetterFollowbotLite.Instance.LogMessage($"RESPONSIVENESS: Creating direct path to leader - Distance: {instantDistanceToLeader:F1}");
                         
-                        if (instantDistanceToLeader > 1000 && CoPilot.Instance.Settings.autoPilotDashEnabled) // Increased from 700 to 1000
+                        if (instantDistanceToLeader > 1000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 700 to 1000
                         {
                             tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
                         }
                         else
                         {
-                            tasks.Add(new TaskNode(followTarget.Pos, CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance));
+                            tasks.Add(new TaskNode(followTarget.Pos, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
                         }
                     }
                     return; // Skip the rest of the path creation logic
@@ -1177,38 +1177,38 @@ public class AutoPilot
                 // CHECK PATH EFFICIENCY BEFORE CREATING NEW PATHS - PREVENT INEFFICIENT PATHS
                 if (ShouldAbandonPathForEfficiency())
                 {
-                    CoPilot.Instance.LogMessage("INSTANT PATH OPTIMIZATION: Preventing inefficient path creation");
+                    BetterFollowbotLite.Instance.LogMessage("INSTANT PATH OPTIMIZATION: Preventing inefficient path creation");
                     instantPathOptimization = true; // Enable instant mode for immediate response
                     ClearPathForEfficiency();
                     
                     // FORCE IMMEDIATE PATH RECALCULATION - Skip normal logic and create direct path
                     if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
                     {
-                        var instantDistanceToLeader = Vector3.Distance(CoPilot.Instance.playerPosition, followTarget.Pos);
+                        var instantDistanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, followTarget.Pos);
                         // Reduced logging frequency to prevent lag
                         if (instantDistanceToLeader > 200f) // Only log for significant distances
-                            CoPilot.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Creating direct path to leader - Distance: {instantDistanceToLeader:F1}");
+                            BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Creating direct path to leader - Distance: {instantDistanceToLeader:F1}");
                         
-                        if (instantDistanceToLeader > 1000 && CoPilot.Instance.Settings.autoPilotDashEnabled) // Increased from 700 to 1000
+                        if (instantDistanceToLeader > 1000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 700 to 1000
                         {
                             tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
                         }
                         else
                         {
-                            tasks.Add(new TaskNode(followTarget.Pos, CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance));
+                            tasks.Add(new TaskNode(followTarget.Pos, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
                         }
                     }
                     return; // Skip the rest of the path creation logic
                 }
 
                 // TODO: If in town, do not follow (optional)
-                var distanceToLeader = Vector3.Distance(CoPilot.Instance.playerPosition, followTarget.Pos);
+                var distanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, followTarget.Pos);
                 //We are NOT within clear path distance range of leader. Logic can continue
-                if (distanceToLeader >= CoPilot.Instance.Settings.autoPilotClearPathDistance.Value)
+                if (distanceToLeader >= BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance.Value)
                 {
                     //Leader moved VERY far in one frame. Check for transition to use to follow them.
                     var distanceMoved = Vector3.Distance(lastTargetPosition, followTarget.Pos);
-                    if (lastTargetPosition != Vector3.Zero && distanceMoved > CoPilot.Instance.Settings.autoPilotClearPathDistance.Value)
+                    if (lastTargetPosition != Vector3.Zero && distanceMoved > BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance.Value)
                     {
                         var transition = GetBestPortalLabel(leaderPartyElement);
                         // Check for Portal within Screen Distance.
@@ -1222,20 +1222,20 @@ public class AutoPilot
                         if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
                         {
                             // If very far away, add dash task instead of movement task
-                            if (distanceToLeader > 1000 && CoPilot.Instance.Settings.autoPilotDashEnabled) // Increased from 700 to 1000
+                            if (distanceToLeader > 1000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 700 to 1000
                             {
-                                CoPilot.Instance.LogMessage($"Adding Dash task - Distance: {distanceToLeader:F1}, Dash enabled: {CoPilot.Instance.Settings.autoPilotDashEnabled}");
+                                BetterFollowbotLite.Instance.LogMessage($"Adding Dash task - Distance: {distanceToLeader:F1}, Dash enabled: {BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled}");
                                 tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
                             }
                             else
                             {
-                                CoPilot.Instance.LogMessage($"Adding Movement task - Distance: {distanceToLeader:F1}, Dash enabled: {CoPilot.Instance.Settings.autoPilotDashEnabled}, Dash threshold: 700");
-                                tasks.Add(new TaskNode(followTarget.Pos, CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance));
+                                BetterFollowbotLite.Instance.LogMessage($"Adding Movement task - Distance: {distanceToLeader:F1}, Dash enabled: {BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled}, Dash threshold: 700");
+                                tasks.Add(new TaskNode(followTarget.Pos, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
                             }
                         }
                         else
                         {
-                            CoPilot.Instance.LogError($"Invalid followTarget position: {followTarget?.Pos}, skipping task creation");
+                            BetterFollowbotLite.Instance.LogError($"Invalid followTarget position: {followTarget?.Pos}, skipping task creation");
                         }
                     }
                     //We have a path. Check if the last task is far enough away from current one to add a new task node.
@@ -1245,12 +1245,12 @@ public class AutoPilot
                         {
                             var distanceFromLastTask = Vector3.Distance(tasks.Last().WorldPosition, followTarget.Pos);
                             // More responsive: reduce threshold by half for more frequent path updates
-                            var responsiveThreshold = CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance.Value / 2;
+                            var responsiveThreshold = BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value / 2;
                             if (distanceFromLastTask >= responsiveThreshold)
                             {
-                        CoPilot.Instance.LogMessage($"RESPONSIVENESS: Adding new path node - Distance: {distanceFromLastTask:F1}, Threshold: {responsiveThreshold:F1}");
-                        CoPilot.Instance.LogMessage($"DEBUG: Creating task to position: {followTarget.Pos} (Player at: {CoPilot.Instance.playerPosition})");
-                        tasks.Add(new TaskNode(followTarget.Pos, CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance));
+                        BetterFollowbotLite.Instance.LogMessage($"RESPONSIVENESS: Adding new path node - Distance: {distanceFromLastTask:F1}, Threshold: {responsiveThreshold:F1}");
+                        BetterFollowbotLite.Instance.LogMessage($"DEBUG: Creating task to position: {followTarget.Pos} (Player at: {BetterFollowbotLite.Instance.playerPosition})");
+                        tasks.Add(new TaskNode(followTarget.Pos, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
                             }
                         }
                     }
@@ -1264,30 +1264,30 @@ public class AutoPilot
                             if (tasks[i].Type == TaskNodeType.Movement || tasks[i].Type == TaskNodeType.Transition)
                                 tasks.RemoveAt(i);
                     }
-                    if (CoPilot.Instance.Settings.autoPilotCloseFollow.Value)
+                    if (BetterFollowbotLite.Instance.Settings.autoPilotCloseFollow.Value)
                     {
                         //Close follow logic. We have no current tasks. Check if we should move towards leader
-                        if (distanceToLeader >= CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance.Value)
-                            tasks.Add(new TaskNode(followTarget.Pos, CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance));
+                        if (distanceToLeader >= BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value)
+                            tasks.Add(new TaskNode(followTarget.Pos, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
                     }
 
                     //Check if we should add quest loot logic. We're close to leader already
                     var questLoot = GetQuestItem();
                     if (questLoot != null &&
-                        Vector3.Distance(CoPilot.Instance.playerPosition, questLoot.Pos) < CoPilot.Instance.Settings.autoPilotClearPathDistance.Value &&
+                        Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, questLoot.Pos) < BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance.Value &&
                         tasks.FirstOrDefault(I => I.Type == TaskNodeType.Loot) == null)
-                        tasks.Add(new TaskNode(questLoot.Pos, CoPilot.Instance.Settings.autoPilotClearPathDistance, TaskNodeType.Loot));
+                        tasks.Add(new TaskNode(questLoot.Pos, BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance, TaskNodeType.Loot));
 
-                    else if (!hasUsedWp && CoPilot.Instance.Settings.autoPilotTakeWaypoints)
+                    else if (!hasUsedWp && BetterFollowbotLite.Instance.Settings.autoPilotTakeWaypoints)
                     {
                         //Check if there's a waypoint nearby
-                        var waypoint = CoPilot.Instance.GameController.EntityListWrapper.Entities.SingleOrDefault(I => I.Type ==EntityType.Waypoint &&
-                                                                                                                       Vector3.Distance(CoPilot.Instance.playerPosition, I.Pos) < CoPilot.Instance.Settings.autoPilotClearPathDistance);
+                        var waypoint = BetterFollowbotLite.Instance.GameController.EntityListWrapper.Entities.SingleOrDefault(I => I.Type ==EntityType.Waypoint &&
+                                                                                                                       Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, I.Pos) < BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance);
 
                         if (waypoint != null)
                         {
                             hasUsedWp = true;
-                            tasks.Add(new TaskNode(waypoint.Pos, CoPilot.Instance.Settings.autoPilotClearPathDistance, TaskNodeType.ClaimWaypoint));
+                            tasks.Add(new TaskNode(waypoint.Pos, BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance, TaskNodeType.ClaimWaypoint));
                         }
                     }
                 }
@@ -1297,7 +1297,7 @@ public class AutoPilot
         }
         catch (Exception e)
         {
-            CoPilot.Instance.LogError($"UpdateAutoPilotLogic Error: {e}");
+            BetterFollowbotLite.Instance.LogError($"UpdateAutoPilotLogic Error: {e}");
         }
     }
     // ReSharper disable once IteratorNeverReturns
@@ -1309,7 +1309,7 @@ public class AutoPilot
         //TODO: Completely re-write this garbage. 
         //It's not taking into account a lot of stuff, horribly inefficient and just not the right way to do this.
         //Calculate the straight path from us to the target (this would be waypoints normally)
-        var dir = targetPosition - CoPilot.Instance.GameController.Player.GridPos;
+        var dir = targetPosition - BetterFollowbotLite.Instance.GameController.Player.GridPos;
         dir.Normalize();
 
         var distanceBeforeWall = 0;
@@ -1319,9 +1319,9 @@ public class AutoPilot
         var points = new List<System.Drawing.Point>();
         for (var i = 0; i < 500; i++)
         {
-            var v2Point = CoPilot.Instance.GameController.Player.GridPos + i * dir;
-            var point = new System.Drawing.Point((int)(CoPilot.Instance.GameController.Player.GridPos.X + i * dir.X),
-                (int)(CoPilot.Instance.GameController.Player.GridPos.Y + i * dir.Y));
+            var v2Point = BetterFollowbotLite.Instance.GameController.Player.GridPos + i * dir;
+            var point = new System.Drawing.Point((int)(BetterFollowbotLite.Instance.GameController.Player.GridPos.X + i * dir.X),
+                (int)(BetterFollowbotLite.Instance.GameController.Player.GridPos.Y + i * dir.Y));
 
             if (points.Contains(point))
                 continue;
@@ -1357,8 +1357,8 @@ public class AutoPilot
 
         if (shouldDash)
         {
-            Mouse.SetCursorPos(Helper.WorldToValidScreenPosition(targetPosition.GridToWorld(followTarget == null ? CoPilot.Instance.GameController.Player.Pos.Z : followTarget.Pos.Z)));
-            Keyboard.KeyPress(CoPilot.Instance.Settings.autoPilotDashKey);
+            Mouse.SetCursorPos(Helper.WorldToValidScreenPosition(targetPosition.GridToWorld(followTarget == null ? BetterFollowbotLite.Instance.GameController.Player.Pos.Z : followTarget.Pos.Z)));
+            Keyboard.KeyPress(BetterFollowbotLite.Instance.Settings.autoPilotDashKey);
             return true;
         }
 
@@ -1369,8 +1369,8 @@ public class AutoPilot
     {
         try
         {
-            string leaderName = CoPilot.Instance.Settings.autoPilotLeader.Value.ToLower();
-            return CoPilot.Instance.GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Player].FirstOrDefault(x => string.Equals(x.GetComponent<Player>()?.PlayerName.ToLower(), leaderName, StringComparison.OrdinalIgnoreCase));
+            string leaderName = BetterFollowbotLite.Instance.Settings.autoPilotLeader.Value.ToLower();
+            return BetterFollowbotLite.Instance.GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Player].FirstOrDefault(x => string.Equals(x.GetComponent<Player>()?.PlayerName.ToLower(), leaderName, StringComparison.OrdinalIgnoreCase));
         }
         // Sometimes we can get "Collection was modified; enumeration operation may not execute" exception
         catch
@@ -1383,12 +1383,12 @@ public class AutoPilot
     {
         try
         {
-            return CoPilot.Instance.GameController.EntityListWrapper.Entities
+            return BetterFollowbotLite.Instance.GameController.EntityListWrapper.Entities
                 .Where(e => e?.Type == EntityType.WorldItem && e.IsTargetable && e.HasComponent<WorldItem>())
                 .FirstOrDefault(e =>
                 {
                     var itemEntity = e.GetComponent<WorldItem>().ItemEntity;
-                    return CoPilot.Instance.GameController.Files.BaseItemTypes.Translate(itemEntity.Path).ClassName ==
+                    return BetterFollowbotLite.Instance.GameController.Files.BaseItemTypes.Translate(itemEntity.Path).ClassName ==
                            "QuestItem";
                 });
         }
@@ -1400,37 +1400,37 @@ public class AutoPilot
 
     public void Render()
     {
-        if (CoPilot.Instance.Settings.autoPilotToggleKey.PressedOnce())
+        if (BetterFollowbotLite.Instance.Settings.autoPilotToggleKey.PressedOnce())
         {
-            CoPilot.Instance.Settings.autoPilotEnabled.SetValueNoEvent(!CoPilot.Instance.Settings.autoPilotEnabled.Value);
+            BetterFollowbotLite.Instance.Settings.autoPilotEnabled.SetValueNoEvent(!BetterFollowbotLite.Instance.Settings.autoPilotEnabled.Value);
             tasks = new List<TaskNode>();				
         }
 
         // Restart coroutine if it died
-        if (CoPilot.Instance.Settings.autoPilotEnabled && (autoPilotCoroutine == null || !autoPilotCoroutine.Running))
+        if (BetterFollowbotLite.Instance.Settings.autoPilotEnabled && (autoPilotCoroutine == null || !autoPilotCoroutine.Running))
         {
-            CoPilot.Instance.LogMessage("AutoPilot: Restarting coroutine - it was dead");
+            BetterFollowbotLite.Instance.LogMessage("AutoPilot: Restarting coroutine - it was dead");
             StartCoroutine();
         }
-        else if (CoPilot.Instance.Settings.autoPilotEnabled)
+        else if (BetterFollowbotLite.Instance.Settings.autoPilotEnabled)
         {
             if (tasks?.Count > 0)
             {
-                CoPilot.Instance.LogMessage($"AutoPilot: Coroutine status - Running: {autoPilotCoroutine?.Running}, Task count: {tasks?.Count ?? 0}, First task: {tasks[0].Type}");
+                BetterFollowbotLite.Instance.LogMessage($"AutoPilot: Coroutine status - Running: {autoPilotCoroutine?.Running}, Task count: {tasks?.Count ?? 0}, First task: {tasks[0].Type}");
             }
             else
             {
-                CoPilot.Instance.LogMessage($"AutoPilot: Coroutine status - Running: {autoPilotCoroutine?.Running}, Task count: {tasks?.Count ?? 0}");
+                BetterFollowbotLite.Instance.LogMessage($"AutoPilot: Coroutine status - Running: {autoPilotCoroutine?.Running}, Task count: {tasks?.Count ?? 0}");
             }
         }
 
-        if (!CoPilot.Instance.Settings.autoPilotEnabled || CoPilot.Instance.GameController.IsLoading || !CoPilot.Instance.GameController.InGame)
+        if (!BetterFollowbotLite.Instance.Settings.autoPilotEnabled || BetterFollowbotLite.Instance.GameController.IsLoading || !BetterFollowbotLite.Instance.GameController.InGame)
             return;
 
         try
         {
             var portalLabels =
-                CoPilot.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels.Where(x =>
+                BetterFollowbotLite.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels.Where(x =>
                     x != null && x.IsVisible && x.Label != null && x.Label.IsValid && x.Label.IsVisible &&
                     x.ItemOnGround != null &&
                     (x.ItemOnGround.Metadata.ToLower().Contains("areatransition") ||
@@ -1438,7 +1438,7 @@ public class AutoPilot
 
             foreach (var portal in portalLabels)
             {
-                CoPilot.Instance.Graphics.DrawLine(portal.Label.GetClientRectCache.TopLeft, portal.Label.GetClientRectCache.TopRight, 2f,Color.Firebrick);
+                BetterFollowbotLite.Instance.Graphics.DrawLine(portal.Label.GetClientRectCache.TopLeft, portal.Label.GetClientRectCache.TopRight, 2f,Color.Firebrick);
             }
         }
         catch (Exception)
@@ -1451,16 +1451,16 @@ public class AutoPilot
         {
             foreach (var partyElementWindow in PartyElements.GetPlayerInfoElementList())
             {
-                if (string.Equals(partyElementWindow.PlayerName.ToLower(), CoPilot.instance.Settings.autoPilotLeader.Value.ToLower(), StringComparison.CurrentCultureIgnoreCase))
+                if (string.Equals(partyElementWindow.PlayerName.ToLower(), BetterFollowbotLite.instance.Settings.autoPilotLeader.Value.ToLower(), StringComparison.CurrentCultureIgnoreCase))
                 {
-                    var windowOffset = CoPilot.instance.GameController.Window.GetWindowRectangle().TopLeft;
+                    var windowOffset = BetterFollowbotLite.instance.GameController.Window.GetWindowRectangle().TopLeft;
 
                     var elemCenter = partyElementWindow.TPButton.GetClientRectCache.Center;
                     var finalPos = new Vector2(elemCenter.X + windowOffset.X, elemCenter.Y + windowOffset.Y);
 
-                    CoPilot.instance.Graphics.DrawText("Offset: " +windowOffset.ToString("F2"),new Vector2(300, 560));
-                    CoPilot.instance.Graphics.DrawText("Element: " +elemCenter.ToString("F2"),new Vector2(300, 580));
-                    CoPilot.instance.Graphics.DrawText("Final: " +finalPos.ToString("F2"),new Vector2(300, 600));
+                    BetterFollowbotLite.instance.Graphics.DrawText("Offset: " +windowOffset.ToString("F2"),new Vector2(300, 560));
+                    BetterFollowbotLite.instance.Graphics.DrawText("Element: " +elemCenter.ToString("F2"),new Vector2(300, 580));
+                    BetterFollowbotLite.instance.Graphics.DrawText("Final: " +finalPos.ToString("F2"),new Vector2(300, 600));
                 }
             }
         }
@@ -1478,33 +1478,33 @@ public class AutoPilot
             var cachedTasks = tasks;
             if (cachedTasks?.Count > 0)
             {
-                CoPilot.Instance.Graphics.DrawText(
+                BetterFollowbotLite.Instance.Graphics.DrawText(
                     "Current Task: " + cachedTasks[0].Type,
                     new Vector2(500, 160));
                 foreach (var task in cachedTasks.TakeWhile(task => task?.WorldPosition != null))
                 {
                     if (taskCount == 0)
                     {
-                        CoPilot.Instance.Graphics.DrawLine(
-                            Helper.WorldToValidScreenPosition(CoPilot.Instance.playerPosition),
+                        BetterFollowbotLite.Instance.Graphics.DrawLine(
+                            Helper.WorldToValidScreenPosition(BetterFollowbotLite.Instance.playerPosition),
                             Helper.WorldToValidScreenPosition(task.WorldPosition), 2f, Color.Pink);
-                        dist = Vector3.Distance(CoPilot.Instance.playerPosition, task.WorldPosition);
+                        dist = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, task.WorldPosition);
                     }
                     else
                     {
-                        CoPilot.Instance.Graphics.DrawLine(Helper.WorldToValidScreenPosition(task.WorldPosition),
+                        BetterFollowbotLite.Instance.Graphics.DrawLine(Helper.WorldToValidScreenPosition(task.WorldPosition),
                             Helper.WorldToValidScreenPosition(cachedTasks[taskCount - 1].WorldPosition), 2f, Color.Pink);
                     }
 
                     taskCount++;
                 }
             }
-            if (CoPilot.Instance.localPlayer != null)
+            if (BetterFollowbotLite.Instance.localPlayer != null)
             {
-                var targetDist = Vector3.Distance(CoPilot.Instance.playerPosition, lastTargetPosition);
-                CoPilot.Instance.Graphics.DrawText(
-                    $"Follow Enabled: {CoPilot.Instance.Settings.autoPilotEnabled.Value}", new System.Numerics.Vector2(500, 120));
-                CoPilot.Instance.Graphics.DrawText(
+                var targetDist = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, lastTargetPosition);
+                BetterFollowbotLite.Instance.Graphics.DrawText(
+                    $"Follow Enabled: {BetterFollowbotLite.Instance.Settings.autoPilotEnabled.Value}", new System.Numerics.Vector2(500, 120));
+                BetterFollowbotLite.Instance.Graphics.DrawText(
                     $"Task Count: {taskCount:D} Next WP Distance: {dist:F} Target Distance: {targetDist:F}",
                     new System.Numerics.Vector2(500, 140));
 
@@ -1515,9 +1515,9 @@ public class AutoPilot
             // ignored
         }
 
-        CoPilot.Instance.Graphics.DrawText("AutoPilot: Active", new System.Numerics.Vector2(350, 120));
-        CoPilot.Instance.Graphics.DrawText("Coroutine: " + (autoPilotCoroutine.Running ? "Active" : "Dead"), new System.Numerics.Vector2(350, 140));
-        CoPilot.Instance.Graphics.DrawText("Leader: " + (followTarget != null ? "Found" : "Null"), new System.Numerics.Vector2(350, 160));
-        CoPilot.Instance.Graphics.DrawLine(new System.Numerics.Vector2(490, 120), new System.Numerics.Vector2(490,180), 1, Color.White);
+        BetterFollowbotLite.Instance.Graphics.DrawText("AutoPilot: Active", new System.Numerics.Vector2(350, 120));
+        BetterFollowbotLite.Instance.Graphics.DrawText("Coroutine: " + (autoPilotCoroutine.Running ? "Active" : "Dead"), new System.Numerics.Vector2(350, 140));
+        BetterFollowbotLite.Instance.Graphics.DrawText("Leader: " + (followTarget != null ? "Found" : "Null"), new System.Numerics.Vector2(350, 160));
+        BetterFollowbotLite.Instance.Graphics.DrawLine(new System.Numerics.Vector2(490, 120), new System.Numerics.Vector2(490,180), 1, Color.White);
     }
 }

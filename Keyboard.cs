@@ -5,7 +5,7 @@ using System.Windows.Forms;
 using ExileCore;
 using ExileCore.Shared;
 
-namespace CoPilot;
+namespace BetterFollowbotLite;
 
 public static class Keyboard
 {
@@ -42,8 +42,8 @@ public static class Keyboard
     public static void KeyPress(Keys key, bool anyDelay = true)
     {
         if (anyDelay)
-            CoPilot.Instance.lastTimeAny = DateTime.Now;
-        _keyboardCoroutine = new Coroutine(KeyPressRoutine(key), CoPilot.Instance, CoroutineKeyPress);
+            BetterFollowbotLite.Instance.lastTimeAny = DateTime.Now;
+        _keyboardCoroutine = new Coroutine(KeyPressRoutine(key), BetterFollowbotLite.Instance, CoroutineKeyPress);
         Core.ParallelRunner.Run(_keyboardCoroutine);
     }
 

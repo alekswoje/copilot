@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using ExileCore.PoEMemory.MemoryObjects;
 using ExileCore.Shared.Enums;
 
-namespace CoPilot;
+namespace BetterFollowbotLite;
 
 internal static class SkillInfo
 {
@@ -164,20 +164,20 @@ internal static class SkillInfo
         }
 
         if (actorSkill.RemainingUses <= 0 && actorSkill.IsOnCooldown) return false;
-        if (!CoPilot.Instance.Gcd())
+        if (!BetterFollowbotLite.Instance.Gcd())
             return false;
 
         if (!actorSkill.Stats.TryGetValue(GameStat.ManaCost, out var manaCost))
             manaCost = 0;
 
-        if (CoPilot.Instance.player.CurMana >= manaCost)
+        if (BetterFollowbotLite.Instance.player.CurMana >= manaCost)
             return true;
-        if (!CoPilot.Instance.localPlayer.Stats.TryGetValue(GameStat.VirtualEnergyShieldProtectsMana,
+        if (!BetterFollowbotLite.Instance.localPlayer.Stats.TryGetValue(GameStat.VirtualEnergyShieldProtectsMana,
                 out var hasEldritchBattery))
             hasEldritchBattery = 0;
 
         //Include CurMana along with CurES
-        return hasEldritchBattery > 0 && (CoPilot.Instance.player.CurES + CoPilot.Instance.player.CurMana) >= manaCost;
+        return hasEldritchBattery > 0 && (BetterFollowbotLite.Instance.player.CurES + BetterFollowbotLite.Instance.player.CurMana) >= manaCost;
     }
 
     internal static bool ManageCooldown(Skill skill)
@@ -201,7 +201,7 @@ internal static class SkillInfo
             return;
         _lastUpdate = DateTime.Now;
         CachedAuraSkills = new List<Skill>();
-        foreach (var skill in CoPilot.Instance.skills)
+        foreach (var skill in BetterFollowbotLite.Instance.skills)
         {
             switch (skill.InternalName)
             {

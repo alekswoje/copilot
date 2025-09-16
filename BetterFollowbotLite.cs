@@ -12,14 +12,14 @@ using ExileCore.Shared;
 using ExileCore.Shared.Enums;
 using SharpDX;
 
-namespace CoPilot;
+namespace BetterFollowbotLite;
 
-public class CoPilot : BaseSettingsPlugin<CoPilotSettings>
+public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSettings>
 {
     private const int Delay = 45;
 
     private const int MouseAutoSnapRange = 250;
-    internal static CoPilot Instance;
+    internal static BetterFollowbotLite Instance;
     internal AutoPilot autoPilot = new AutoPilot();
     private readonly Summons summons = new Summons();
 
@@ -464,7 +464,7 @@ public class CoPilot : BaseSettingsPlugin<CoPilotSettings>
                     {
                         if (skill.Id == SkillInfo.smite.Id)
                         {
-                            CoPilot.Instance.LogMessage("SMITE: Smite skill detected");
+                            BetterFollowbotLite.Instance.LogMessage("SMITE: Smite skill detected");
 
                             // Custom cooldown check for smite that bypasses GCD since it's a buff skill
                             if (SkillInfo.smite.Cooldown <= 0 &&
@@ -474,19 +474,19 @@ public class CoPilot : BaseSettingsPlugin<CoPilotSettings>
                                 if (!skill.Stats.TryGetValue(GameStat.ManaCost, out var manaCost))
                                     manaCost = 0;
 
-                                if (CoPilot.Instance.player.CurMana >= manaCost ||
-                                    (CoPilot.Instance.localPlayer.Stats.TryGetValue(GameStat.VirtualEnergyShieldProtectsMana, out var hasEldritchBattery) &&
-                                     hasEldritchBattery > 0 && (CoPilot.Instance.player.CurES + CoPilot.Instance.player.CurMana) >= manaCost))
+                                if (BetterFollowbotLite.Instance.player.CurMana >= manaCost ||
+                                    (BetterFollowbotLite.Instance.localPlayer.Stats.TryGetValue(GameStat.VirtualEnergyShieldProtectsMana, out var hasEldritchBattery) &&
+                                     hasEldritchBattery > 0 && (BetterFollowbotLite.Instance.player.CurES + BetterFollowbotLite.Instance.player.CurMana) >= manaCost))
                                 {
-                                    CoPilot.Instance.LogMessage("SMITE: Cooldown check passed");
+                                    BetterFollowbotLite.Instance.LogMessage("SMITE: Cooldown check passed");
 
                                     // Check if we don't have the smite buff
                                 var hasSmiteBuff = buffs.Exists(x => x.Name == "smite_buff");
-                                CoPilot.Instance.LogMessage($"SMITE: Has smite buff: {hasSmiteBuff}");
+                                BetterFollowbotLite.Instance.LogMessage($"SMITE: Has smite buff: {hasSmiteBuff}");
 
                                 if (!hasSmiteBuff)
                                 {
-                                    CoPilot.Instance.LogMessage("SMITE: No smite buff found, looking for targets");
+                                    BetterFollowbotLite.Instance.LogMessage("SMITE: No smite buff found, looking for targets");
 
                                     // Find monsters within 250 units of player (smite attack range)
                                     var targetMonster = enemys
@@ -494,7 +494,7 @@ public class CoPilot : BaseSettingsPlugin<CoPilotSettings>
                                         {
                                             // Check if monster is within 250 units of player
                                             var distanceToPlayer = Vector3.Distance(playerPosition, monster.Pos);
-                                            CoPilot.Instance.LogMessage($"SMITE: Monster at distance {distanceToPlayer:F1} from player");
+                                            BetterFollowbotLite.Instance.LogMessage($"SMITE: Monster at distance {distanceToPlayer:F1} from player");
                                             return distanceToPlayer <= 250;
                                         })
                                         .OrderBy(monster => Vector3.Distance(playerPosition, monster.Pos)) // Closest first
@@ -502,7 +502,7 @@ public class CoPilot : BaseSettingsPlugin<CoPilotSettings>
 
                                     if (targetMonster != null)
                                     {
-                                        CoPilot.Instance.LogMessage("SMITE: Found suitable target, activating smite!");
+                                        BetterFollowbotLite.Instance.LogMessage("SMITE: Found suitable target, activating smite!");
 
                                         // Move mouse to monster position
                                         var monsterScreenPos = GameController.IngameState.Camera.WorldToScreen(targetMonster.Pos);
@@ -515,11 +515,11 @@ public class CoPilot : BaseSettingsPlugin<CoPilotSettings>
                                         Keyboard.KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
                                         SkillInfo.smite.Cooldown = 100;
 
-                                        CoPilot.Instance.LogMessage("SMITE: Smite activated successfully");
+                                        BetterFollowbotLite.Instance.LogMessage("SMITE: Smite activated successfully");
                                     }
                                     else
                                     {
-                                        CoPilot.Instance.LogMessage("SMITE: No suitable targets found within range, dashing to leader");
+                                        BetterFollowbotLite.Instance.LogMessage("SMITE: No suitable targets found within range, dashing to leader");
 
                                         // Dash to leader to get near monsters
                                         if (Settings.autoPilotDashEnabled && (DateTime.Now - autoPilot.lastDashTime).TotalMilliseconds >= 3000 && autoPilot.followTarget != null)
@@ -529,7 +529,7 @@ public class CoPilot : BaseSettingsPlugin<CoPilotSettings>
 
                                             if (distanceToLeader > 50) // Only dash if we're not already close to leader
                                             {
-                                                CoPilot.Instance.LogMessage($"SMITE: Dashing to leader - Distance: {distanceToLeader:F1}");
+                                                BetterFollowbotLite.Instance.LogMessage($"SMITE: Dashing to leader - Distance: {distanceToLeader:F1}");
 
                                                 // Position mouse towards leader
                                                 var leaderScreenPos = GameController.IngameState.Camera.WorldToScreen(leaderPos);
@@ -542,32 +542,32 @@ public class CoPilot : BaseSettingsPlugin<CoPilotSettings>
                                                 Keyboard.KeyPress(Settings.autoPilotDashKey);
                                                 autoPilot.lastDashTime = DateTime.Now;
 
-                                                CoPilot.Instance.LogMessage("SMITE: Dash to leader executed");
+                                                BetterFollowbotLite.Instance.LogMessage("SMITE: Dash to leader executed");
                                             }
                                             else
                                             {
-                                                CoPilot.Instance.LogMessage("SMITE: Already close to leader, skipping dash");
+                                                BetterFollowbotLite.Instance.LogMessage("SMITE: Already close to leader, skipping dash");
                                             }
                                         }
                                         else
                                         {
-                                            CoPilot.Instance.LogMessage("SMITE: Dash not available or not enabled");
+                                            BetterFollowbotLite.Instance.LogMessage("SMITE: Dash not available or not enabled");
                                         }
                                     }
                                 }
                                     else
                                     {
-                                        CoPilot.Instance.LogMessage("SMITE: Already have smite buff, skipping");
+                                        BetterFollowbotLite.Instance.LogMessage("SMITE: Already have smite buff, skipping");
                                     }
                                 }
                                 else
                                 {
-                                    CoPilot.Instance.LogMessage("SMITE: Not enough mana for smite");
+                                    BetterFollowbotLite.Instance.LogMessage("SMITE: Not enough mana for smite");
                                 }
                             }
                             else
                             {
-                                CoPilot.Instance.LogMessage("SMITE: Cooldown check failed");
+                                BetterFollowbotLite.Instance.LogMessage("SMITE: Cooldown check failed");
                             }
                         }
                     }
@@ -577,7 +577,7 @@ public class CoPilot : BaseSettingsPlugin<CoPilotSettings>
                     }
                 else
                 {
-                    CoPilot.Instance.LogMessage("SMITE: Smite is not enabled");
+                    BetterFollowbotLite.Instance.LogMessage("SMITE: Smite is not enabled");
                 }
 
                 #endregion

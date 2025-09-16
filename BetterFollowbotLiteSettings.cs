@@ -4,9 +4,9 @@ using ExileCore.Shared.Nodes;
 // ReSharper disable FieldCanBeMadeReadOnly.Global
 // Need non readonly to save settings.
 
-namespace CoPilot;
+namespace BetterFollowbotLite;
 
-public class CoPilotSettings : ISettings
+public class BetterFollowbotLiteSettings : ISettings
 {
     #region Auto Map Tabber
 
@@ -16,7 +16,7 @@ public class CoPilotSettings : ISettings
 
     public ToggleNode debugMode = new ToggleNode(false);
 
-    public CoPilotSettings()
+    public BetterFollowbotLiteSettings()
     {
         Enable = new ToggleNode(false);
     }
@@ -99,13 +99,4 @@ public class CoPilotSettings : ISettings
 
     #endregion
 
-    #region Confirm
-
-    public ToggleNode confirm1 = new ToggleNode(false);
-    public ToggleNode confirm2 = new ToggleNode(false);
-    public ToggleNode confirm3 = new ToggleNode(false);
-    public ToggleNode confirm4 = new ToggleNode(false);
-    public ToggleNode confirm5 = new ToggleNode(false);
-
-    #endregion
 }
