@@ -335,7 +335,7 @@ internal static class SkillInfo
                 case "blade_burst":
                     bladeBlast.Id = skill.Id;
                     break;
-                case "summon_relic":
+                case "summon_holy_relic":
                     holyRelict.Id = skill.Id;
                     BetterFollowbotLite.Instance?.LogMessage($"SKILL DETECTED: Holy Relic - ID: {skill.Id}, InternalName: {skill.InternalName}");
                     break;
@@ -388,7 +388,7 @@ internal static class SkillInfo
                         CachedAuraSkills.Add(auraHatred);
                     }
                     break;
-                case "spell_damage_aura":
+                case "zealotry":
                     auraZealotry.Id = skill.Id;
                     auraZealotry.BuffName = "player_aura_spell_damage";
                     BetterFollowbotLite.Instance?.LogMessage($"SKILL DETECTED: Zealotry - ID: {skill.Id}, InternalName: {skill.InternalName}");

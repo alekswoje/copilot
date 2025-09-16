@@ -327,15 +327,20 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                 {
                     BetterFollowbotLite.Instance.LogMessage($"AURA BLESSING: Processing skill ID {skill.Id}, Name: {skill.Name}, Slot: {skill.SkillSlotIndex}");
 
-                    // Log current guardian blessing buffs for debugging
-                    var guardianBlessingBuffs = buffs.Where(b => b.Name.Contains("guardian") || b.Name.Contains("blessing")).ToList();
-                    if (guardianBlessingBuffs.Any())
+                    // Log current relevant buffs for debugging
+                    var relevantBuffs = buffs.Where(b =>
+                        b.Name.Contains("blessing") ||
+                        b.Name.Contains("holy") ||
+                        b.Name.Contains("relic") ||
+                        b.Name.Contains("zealotry") ||
+                        b.Name.Contains("aura_spell_damage")).ToList();
+                    if (relevantBuffs.Any())
                     {
-                        BetterFollowbotLite.Instance.LogMessage($"AURA BLESSING: Current guardian buffs: {string.Join(", ", guardianBlessingBuffs.Select(b => $"{b.Name}({b.Timer:F1}s)"))}");
+                        BetterFollowbotLite.Instance.LogMessage($"AURA BLESSING: Current relevant buffs: {string.Join(", ", relevantBuffs.Select(b => $"{b.Name}({b.Timer:F1}s)"))}");
                     }
                     else
                     {
-                        BetterFollowbotLite.Instance.LogMessage("AURA BLESSING: No guardian blessing buffs found");
+                        BetterFollowbotLite.Instance.LogMessage("AURA BLESSING: No relevant buffs found");
                     }
 
                     try
@@ -346,10 +351,14 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                             BetterFollowbotLite.Instance.LogMessage($"HOLY RELIC: Detected Holy Relic skill (ID: {skill.Id}), CanBeUsed: {skill.CanBeUsed}, RemainingUses: {skill.RemainingUses}, IsOnCooldown: {skill.IsOnCooldown}");
 
                             var lowestMinionHp = Summons.GetLowestMinionHpp();
-                            var hasGuardianBlessingMinion = buffs.Exists(x => x.Name == "has_guardians_blessing_minion");
+                            // Check for Holy Relic minion presence (avoiding just the life regen effect)
+                            var hasGuardianBlessingMinion = buffs.Exists(x =>
+                                x.Name == "has_guardians_blessing_minion" ||
+                                (x.Name.Contains("holy") && x.Name.Contains("relic")) ||
+                                x.Name.Contains("guardian_blessing_minion"));
                             var threshold = Settings.holyRelicHealthThreshold;
 
-                            BetterFollowbotLite.Instance.LogMessage($"HOLY RELIC: Lowest minion HP: {lowestMinionHp:F1}%, Threshold: {threshold}%, Has guardian blessing minion: {hasGuardianBlessingMinion}");
+                            BetterFollowbotLite.Instance.LogMessage($"HOLY RELIC: Lowest minion HP: {lowestMinionHp:F1}%, Threshold: {threshold}%, Has minion buff: {hasGuardianBlessingMinion}");
 
                             // Check conditions
                             var healthLow = lowestMinionHp < threshold;
@@ -357,7 +366,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
                             BetterFollowbotLite.Instance.LogMessage($"HOLY RELIC: Health low: {healthLow}, Missing buff: {missingBuff}, Should summon: {healthLow || missingBuff}");
 
-                            // If Holy Relic health is below threshold OR we don't have the guardian blessing minion buff, summon new Holy Relic
+                            // If Holy Relic health is below threshold OR we don't have any minion buff, summon new Holy Relic
                             if (healthLow || missingBuff)
                             {
                                 BetterFollowbotLite.Instance.LogMessage($"HOLY RELIC: Summoning new Holy Relic (reason: {(healthLow ? "health low" : "missing buff")})");
@@ -374,10 +383,20 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                         {
                             BetterFollowbotLite.Instance.LogMessage($"ZEALOTRY: Detected Zealotry skill (ID: {skill.Id}), CanBeUsed: {skill.CanBeUsed}, RemainingUses: {skill.RemainingUses}, IsOnCooldown: {skill.IsOnCooldown}");
 
-                            var hasGuardianBlessingAura = buffs.Exists(x => x.Name == "has_guardians_blessing_aura");
-                            var hasGuardianBlessingMinion = buffs.Exists(x => x.Name == "has_guardians_blessing_minion");
+                            // Check for Zealotry aura buff
+                            var hasGuardianBlessingAura = buffs.Exists(x =>
+                                x.Name == "has_guardians_blessing_aura" ||
+                                x.Name == "zealotry" ||
+                                x.Name == "player_aura_spell_damage" ||
+                                (x.Name.Contains("blessing") && x.Name.Contains("aura")));
 
-                            BetterFollowbotLite.Instance.LogMessage($"ZEALOTRY: Has guardian blessing aura: {hasGuardianBlessingAura}, Has minion: {hasGuardianBlessingMinion}");
+                            // Check for Holy Relic minion presence (same logic as above)
+                            var hasGuardianBlessingMinion = buffs.Exists(x =>
+                                x.Name == "has_guardians_blessing_minion" ||
+                                (x.Name.Contains("holy") && x.Name.Contains("relic")) ||
+                                x.Name.Contains("guardian_blessing_minion"));
+
+                            BetterFollowbotLite.Instance.LogMessage($"ZEALOTRY: Has aura buff: {hasGuardianBlessingAura}, Has minion buff: {hasGuardianBlessingMinion}");
 
                             // Check conditions
                             var missingAura = !hasGuardianBlessingAura;
