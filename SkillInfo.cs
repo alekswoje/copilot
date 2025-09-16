@@ -337,6 +337,7 @@ internal static class SkillInfo
                     break;
                 case "summon_relic":
                     holyRelict.Id = skill.Id;
+                    BetterFollowbotLite.Instance?.LogMessage($"SKILL DETECTED: Holy Relic - ID: {skill.Id}, InternalName: {skill.InternalName}");
                     break;
                 case "berserk":
                     berserk.Id = skill.Id;
@@ -390,6 +391,7 @@ internal static class SkillInfo
                 case "spell_damage_aura":
                     auraZealotry.Id = skill.Id;
                     auraZealotry.BuffName = "player_aura_spell_damage";
+                    BetterFollowbotLite.Instance?.LogMessage($"SKILL DETECTED: Zealotry - ID: {skill.Id}, InternalName: {skill.InternalName}");
                     if (skill.Stats.TryGetValue(GameStat.SkillIsBlessingSkill, out isBlessing))
                     {
                         if (isBlessing > 0)
