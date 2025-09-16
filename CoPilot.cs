@@ -454,14 +454,25 @@ public class CoPilot : BaseSettingsPlugin<CoPilotSettings>
 
                                         CoPilot.Instance.LogMessage($"FLAME LINK: Distance to cursor: {distanceToCursor}");
 
-                                        // Logic: SinceLastActivation(1) && ((!PartyLeader.Buffs.Has("flame_link_target") || Buffs["flame_link_source"].Timer < 4) && PartyLeader.DistanceToCursor < 40)
-                                        var shouldActivate = (!hasLinkTarget || linkSourceTimeLeft < 4) && distanceToCursor < 40;
+                                        // Logic: Aggressive flame link maintenance - refresh much earlier and with larger distance tolerance
+                                        // Emergency linking (no source buff): ignore distance
+                                        // Normal linking: use distance check
+                                        var shouldActivate = (!hasLinkTarget || linkSourceTimeLeft < 8 || linkSourceBuff == null) &&
+                                                             (linkSourceBuff == null || distanceToCursor < 100);
 
-                                        CoPilot.Instance.LogMessage($"FLAME LINK: Activation check - Should activate: {shouldActivate}, !hasLinkTarget: {!hasLinkTarget}, linkSourceTimeLeft < 4: {linkSourceTimeLeft < 4}, distanceToCursor < 40: {distanceToCursor < 40}");
+
+                                        CoPilot.Instance.LogMessage($"FLAME LINK: Activation check - Should activate: {shouldActivate}, !hasLinkTarget: {!hasLinkTarget}, linkSourceTimeLeft < 8: {linkSourceTimeLeft < 8}, noSourceBuff: {linkSourceBuff == null}, distanceCheck: {(linkSourceBuff == null || distanceToCursor < 100)}");
 
                                         if (shouldActivate)
                                         {
-                                            CoPilot.Instance.LogMessage("FLAME LINK: Activating flame link!");
+                                            if (linkSourceBuff == null)
+                                            {
+                                                CoPilot.Instance.LogMessage("FLAME LINK: EMERGENCY LINKING - No source buff found, establishing link!");
+                                            }
+                                            else
+                                            {
+                                                CoPilot.Instance.LogMessage("FLAME LINK: Activating flame link!");
+                                            }
                                             // Move mouse to leader position
                                             var leaderScreenPosForMouse = GameController.IngameState.Camera.WorldToScreen(leader.Pos);
                                             Mouse.SetCursorPos(leaderScreenPosForMouse);
