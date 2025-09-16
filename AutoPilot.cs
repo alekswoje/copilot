@@ -363,15 +363,17 @@ public class AutoPilot
     // New method for decision making that runs every game tick
     public void UpdateAutoPilotLogic()
     {
-        if (!CoPilot.Instance.Settings.Enable.Value || !CoPilot.Instance.Settings.autoPilotEnabled.Value || CoPilot.Instance.localPlayer == null || !CoPilot.Instance.localPlayer.IsAlive || 
-            !CoPilot.Instance.GameController.IsForeGroundCache || MenuWindow.IsOpened || CoPilot.Instance.GameController.IsLoading || !CoPilot.Instance.GameController.InGame)
+        try
         {
-            return;
-        }
-        
-        //Cache the current follow target (if present)
-        followTarget = GetFollowingTarget();
-        var leaderPartyElement = GetLeaderPartyElement();
+            if (!CoPilot.Instance.Settings.Enable.Value || !CoPilot.Instance.Settings.autoPilotEnabled.Value || CoPilot.Instance.localPlayer == null || !CoPilot.Instance.localPlayer.IsAlive || 
+                !CoPilot.Instance.GameController.IsForeGroundCache || MenuWindow.IsOpened || CoPilot.Instance.GameController.IsLoading || !CoPilot.Instance.GameController.InGame)
+            {
+                return;
+            }
+            
+            //Cache the current follow target (if present)
+            followTarget = GetFollowingTarget();
+            var leaderPartyElement = GetLeaderPartyElement();
 
         if (followTarget == null && leaderPartyElement != null && !leaderPartyElement.ZoneName.Equals(CoPilot.Instance.GameController?.Area.CurrentArea.DisplayName)) {
             var portal = GetBestPortalLabel(leaderPartyElement);
@@ -492,7 +494,11 @@ public class AutoPilot
             if (followTarget?.Pos != null)
                 lastTargetPosition = followTarget.Pos;
         }
-        
+        }
+        catch (Exception e)
+        {
+            CoPilot.Instance.LogError($"UpdateAutoPilotLogic Error: {e}");
+        }
     }
     // ReSharper disable once IteratorNeverReturns
         
@@ -598,6 +604,12 @@ public class AutoPilot
         {
             CoPilot.Instance.Settings.autoPilotEnabled.SetValueNoEvent(!CoPilot.Instance.Settings.autoPilotEnabled.Value);
             tasks = new List<TaskNode>();				
+        }
+        
+        // Restart coroutine if it died
+        if (CoPilot.Instance.Settings.autoPilotEnabled && (autoPilotCoroutine == null || !autoPilotCoroutine.Running))
+        {
+            StartCoroutine();
         }
 			
         if (!CoPilot.Instance.Settings.autoPilotEnabled || CoPilot.Instance.GameController.IsLoading || !CoPilot.Instance.GameController.InGame)
