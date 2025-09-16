@@ -455,6 +455,7 @@ public class AutoPilot
                         continue;
                     }
                 }
+                }
                 catch (Exception e)
                 {
                     CoPilot.Instance.LogError($"Task execution error: {e}");
