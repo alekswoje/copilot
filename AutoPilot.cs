@@ -13,15 +13,18 @@ using SharpDX;
 
 namespace BetterFollowbotLite;
 
-public class AutoPilot
-{
-    // Most Logic taken from Alpha Plugin
-    private Coroutine autoPilotCoroutine;
-    private readonly Random random = new Random();
+    public class AutoPilot
+    {
+        // Most Logic taken from Alpha Plugin
+        private Coroutine autoPilotCoroutine;
+        private readonly Random random = new Random();
 
-    private Vector3 lastTargetPosition;
-    private Vector3 lastPlayerPosition;
-    private Entity followTarget;
+        private Vector3 lastTargetPosition;
+        private Vector3 lastPlayerPosition;
+        private Entity followTarget;
+
+        // GLOBAL FLAG: Prevents SMITE and other skills from interfering during teleport
+        public static bool IsTeleportInProgress { get; private set; } = false;
 
     public Entity FollowTarget => followTarget;
 
@@ -321,6 +324,9 @@ public class AutoPilot
         lastPathClearTime = DateTime.MinValue; // Reset responsiveness tracking
         lastResponsivenessCheck = DateTime.MinValue; // Reset responsiveness check cooldown
         lastEfficiencyCheck = DateTime.MinValue; // Reset efficiency check cooldown
+
+        // CLEAR GLOBAL FLAG: Zone change means any ongoing teleport is complete
+        IsTeleportInProgress = false;
     }
 
     /// <summary>
@@ -1134,6 +1140,8 @@ public class AutoPilot
                         case TaskNodeType.TeleportButton:
                         {
                             tasks.RemoveAt(0);
+                            // CLEAR GLOBAL FLAG: Teleport task completed
+                            IsTeleportInProgress = false;
                             shouldTeleportButtonAndContinue = true;
                             break;
                         }
@@ -1771,6 +1779,8 @@ public class AutoPilot
                                         if(!tpButton.Equals(Vector2.Zero))
                                         {
                                             BetterFollowbotLite.Instance.LogMessage("ZONE TRANSITION: Clicking teleport button to initiate party teleport");
+                                            // SET GLOBAL FLAG: Prevent SMITE and other skills from interfering
+                                            IsTeleportInProgress = true;
                                             tasks.Add(new TaskNode(new Vector3(tpButton.X, tpButton.Y, 0), 0, TaskNodeType.TeleportButton));
                                         }
                                         else
@@ -1795,13 +1805,15 @@ public class AutoPilot
                             // If very far away, add dash task instead of movement task
                             if (distanceToLeader > 1000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 700 to 1000
                             {
-                                // CRITICAL: Don't add dash tasks if we have any active transition-related task
-                                if (tasks.Any(t =>
+                                // CRITICAL: Don't add dash tasks if we have any active transition-related task OR teleport in progress
+                                var hasTransitionTasks = tasks.Any(t =>
                                     t.Type == TaskNodeType.Transition ||
                                     t.Type == TaskNodeType.TeleportConfirm ||
-                                    t.Type == TaskNodeType.TeleportButton))
+                                    t.Type == TaskNodeType.TeleportButton);
+
+                                if (hasTransitionTasks || IsTeleportInProgress)
                                 {
-                                    BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Skipping dash task creation - transition/teleport task active");
+                                    BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Skipping dash task creation - transition/teleport active ({tasks.Count} tasks, teleport={IsTeleportInProgress})");
                                 }
                                 else
                                 {

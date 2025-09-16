@@ -551,13 +551,15 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                             var leaderPos = autoPilot.FollowTarget.Pos;
                                             var distanceToLeader = Vector3.Distance(playerPosition, leaderPos);
 
-                                            // IMPORTANT: Don't dash if we have any active transition-related task
-                                            if (autoPilot.Tasks.Any(t =>
+                                            // IMPORTANT: Don't dash if we have any active transition-related task OR teleport in progress
+                                            var hasTransitionTask = autoPilot.Tasks.Any(t =>
                                                 t.Type == TaskNodeType.Transition ||
                                                 t.Type == TaskNodeType.TeleportConfirm ||
-                                                t.Type == TaskNodeType.TeleportButton))
+                                                t.Type == TaskNodeType.TeleportButton);
+
+                                            if (hasTransitionTask || AutoPilot.IsTeleportInProgress)
                                             {
-                                                BetterFollowbotLite.Instance.LogMessage("SMITE: Transition/teleport task active, skipping dash to avoid interference");
+                                                BetterFollowbotLite.Instance.LogMessage($"SMITE: Transition/teleport active ({autoPilot.Tasks.Count} tasks, teleport={AutoPilot.IsTeleportInProgress}), skipping dash");
                                             }
                                             else if (distanceToLeader > 50) // Only dash if we're not already close to leader
                                             {
