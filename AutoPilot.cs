@@ -25,9 +25,63 @@ public class AutoPilot
 
     private bool hasUsedWp;
     private List<TaskNode> tasks = new List<TaskNode>();
+    private DateTime lastDashTime = DateTime.MinValue; // Track last dash time for cooldown
 
     private int numRows, numCols;
     private byte[,] tiles;
+
+    /// <summary>
+    /// Checks if the cursor is pointing roughly towards the target direction in screen space
+    /// </summary>
+    private bool IsCursorPointingTowardsTarget(Vector3 targetPosition)
+    {
+        try
+        {
+            // Get the current mouse position in screen coordinates
+            var mouseScreenPos = CoPilot.Instance.GetMousePosition();
+
+            // Get the player's screen position
+            var playerScreenPos = Helper.WorldToValidScreenPosition(CoPilot.Instance.playerPosition);
+
+            // Get the target's screen position
+            var targetScreenPos = Helper.WorldToValidScreenPosition(targetPosition);
+
+            // Calculate the direction from player to target in screen space
+            var playerToTarget = targetScreenPos - playerScreenPos;
+            if (playerToTarget.Length() < 20) // Target is too close in screen space
+                return true; // Consider it pointing towards target
+
+            playerToTarget.Normalize();
+
+            // Calculate the direction from player to cursor in screen space
+            var playerToCursor = mouseScreenPos - playerScreenPos;
+            if (playerToCursor.Length() < 30) // Cursor is too close to player in screen space
+                return false; // Can't determine direction reliably
+
+            playerToCursor.Normalize();
+
+            // Calculate the angle between the two directions
+            var dotProduct = Vector2.Dot(playerToTarget, playerToCursor);
+            var angle = Math.Acos(Math.Max(-1, Math.Min(1, dotProduct))) * (180.0 / Math.PI);
+
+            // Allow up to 60 degrees difference (cursor should be roughly pointing towards target)
+            return angle <= 60.0;
+        }
+        catch (Exception e)
+        {
+            CoPilot.Instance.LogError($"Cursor direction check error: {e}");
+            return false; // Default to false if we can't determine direction
+        }
+    }
+
+    /// <summary>
+    /// Checks if enough time has passed since the last dash (1 second cooldown)
+    /// </summary>
+    private bool CanDash()
+    {
+        return (DateTime.Now - lastDashTime).TotalMilliseconds >= 1000;
+    }
+
     /// <summary>
     /// Clears all pathfinding values. Used on area transitions primarily.
     /// </summary>
@@ -38,6 +92,7 @@ public class AutoPilot
         lastTargetPosition = Vector3.Zero;
         lastPlayerPosition = Vector3.Zero;
         hasUsedWp = false;
+        lastDashTime = DateTime.MinValue; // Reset dash cooldown on area change
     }
 
     private PartyElementWindow GetLeaderPartyElement()
@@ -283,16 +338,20 @@ public class AutoPilot
                             CoPilot.Instance.LogMessage($"Movement task executing - Distance to target: {taskDistance:F1}, Required: {CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance.Value * 1.5:F1}");
 
                             // Check for distance-based dashing to keep up with leader
-                            if (CoPilot.Instance.Settings.autoPilotDashEnabled && followTarget != null && followTarget.Pos != null)
+                            if (CoPilot.Instance.Settings.autoPilotDashEnabled && followTarget != null && followTarget.Pos != null && CanDash())
                             {
                                 try
                                 {
                                     var distanceToLeader = Vector3.Distance(CoPilot.Instance.playerPosition, followTarget.Pos);
-                                    CoPilot.Instance.LogMessage($"Movement task: Checking dash - Distance to leader: {distanceToLeader:F1}, Dash enabled: {CoPilot.Instance.Settings.autoPilotDashEnabled}, Threshold: 700");
-                                    if (distanceToLeader > 700) // Dash if more than 700 units away from leader
+                                    CoPilot.Instance.LogMessage($"Movement task: Checking dash - Distance to leader: {distanceToLeader:F1}, Dash enabled: {CoPilot.Instance.Settings.autoPilotDashEnabled}, Threshold: 700, Can dash: {CanDash()}");
+                                    if (distanceToLeader > 700 && IsCursorPointingTowardsTarget(followTarget.Pos)) // Dash if more than 700 units away and cursor is pointing towards leader
                                     {
-                                        CoPilot.Instance.LogMessage($"Movement task: Dashing to leader - Distance: {distanceToLeader:F1}");
+                                        CoPilot.Instance.LogMessage($"Movement task: Dashing to leader - Distance: {distanceToLeader:F1}, Cursor direction valid");
                                         shouldDashToLeader = true;
+                                    }
+                                    else if (distanceToLeader > 700 && !IsCursorPointingTowardsTarget(followTarget.Pos))
+                                    {
+                                        CoPilot.Instance.LogMessage($"Movement task: Not dashing - Distance: {distanceToLeader:F1} but cursor not pointing towards target");
                                     }
                                     else
                                     {
@@ -310,13 +369,17 @@ public class AutoPilot
                             }
 
                             // Check for terrain-based dashing
-                            if (CoPilot.Instance.Settings.autoPilotDashEnabled)
+                            if (CoPilot.Instance.Settings.autoPilotDashEnabled && CanDash())
                             {
                                 CoPilot.Instance.LogMessage("Movement task: Checking terrain dash");
-                                if (CheckDashTerrain(currentTask.WorldPosition.WorldToGrid()))
+                                if (CheckDashTerrain(currentTask.WorldPosition.WorldToGrid()) && IsCursorPointingTowardsTarget(currentTask.WorldPosition))
                                 {
-                                    CoPilot.Instance.LogMessage("Movement task: Terrain dash executed");
+                                    CoPilot.Instance.LogMessage("Movement task: Terrain dash executed - Cursor direction valid");
                                     shouldTerrainDash = true;
+                                }
+                                else if (CheckDashTerrain(currentTask.WorldPosition.WorldToGrid()) && !IsCursorPointingTowardsTarget(currentTask.WorldPosition))
+                                {
+                                    CoPilot.Instance.LogMessage("Movement task: Terrain dash blocked - Cursor not pointing towards target");
                                 }
                                 else
                                 {
@@ -439,10 +502,21 @@ public class AutoPilot
                          case TaskNodeType.Dash:
                          {
                              CoPilot.Instance.LogMessage($"Executing Dash task - Target: {currentTask.WorldPosition}, Distance: {Vector3.Distance(CoPilot.Instance.playerPosition, currentTask.WorldPosition):F1}");
-                             tasks.RemoveAt(0);
-                             lastPlayerPosition = CoPilot.Instance.playerPosition;
-                             CoPilot.Instance.LogMessage("Dash task completed successfully");
-                             shouldDashAndContinue = true;
+                             if (CanDash() && IsCursorPointingTowardsTarget(currentTask.WorldPosition))
+                             {
+                                 tasks.RemoveAt(0);
+                                 lastPlayerPosition = CoPilot.Instance.playerPosition;
+                                 CoPilot.Instance.LogMessage("Dash task completed successfully - Cursor direction valid");
+                                 shouldDashAndContinue = true;
+                             }
+                             else if (!CanDash())
+                             {
+                                 CoPilot.Instance.LogMessage("Dash task blocked - Cooldown active");
+                             }
+                             else if (!IsCursorPointingTowardsTarget(currentTask.WorldPosition))
+                             {
+                                 CoPilot.Instance.LogMessage("Dash task blocked - Cursor not pointing towards target");
+                             }
                              break;
                          }
 
@@ -485,6 +559,7 @@ public class AutoPilot
                         CoPilot.Instance.LogMessage("Movement task: Dash mouse positioned, pressing key");
                         yield return new WaitTime(random.Next(25) + 30);
                         Keyboard.KeyPress(CoPilot.Instance.Settings.autoPilotDashKey);
+                        lastDashTime = DateTime.Now; // Record dash time for cooldown
                         CoPilot.Instance.LogMessage("Movement task: Dash key pressed, waiting");
                         yield return new WaitTime(random.Next(25) + 30);
                         yield return null;
@@ -493,6 +568,7 @@ public class AutoPilot
 
                     if (shouldTerrainDash)
                     {
+                        lastDashTime = DateTime.Now; // Record dash time for cooldown (CheckDashTerrain already performed the dash)
                         yield return null;
                         continue;
                     }
@@ -565,6 +641,7 @@ public class AutoPilot
                         CoPilot.Instance.LogMessage("Dash: Mouse positioned, pressing dash key");
                         yield return new WaitTime(random.Next(25) + 30);
                         Keyboard.KeyPress(CoPilot.Instance.Settings.autoPilotDashKey);
+                        lastDashTime = DateTime.Now; // Record dash time for cooldown
                         CoPilot.Instance.LogMessage("Dash: Key pressed, waiting");
                         yield return new WaitTime(random.Next(25) + 30);
                         yield return null;
