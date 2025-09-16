@@ -134,7 +134,7 @@ public class CoPilot : BaseSettingsPlugin<CoPilotSettings>
         }
         catch (Exception e)
         {
-            LogError($"{e}");
+            // Error handling without logging
         }
     }
 
@@ -221,12 +221,11 @@ public class CoPilot : BaseSettingsPlugin<CoPilotSettings>
             }
             catch (Exception e)
             {
-                LogError(e.ToString());
+                // Error handling without logging
             }
-                
+
             if (Settings.autoQuitHotkeyEnabled && (WinApi.GetAsyncKeyState(Settings.forcedAutoQuit) & 0x8000) != 0)
             {
-                LogMessage("Copilot: Panic Quit...");
                 Quit();
             }
 
@@ -278,34 +277,11 @@ public class CoPilot : BaseSettingsPlugin<CoPilotSettings>
                             
                         if (!GameController.IngameState.IngameUi.Map.SmallMiniMap.IsVisibleLocal && shouldBeClosed)
                         {
-                            /*
-                            LogMessage("Atlas: " + GameController.IngameState.IngameUi.Atlas.IsVisible);
-                            LogMessage("AtlasTreePanel: " + GameController.IngameState.IngameUi.AtlasTreePanel.IsVisible);
-                            LogMessage("StashElement: " + GameController.IngameState.IngameUi.StashElement.IsVisible);
-                            LogMessage("TradeWindow: " + GameController.IngameState.IngameUi.TradeWindow.IsVisible);
-                            LogMessage("ChallengesPanel: " + GameController.IngameState.IngameUi.ChallengesPanel.IsVisible);
-                            LogMessage("CraftBench: " + GameController.IngameState.IngameUi.CraftBench.IsVisible);
-                            LogMessage("DelveWindow: " + GameController.IngameState.IngameUi.DelveWindow.IsVisible);
-                            LogMessage("ExpeditionWindow: " + GameController.IngameState.IngameUi.ExpeditionWindow.IsVisible);
-                            LogMessage("BanditDialog: " + GameController.IngameState.IngameUi.BanditDialog.IsVisible);
-                            LogMessage("HarvestWindow: " + GameController.IngameState.IngameUi.HarvestWindow.IsVisible);
-                            LogMessage("MetamorphWindow: " + GameController.IngameState.IngameUi.MetamorphWindow.IsVisible);
-                            LogMessage("SyndicatePanel: " + GameController.IngameState.IngameUi.SyndicatePanel.IsVisible);
-                            LogMessage("QuestRewardWindow: " + GameController.IngameState.IngameUi.QuestRewardWindow.IsVisible);
-                            LogMessage("SynthesisWindow: " + GameController.IngameState.IngameUi.SynthesisWindow.IsVisible);
-                            LogMessage("UltimatumPanel: " + GameController.IngameState.IngameUi.UltimatumPanel.IsVisible);
-                            LogMessage("MapDeviceWindow: " + GameController.IngameState.IngameUi.MapDeviceWindow.IsVisible);
-                            LogMessage("SellWindow: " + GameController.IngameState.IngameUi.SellWindow.IsVisible);
-                            LogMessage("SettingsPanel: " + GameController.IngameState.IngameUi.SettingsPanel.IsVisible);
-                            LogMessage("InventoryPanel: " + GameController.IngameState.IngameUi.InventoryPanel.IsVisible);
-                            LogMessage("TreePanel: " + GameController.IngameState.IngameUi.TreePanel.IsVisible);
-                            */
                             Keyboard.KeyPress(Keys.Tab);
                             SkillInfo.autoMapTabber.Cooldown = 250;
                         }
                         else if (GameController.IngameState.IngameUi.Map.SmallMiniMap.IsVisibleLocal && !shouldBeClosed)
                         {
-                            //LogMessage("AN");
                             Keyboard.KeyPress(Keys.Tab);
                             SkillInfo.autoMapTabber.Cooldown = 250;
                         }
@@ -313,7 +289,7 @@ public class CoPilot : BaseSettingsPlugin<CoPilotSettings>
             }
             catch (Exception e)
             {
-                LogError(e.ToString());
+                // Error handling without logging
             }
 
             #endregion
@@ -348,7 +324,7 @@ public class CoPilot : BaseSettingsPlugin<CoPilotSettings>
                 }
                 catch (Exception e)
                 {
-                    LogError(e.ToString());
+                    // Error handling without logging
                 }
 
             if (Settings.autoQuitGuardian)
@@ -359,7 +335,7 @@ public class CoPilot : BaseSettingsPlugin<CoPilotSettings>
                 }
                 catch (Exception e)
                 {
-                    LogError(e.ToString());
+                    // Error handling without logging
                 }
 
             #endregion
@@ -398,7 +374,7 @@ public class CoPilot : BaseSettingsPlugin<CoPilotSettings>
                     }
                     catch (Exception e)
                     {
-                        LogError(e.ToString());
+                        // Error handling without logging
                     }
 
                 #endregion
@@ -459,7 +435,7 @@ public class CoPilot : BaseSettingsPlugin<CoPilotSettings>
                     }
                     catch (Exception e)
                     {
-                        LogError(e.ToString());
+                        // Error handling without logging
                     }
 
                 #endregion
@@ -500,7 +476,7 @@ public class CoPilot : BaseSettingsPlugin<CoPilotSettings>
                         }
                         catch (Exception e)
                         {
-                            LogError(e.ToString());
+                            // Error handling without logging
                         }
                     }
                     */
@@ -509,7 +485,9 @@ public class CoPilot : BaseSettingsPlugin<CoPilotSettings>
 
         }
         catch (Exception e)
-        {LogError(e.ToString());}
+        {
+            // Error handling without logging
+        }
     }
 
     // Taken from ->

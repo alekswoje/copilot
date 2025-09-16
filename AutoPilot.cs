@@ -73,7 +73,6 @@ public class AutoPilot
         }
         catch (Exception e)
         {
-            CoPilot.Instance.LogError($"Cursor direction check error: {e}");
             return false; // Default to false if we can't determine direction
         }
     }
@@ -127,8 +126,6 @@ public class AutoPilot
             if (playerMovement > 30f)
             {
                 // Reduced logging frequency to prevent lag
-                if (playerMovement > 50f) // Only log for significant movement
-                    CoPilot.Instance.LogMessage($"RESPONSIVENESS: Player moved {playerMovement:F1} units, clearing path for better tracking");
                 lastPathClearTime = DateTime.Now;
                 lastResponsivenessCheck = DateTime.Now;
                 return true;
@@ -157,16 +154,9 @@ public class AutoPilot
                     // VERY AGGRESSIVE: If player is more than 60 degrees away from task direction
                     if (dotProduct < 0.5f) // 60 degrees
                     {
-                        CoPilot.Instance.LogMessage($"180 DEGREE DETECTION: Player direction conflicts with task (dot={dotProduct:F2}), clearing path");
-                        CoPilot.Instance.LogMessage($"DEBUG: Bot pos: {botPos}, Player pos: {playerPos}, Task target: {currentTaskTarget}");
-                        CoPilot.Instance.LogMessage($"DEBUG: Bot->Task vector: {botToTask}, Bot->Player vector: {botToPlayer}");
                         lastPathClearTime = DateTime.Now;
                         lastResponsivenessCheck = DateTime.Now;
                         return true;
-                    }
-                    else
-                    {
-                        CoPilot.Instance.LogMessage($"DEBUG: Direction check OK - dot product: {dotProduct:F2} (>= 0.5 threshold)");
                     }
                 }
             }
@@ -175,7 +165,6 @@ public class AutoPilot
             var distanceToCurrentPlayer = Vector3.Distance(CoPilot.Instance.localPlayer?.Pos ?? CoPilot.Instance.playerPosition, followTarget.Pos);
             if (distanceToCurrentPlayer > 80f) // More aggressive - reduced from 100f
             {
-                CoPilot.Instance.LogMessage($"RESPONSIVENESS: Target {distanceToCurrentPlayer:F1} units away, clearing path for better tracking");
                 lastPathClearTime = DateTime.Now;
                 lastResponsivenessCheck = DateTime.Now;
                 return true;
@@ -185,7 +174,6 @@ public class AutoPilot
         }
         catch (Exception e)
         {
-            CoPilot.Instance.LogError($"Responsiveness check error: {e}");
             return false;
         }
     }
@@ -239,17 +227,10 @@ public class AutoPilot
 
             // More detailed logging for debugging
             // Reduced logging frequency to prevent lag
-            if (efficiency < 0.9f) // Only log when efficiency is actually low
-                CoPilot.Instance.LogMessage($"Path efficiency: Direct={directDistance:F1}, Path={pathDistance:F1}, Ratio={efficiency:F2}, Tasks={tasks.Count}");
-            if (efficiency < 0.8f) // Log when efficiency is getting low
-            {
-                CoPilot.Instance.LogMessage($"LOW EFFICIENCY DETECTED: {efficiency:F2} - Direct path is {(1f/efficiency):F1}x shorter!");
-            }
             return efficiency;
         }
         catch (Exception e)
         {
-            CoPilot.Instance.LogError($"Path efficiency calculation error: {e}");
             return 1.0f; // Default to neutral on error
         }
     }
@@ -267,7 +248,6 @@ public class AutoPilot
 
             if (!shouldCheckEfficiency)
             {
-                CoPilot.Instance.LogMessage($"Path efficiency check skipped: Tasks={tasks.Count}, FollowTarget={followTarget != null}");
                 return false;
             }
             
@@ -280,7 +260,6 @@ public class AutoPilot
             // If direct path is much shorter (more than 20% shorter) than following current path - VERY AGGRESSIVE
             if (efficiency < 0.8f) // Changed from 0.7f to 0.8f for even more aggressive clearing
             {
-                CoPilot.Instance.LogMessage($"PATH ABANDONED FOR EFFICIENCY: {efficiency:F2} < 0.8 (Direct path {(1f/efficiency):F1}x shorter)");
                 lastEfficiencyCheck = DateTime.Now;
                 return true;
             }
@@ -306,7 +285,6 @@ public class AutoPilot
                             float dotProduct = Vector3.Dot(botToPath, botToPlayer);
                             if (dotProduct < -0.1f) // Changed from -0.3f to -0.1f (95 degrees) - even more sensitive
                     {
-                        CoPilot.Instance.LogMessage($"Path abandoned: Player behind bot (dot={dotProduct:F2})");
                         lastEfficiencyCheck = DateTime.Now;
                         return true;
                     }
