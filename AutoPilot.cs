@@ -28,6 +28,8 @@ public class AutoPilot
     private DateTime lastDashTime = DateTime.MinValue; // Track last dash time for cooldown
     private bool instantPathOptimization = false; // Flag for instant response when path efficiency is detected
     private DateTime lastPathClearTime = DateTime.MinValue; // Track last path clear to prevent spam
+    private DateTime lastResponsivenessCheck = DateTime.MinValue; // Track last responsiveness check to prevent spam
+    private DateTime lastEfficiencyCheck = DateTime.MinValue; // Track last efficiency check to prevent spam
 
     private int numRows, numCols;
     private byte[,] tiles;
@@ -102,8 +104,12 @@ public class AutoPilot
         try
         {
             // For override checks (after click), be more aggressive with timing
-            int rateLimitMs = isOverrideCheck ? 100 : 300; // Override checks can happen more frequently
+            int rateLimitMs = isOverrideCheck ? 100 : 500; // Increased from 300 to 500ms to reduce spam
             if ((DateTime.Now - lastPathClearTime).TotalMilliseconds < rateLimitMs)
+                return false;
+            
+            // Additional cooldown for responsiveness checks to prevent excessive path clearing
+            if ((DateTime.Now - lastResponsivenessCheck).TotalMilliseconds < 200) // 200ms cooldown between checks
                 return false;
 
             // Need a follow target to check responsiveness
@@ -120,8 +126,11 @@ public class AutoPilot
             // More aggressive: If player moved more than 30 units, clear path for responsiveness
             if (playerMovement > 30f)
             {
-                CoPilot.Instance.LogMessage($"RESPONSIVENESS: Player moved {playerMovement:F1} units, clearing path for better tracking");
+                // Reduced logging frequency to prevent lag
+                if (playerMovement > 50f) // Only log for significant movement
+                    CoPilot.Instance.LogMessage($"RESPONSIVENESS: Player moved {playerMovement:F1} units, clearing path for better tracking");
                 lastPathClearTime = DateTime.Now;
+                lastResponsivenessCheck = DateTime.Now;
                 return true;
             }
 
@@ -152,6 +161,7 @@ public class AutoPilot
                         CoPilot.Instance.LogMessage($"DEBUG: Bot pos: {botPos}, Player pos: {playerPos}, Task target: {currentTaskTarget}");
                         CoPilot.Instance.LogMessage($"DEBUG: Bot->Task vector: {botToTask}, Bot->Player vector: {botToPlayer}");
                         lastPathClearTime = DateTime.Now;
+                        lastResponsivenessCheck = DateTime.Now;
                         return true;
                     }
                     else
@@ -167,6 +177,7 @@ public class AutoPilot
             {
                 CoPilot.Instance.LogMessage($"RESPONSIVENESS: Target {distanceToCurrentPlayer:F1} units away, clearing path for better tracking");
                 lastPathClearTime = DateTime.Now;
+                lastResponsivenessCheck = DateTime.Now;
                 return true;
             }
 
@@ -227,7 +238,9 @@ public class AutoPilot
             float efficiency = directDistance / pathDistance;
 
             // More detailed logging for debugging
-            CoPilot.Instance.LogMessage($"Path efficiency: Direct={directDistance:F1}, Path={pathDistance:F1}, Ratio={efficiency:F2}, Tasks={tasks.Count}");
+            // Reduced logging frequency to prevent lag
+            if (efficiency < 0.9f) // Only log when efficiency is actually low
+                CoPilot.Instance.LogMessage($"Path efficiency: Direct={directDistance:F1}, Path={pathDistance:F1}, Ratio={efficiency:F2}, Tasks={tasks.Count}");
             if (efficiency < 0.8f) // Log when efficiency is getting low
             {
                 CoPilot.Instance.LogMessage($"LOW EFFICIENCY DETECTED: {efficiency:F2} - Direct path is {(1f/efficiency):F1}x shorter!");
@@ -257,6 +270,10 @@ public class AutoPilot
                 CoPilot.Instance.LogMessage($"Path efficiency check skipped: Tasks={tasks.Count}, FollowTarget={followTarget != null}");
                 return false;
             }
+            
+            // Add cooldown to prevent excessive efficiency checks
+            if ((DateTime.Now - lastEfficiencyCheck).TotalMilliseconds < 300) // 300ms cooldown between checks
+                return false;
 
             float efficiency = CalculatePathEfficiency();
 
@@ -264,6 +281,7 @@ public class AutoPilot
             if (efficiency < 0.8f) // Changed from 0.7f to 0.8f for even more aggressive clearing
             {
                 CoPilot.Instance.LogMessage($"PATH ABANDONED FOR EFFICIENCY: {efficiency:F2} < 0.8 (Direct path {(1f/efficiency):F1}x shorter)");
+                lastEfficiencyCheck = DateTime.Now;
                 return true;
             }
 
@@ -289,6 +307,7 @@ public class AutoPilot
                             if (dotProduct < -0.1f) // Changed from -0.3f to -0.1f (95 degrees) - even more sensitive
                     {
                         CoPilot.Instance.LogMessage($"Path abandoned: Player behind bot (dot={dotProduct:F2})");
+                        lastEfficiencyCheck = DateTime.Now;
                         return true;
                     }
                 }
@@ -316,6 +335,8 @@ public class AutoPilot
         lastDashTime = DateTime.MinValue; // Reset dash cooldown on area change
         instantPathOptimization = false; // Reset instant optimization flag
         lastPathClearTime = DateTime.MinValue; // Reset responsiveness tracking
+        lastResponsivenessCheck = DateTime.MinValue; // Reset responsiveness check cooldown
+        lastEfficiencyCheck = DateTime.MinValue; // Reset efficiency check cooldown
     }
 
     /// <summary>
@@ -1227,7 +1248,9 @@ public class AutoPilot
                     if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
                     {
                         var instantDistanceToLeader = Vector3.Distance(CoPilot.Instance.playerPosition, followTarget.Pos);
-                        CoPilot.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Creating direct path to leader - Distance: {instantDistanceToLeader:F1}");
+                        // Reduced logging frequency to prevent lag
+                        if (instantDistanceToLeader > 200f) // Only log for significant distances
+                            CoPilot.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Creating direct path to leader - Distance: {instantDistanceToLeader:F1}");
                         
                         if (instantDistanceToLeader > 1000 && CoPilot.Instance.Settings.autoPilotDashEnabled) // Increased from 700 to 1000
                         {
