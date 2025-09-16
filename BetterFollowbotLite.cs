@@ -325,24 +325,6 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
                 if (Settings.auraBlessingEnabled)
                 {
-                    BetterFollowbotLite.Instance.LogMessage($"AURA BLESSING: Processing skill ID {skill.Id}, Name: {skill.Name}, Slot: {skill.SkillSlotIndex}");
-
-                    // Log current relevant buffs for debugging (excluding life regen effects)
-                    var relevantBuffs = buffs.Where(b =>
-                        (b.Name.Contains("blessing") && !b.Name.Contains("life_regen")) ||
-                        (b.Name.Contains("holy") && !b.Name.Contains("life")) ||
-                        (b.Name.Contains("relic") && !b.Name.Contains("life")) ||
-                        b.Name.Contains("zealotry") ||
-                        b.Name.Contains("aura_spell_damage")).ToList();
-                    if (relevantBuffs.Any())
-                    {
-                        BetterFollowbotLite.Instance.LogMessage($"AURA BLESSING: Current relevant buffs: {string.Join(", ", relevantBuffs.Select(b => $"{b.Name}({b.Timer:F1}s)"))}");
-                    }
-                    else
-                    {
-                        BetterFollowbotLite.Instance.LogMessage("AURA BLESSING: No relevant buffs found");
-                    }
-
                     try
                     {
                         // Holy Relic summoning logic
@@ -351,8 +333,6 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                             // Check cooldown to prevent double-spawning
                             if (SkillInfo.ManageCooldown(SkillInfo.holyRelict, skill))
                             {
-                                BetterFollowbotLite.Instance.LogMessage($"HOLY RELIC: Detected Holy Relic skill (ID: {skill.Id}), CanBeUsed: {skill.CanBeUsed}, RemainingUses: {skill.RemainingUses}, IsOnCooldown: {skill.IsOnCooldown}");
-
                                 var lowestMinionHp = Summons.GetLowestMinionHpp();
                                 // Convert HP percentage from 0-1 range to 0-100 range for comparison
                                 var lowestMinionHpPercent = lowestMinionHp * 100f;
@@ -363,26 +343,16 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                     x.Name == "has_guardians_blessing_minion" ||
                                     (x.Name.Contains("holy") && x.Name.Contains("relic") && !x.Name.Contains("life")) ||
                                     x.Name.Contains("guardian_blessing_minion"));
-                                var threshold = Settings.holyRelicHealthThreshold;
-
-                                BetterFollowbotLite.Instance.LogMessage($"HOLY RELIC: Lowest minion HP: {lowestMinionHpPercent:F1}%, Threshold: {threshold}%, Has minion buff: {hasGuardianBlessingMinion}");
 
                                 // Check conditions
-                                var healthLow = lowestMinionHpPercent < threshold;
+                                var healthLow = lowestMinionHpPercent < Settings.holyRelicHealthThreshold;
                                 var missingBuff = !hasGuardianBlessingMinion;
-
-                                BetterFollowbotLite.Instance.LogMessage($"HOLY RELIC: Health low: {healthLow}, Missing buff: {missingBuff}, Should summon: {healthLow || missingBuff}");
 
                                 // If Holy Relic health is below threshold OR we don't have any minion buff, summon new Holy Relic
                                 if (healthLow || missingBuff)
                                 {
-                                    BetterFollowbotLite.Instance.LogMessage($"HOLY RELIC: Summoning new Holy Relic (reason: {(healthLow ? "health low" : "missing buff")})");
                                     Keyboard.KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
                                     SkillInfo.holyRelict.Cooldown = 200; // 2 second cooldown to prevent double-spawning
-                                }
-                                else
-                                {
-                                    BetterFollowbotLite.Instance.LogMessage("HOLY RELIC: Conditions not met, not summoning");
                                 }
                             }
                         }
@@ -390,8 +360,6 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                         // Zealotry casting logic
                         else if (skill.Id == SkillInfo.auraZealotry.Id)
                         {
-                            BetterFollowbotLite.Instance.LogMessage($"ZEALOTRY: Detected Zealotry skill (ID: {skill.Id}), CanBeUsed: {skill.CanBeUsed}, RemainingUses: {skill.RemainingUses}, IsOnCooldown: {skill.IsOnCooldown}");
-
                             // Check for Zealotry aura buff
                             // Prioritize ReAgent buff names, then check for aura effects
                             var hasGuardianBlessingAura = buffs.Exists(x =>
@@ -406,43 +374,21 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                 (x.Name.Contains("holy") && x.Name.Contains("relic") && !x.Name.Contains("life")) ||
                                 x.Name.Contains("guardian_blessing_minion"));
 
-                            BetterFollowbotLite.Instance.LogMessage($"ZEALOTRY: Has aura buff: {hasGuardianBlessingAura}, Has minion buff: {hasGuardianBlessingMinion}");
-
                             // Check conditions
                             var missingAura = !hasGuardianBlessingAura;
                             var hasMinion = hasGuardianBlessingMinion;
 
-                            BetterFollowbotLite.Instance.LogMessage($"ZEALOTRY: Missing aura: {missingAura}, Has minion: {hasMinion}, Should cast: {missingAura && hasMinion}");
-
                             // If we have the minion but don't have the aura buff, cast Zealotry
                             if (missingAura && hasMinion)
                             {
-                                BetterFollowbotLite.Instance.LogMessage("ZEALOTRY: Casting Zealotry (have minion but missing aura)");
                                 Keyboard.KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
-                            }
-                            else
-                            {
-                                BetterFollowbotLite.Instance.LogMessage("ZEALOTRY: Conditions not met, not casting");
-                            }
-                        }
-                        else
-                        {
-                            // Check if this might be a skill we're looking for but not detecting properly
-                            var skillName = skill.InternalName.ToLower();
-                            if (skillName.Contains("relic") || skillName.Contains("zealot") || skillName.Contains("blessing"))
-                            {
-                                BetterFollowbotLite.Instance.LogMessage($"AURA BLESSING: Potential aura skill detected - Name: {skill.InternalName}, ID: {skill.Id}");
                             }
                         }
                     }
                     catch (Exception e)
                     {
-                        BetterFollowbotLite.Instance.LogMessage($"AURA BLESSING: Error processing skill {skill.Id}: {e.Message}");
+                        // Error handling without logging
                     }
-                }
-                else if (Settings.debugMode)
-                {
-                    BetterFollowbotLite.Instance.LogMessage("AURA BLESSING: Feature disabled");
                 }
 
                 #endregion
