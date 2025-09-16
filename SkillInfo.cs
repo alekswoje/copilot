@@ -488,10 +488,21 @@ internal static class SkillInfo
                 case "vaal_haste":
                     vaalHaste.Id = skill.Id;
                     vaalHaste.BuffName = "vaal_haste";
+                    BetterFollowbotLite.Instance?.LogMessage($"SKILL DETECTED: Vaal Haste - ID: {skill.Id}, InternalName: {skill.InternalName}");
                     break;
                 case "vaal_discipline":
                     vaalDiscipline.Id = skill.Id;
                     vaalDiscipline.BuffName = "vaal_discipline";
+                    BetterFollowbotLite.Instance?.LogMessage($"SKILL DETECTED: Vaal Discipline - ID: {skill.Id}, InternalName: {skill.InternalName}");
+                    break;
+                default:
+                    // Log Vaal skills that might have different names
+                    if (skill.InternalName.ToLower().Contains("vaal") ||
+                        skill.InternalName.ToLower().Contains("haste") ||
+                        skill.InternalName.ToLower().Contains("discipline"))
+                    {
+                        BetterFollowbotLite.Instance?.LogMessage($"POTENTIAL VAAL SKILL: {skill.InternalName} - ID: {skill.Id}");
+                    }
                     break;
             }
         }

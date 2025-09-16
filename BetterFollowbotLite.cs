@@ -558,7 +558,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                     {
                         if (skill.Id == SkillInfo.vaalHaste.Id)
                         {
-                            BetterFollowbotLite.Instance.LogMessage("VAAL HASTE: Vaal Haste skill detected");
+                            BetterFollowbotLite.Instance.LogMessage($"VAAL HASTE: Vaal Haste skill detected - ID: {skill.Id}, Name: {skill.Name}");
 
                             // Custom cooldown check for vaal haste
                             if (SkillInfo.vaalHaste.Cooldown <= 0 &&
@@ -599,7 +599,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                     {
                         if (skill.Id == SkillInfo.vaalDiscipline.Id)
                         {
-                            BetterFollowbotLite.Instance.LogMessage("VAAL DISCIPLINE: Vaal Discipline skill detected");
+                            BetterFollowbotLite.Instance.LogMessage($"VAAL DISCIPLINE: Vaal Discipline skill detected - ID: {skill.Id}, Name: {skill.Name}");
 
                             // Custom cooldown check for vaal discipline
                             if (SkillInfo.vaalDiscipline.Cooldown <= 0 &&
