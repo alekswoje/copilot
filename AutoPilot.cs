@@ -359,16 +359,64 @@ public class AutoPilot
             // Look for portals when leader is in different zone, or when in hideout, or in high level areas
             if(!leaderPartyElement.ZoneName.Equals(currentZoneName) || (bool)BetterFollowbotLite.Instance?.GameController?.Area?.CurrentArea?.IsHideout || BetterFollowbotLite.Instance.GameController?.Area?.CurrentArea?.RealLevel >= 68) // TODO: or is chamber of sins a7 or is epilogue
             {
-                var portalLabels =
+                var allPortalLabels =
                     BetterFollowbotLite.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels.Where(x =>
-                            x != null && x.IsVisible && x.Label != null && x.Label.IsValid && x.Label.IsVisible && x.ItemOnGround != null && 
+                            x != null && x.IsVisible && x.Label != null && x.Label.IsValid && x.Label.IsVisible && x.ItemOnGround != null &&
                             (x.ItemOnGround.Metadata.ToLower().Contains("areatransition") || x.ItemOnGround.Metadata.ToLower().Contains("portal") ))
-                        .OrderBy(x => Vector3.Distance(lastTargetPosition, x.ItemOnGround.Pos)).ToList();
+                        .ToList();
 
+                if (allPortalLabels == null || allPortalLabels.Count == 0)
+                    return null;
 
-                return BetterFollowbotLite.Instance?.GameController?.Area?.CurrentArea?.IsHideout != null && (bool)BetterFollowbotLite.Instance.GameController?.Area?.CurrentArea?.IsHideout
-                    ? portalLabels?[random.Next(portalLabels.Count)]
-                    : portalLabels?.FirstOrDefault();
+                // First, try to find portals that lead to the leader's zone by checking the label text
+                var matchingPortals = allPortalLabels.Where(x =>
+                {
+                    try
+                    {
+                        var labelText = x.Label?.Text?.ToLower() ?? "";
+                        var leaderZoneName = leaderPartyElement.ZoneName?.ToLower() ?? "";
+                        var currentZone = currentZoneName?.ToLower() ?? "";
+
+                        // Debug: Log portal information for troubleshooting
+                        BetterFollowbotLite.Instance.LogMessage($"PORTAL CHECK: Label='{x.Label?.Text}', LeaderZone='{leaderZoneName}', CurrentZone='{currentZone}'");
+
+                        // Check if the portal label contains the leader's zone name
+                        // This handles cases like "Portal to The Lair of the Hydra" containing "The Lair of the Hydra"
+                        var matchesLeaderZone = !string.IsNullOrEmpty(labelText) &&
+                                               !string.IsNullOrEmpty(leaderZoneName) &&
+                                               labelText.Contains(leaderZoneName);
+
+                        // Don't take portals that lead back to current zone
+                        var notCurrentZone = !string.IsNullOrEmpty(labelText) &&
+                                           !string.IsNullOrEmpty(currentZone) &&
+                                           !labelText.Contains(currentZone);
+
+                        return matchesLeaderZone && notCurrentZone;
+                    }
+                    catch
+                    {
+                        return false;
+                    }
+                }).OrderBy(x => Vector3.Distance(lastTargetPosition, x.ItemOnGround.Pos)).ToList();
+
+                // If we found portals that match the leader's zone, use those
+                if (matchingPortals.Count > 0)
+                {
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL FOUND: Using portal '{matchingPortals.First().Label?.Text}' that matches leader zone '{leaderPartyElement.ZoneName}'");
+                    return matchingPortals.First();
+                }
+
+                // Fallback: use any portal (original behavior) when in hideout
+                if (BetterFollowbotLite.Instance?.GameController?.Area?.CurrentArea?.IsHideout != null &&
+                    (bool)BetterFollowbotLite.Instance.GameController?.Area?.CurrentArea?.IsHideout)
+                {
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL FALLBACK: Using random portal in hideout (no match found for leader zone '{leaderPartyElement.ZoneName}')");
+                    return allPortalLabels[random.Next(allPortalLabels.Count)];
+                }
+
+                // Fallback: use the closest portal (original behavior)
+                BetterFollowbotLite.Instance.LogMessage($"PORTAL FALLBACK: Using closest portal (no match found for leader zone '{leaderPartyElement.ZoneName}')");
+                return allPortalLabels.OrderBy(x => Vector3.Distance(lastTargetPosition, x.ItemOnGround.Pos)).FirstOrDefault();
             }
             return null;
         }
