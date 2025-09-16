@@ -1124,10 +1124,25 @@ public class AutoPilot
     {
         try
         {
-            if (!BetterFollowbotLite.Instance.Settings.Enable.Value || !BetterFollowbotLite.Instance.Settings.autoPilotEnabled.Value || BetterFollowbotLite.Instance.localPlayer == null || !BetterFollowbotLite.Instance.localPlayer.IsAlive || 
+            if (!BetterFollowbotLite.Instance.Settings.Enable.Value || !BetterFollowbotLite.Instance.Settings.autoPilotEnabled.Value || BetterFollowbotLite.Instance.localPlayer == null || !BetterFollowbotLite.Instance.localPlayer.IsAlive ||
                 !BetterFollowbotLite.Instance.GameController.IsForeGroundCache || MenuWindow.IsOpened || BetterFollowbotLite.Instance.GameController.IsLoading || !BetterFollowbotLite.Instance.GameController.InGame)
             {
                 return;
+            }
+
+            // PRIORITY: Check for any open teleport confirmation dialogs and handle them immediately
+            bool hasTransitionTasks = tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.TeleportConfirm || t.Type == TaskNodeType.TeleportButton);
+            if (!hasTransitionTasks)
+            {
+                var tpConfirmation = GetTpConfirmation();
+                if (tpConfirmation != null)
+                {
+                    BetterFollowbotLite.Instance.LogMessage("TELEPORT: Found open confirmation dialog, handling it immediately");
+                    var center = tpConfirmation.GetClientRect().Center;
+                    tasks.Add(new TaskNode(new Vector3(center.X, center.Y, 0), 0, TaskNodeType.TeleportConfirm));
+                    // Return early to handle this task immediately
+                    return;
+                }
             }
 
             // Update player position for responsiveness detection - MORE FREQUENT UPDATES
@@ -1137,8 +1152,8 @@ public class AutoPilot
             followTarget = GetFollowingTarget();
             var leaderPartyElement = GetLeaderPartyElement();
 
-            // Check if we already have transition/teleport tasks pending - don't spam new ones
-            bool hasTransitionTasks = tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.TeleportConfirm || t.Type == TaskNodeType.TeleportButton);
+            // Update hasTransitionTasks check for the rest of the logic
+            hasTransitionTasks = tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.TeleportConfirm || t.Type == TaskNodeType.TeleportButton);
 
             if (followTarget == null && leaderPartyElement != null && !leaderPartyElement.ZoneName.Equals(BetterFollowbotLite.Instance.GameController?.Area.CurrentArea.DisplayName))
             {
@@ -1157,20 +1172,27 @@ public class AutoPilot
                         // No matching portal found, use party teleport (blue swirl)
                         BetterFollowbotLite.Instance.LogMessage($"TELEPORT: No matching portal found for '{leaderPartyElement.ZoneName}', using party teleport");
 
+                        // FIRST: Check if teleport confirmation dialog is already open (handle it immediately)
                         var tpConfirmation = GetTpConfirmation();
                         if (tpConfirmation != null)
                         {
+                            BetterFollowbotLite.Instance.LogMessage("TELEPORT: Confirmation dialog already open, handling it");
                             // Add teleport confirmation task
                             var center = tpConfirmation.GetClientRect().Center;
                             tasks.Add(new TaskNode(new Vector3(center.X, center.Y, 0), 0, TaskNodeType.TeleportConfirm));
                         }
                         else
                         {
-                            // Add teleport button task
+                            // SECOND: Check if we can click the teleport button
                             var tpButton = leaderPartyElement != null ? GetTpButton(leaderPartyElement) : Vector2.Zero;
                             if(!tpButton.Equals(Vector2.Zero))
                             {
+                                BetterFollowbotLite.Instance.LogMessage("TELEPORT: Clicking teleport button to open confirmation dialog");
                                 tasks.Add(new TaskNode(new Vector3(tpButton.X, tpButton.Y, 0), 0, TaskNodeType.TeleportButton));
+                            }
+                            else
+                            {
+                                BetterFollowbotLite.Instance.LogMessage("TELEPORT: No teleport button available");
                             }
                         }
                     }
@@ -1198,20 +1220,27 @@ public class AutoPilot
                             // No matching portal found, use party teleport
                             BetterFollowbotLite.Instance.LogMessage($"TELEPORT: No matching portal found for '{leaderPartyElement.ZoneName}', using party teleport");
 
+                            // FIRST: Check if teleport confirmation dialog is already open (handle it immediately)
                             var tpConfirmation = GetTpConfirmation();
                             if (tpConfirmation != null)
                             {
+                                BetterFollowbotLite.Instance.LogMessage("TELEPORT: Confirmation dialog already open, handling it");
                                 // Add teleport confirmation task
                                 var center = tpConfirmation.GetClientRect().Center;
                                 tasks.Add(new TaskNode(new Vector3(center.X, center.Y, 0), 0, TaskNodeType.TeleportConfirm));
                             }
                             else
                             {
-                                // Add teleport button task
+                                // SECOND: Check if we can click the teleport button
                                 var tpButton = leaderPartyElement != null ? GetTpButton(leaderPartyElement) : Vector2.Zero;
                                 if(!tpButton.Equals(Vector2.Zero))
                                 {
+                                    BetterFollowbotLite.Instance.LogMessage("TELEPORT: Clicking teleport button to open confirmation dialog");
                                     tasks.Add(new TaskNode(new Vector3(tpButton.X, tpButton.Y, 0), 0, TaskNodeType.TeleportButton));
+                                }
+                                else
+                                {
+                                    BetterFollowbotLite.Instance.LogMessage("TELEPORT: No teleport button available");
                                 }
                             }
                         }
