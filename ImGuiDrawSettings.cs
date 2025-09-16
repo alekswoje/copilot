@@ -124,40 +124,6 @@ internal class ImGuiDrawSettings
 
         try
         {
-            // Auto Quit
-            ImGui.PushStyleColor(ImGuiCol.Header, BetterFollowbotLite.Instance.Settings.autoQuitEnabled ? green : red);
-            ImGui.PushID(3);
-            if (ImGui.TreeNodeEx("Auto Quit (This requires HUD started as Admin !)", collapsingHeaderFlags))
-            {
-                BetterFollowbotLite.Instance.Settings.autoQuitEnabled.Value =
-                    ImGuiExtension.Checkbox("Enabled", BetterFollowbotLite.Instance.Settings.autoQuitEnabled.Value);
-                BetterFollowbotLite.Instance.Settings.hppQuit.Value =
-                    ImGuiExtension.IntSlider("HP%", BetterFollowbotLite.Instance.Settings.hppQuit);
-                BetterFollowbotLite.Instance.Settings.espQuit.Value =
-                    ImGuiExtension.IntSlider("ES%", BetterFollowbotLite.Instance.Settings.espQuit);
-                BetterFollowbotLite.Instance.Settings.autoQuitGuardian.Value = ImGuiExtension.Checkbox("Guardian Auto Quit",
-                    BetterFollowbotLite.Instance.Settings.autoQuitGuardian.Value);
-                BetterFollowbotLite.Instance.Settings.guardianHpp.Value =
-                    ImGuiExtension.IntSlider("Guardian HP%", BetterFollowbotLite.Instance.Settings.guardianHpp);
-                BetterFollowbotLite.Instance.Settings.autoQuitHotkeyEnabled.Value = ImGuiExtension.Checkbox("Hotkey Enabled",
-                    BetterFollowbotLite.Instance.Settings.autoQuitHotkeyEnabled.Value);
-                BetterFollowbotLite.Instance.Settings.forcedAutoQuit.Value = ImGuiExtension.HotkeySelector(
-                    "Force Quit Hotkey: " + BetterFollowbotLite.Instance.Settings.forcedAutoQuit.Value,
-                    BetterFollowbotLite.Instance.Settings.forcedAutoQuit.Value);
-            }
-        }
-        catch (Exception e)
-        {
-            // Error handling without logging
-        }
-
-
-
-
-            
-            
-        try
-        {
             // Aura Blessing
             ImGui.PushStyleColor(ImGuiCol.Header, BetterFollowbotLite.Instance.Settings.auraBlessingEnabled ? green : red);
             ImGui.PushID(9);

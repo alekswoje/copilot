@@ -40,17 +40,6 @@ public class BetterFollowbotLiteSettings : ISettings
 
     #endregion
         
-    #region Auto Quit
-
-    public ToggleNode autoQuitEnabled = new ToggleNode(false);
-    public ToggleNode autoQuitHotkeyEnabled = new ToggleNode(true);
-    public HotkeyNode forcedAutoQuit = new HotkeyNode(Keys.F4);
-    public RangeNode<int> hppQuit = new RangeNode<int>(35, 0, 100);
-    public RangeNode<int> espQuit = new RangeNode<int>(0, 0, 100);
-    public ToggleNode autoQuitGuardian = new ToggleNode(false);
-    public RangeNode<int> guardianHpp = new RangeNode<int>(35, 0, 100);
-
-    #endregion
 
     #region Aura Blessing
 

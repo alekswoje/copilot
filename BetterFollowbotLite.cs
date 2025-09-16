@@ -224,10 +224,6 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                 // Error handling without logging
             }
 
-            if (Settings.autoQuitHotkeyEnabled && (WinApi.GetAsyncKeyState(Settings.forcedAutoQuit) & 0x8000) != 0)
-            {
-                Quit();
-            }
 
             if (GameController?.Game?.IngameState?.Data?.LocalPlayer == null || GameController?.IngameState?.IngameUi == null )
                 return;
@@ -312,33 +308,6 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
             // Corpses collection removed since no longer needed
 
 
-            #region Auto Quit
-
-            if (Settings.autoQuitEnabled)
-                try
-                {
-                    if (player.HPPercentage < (float)Settings.hppQuit / 100||
-                        player.MaxES > 0 &&
-                        player.ESPercentage < (float)Settings.espQuit / 100)
-                        Quit();
-                }
-                catch (Exception e)
-                {
-                    // Error handling without logging
-                }
-
-            if (Settings.autoQuitGuardian)
-                try
-                {
-                    if (Summons.GetAnimatedGuardianHpp() < (float)Settings.guardianHpp / 100)
-                        Quit();
-                }
-                catch (Exception e)
-                {
-                    // Error handling without logging
-                }
-
-            #endregion
 
                 
 

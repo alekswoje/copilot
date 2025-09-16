@@ -8,7 +8,6 @@ A Path of Exile plugin for ExileCore/PoeHelper that provides automated follow bo
 - **Skill Automation**: Automated casting of auras, blessings, and combat skills
 - **Portal Management**: Smart portal detection and usage for zone transitions
 - **Combat Support**: Automated monster targeting and attack routines
-- **Safety Features**: Auto-quit functionality and guardian monitoring
 - **Customizable Settings**: Extensive configuration options for all features
 
 ## Installation
@@ -38,10 +37,6 @@ A Path of Exile plugin for ExileCore/PoeHelper that provides automated follow bo
 - **Flame Link**: Party member linking functionality
 - **Smite**: Automated smite buff maintenance
 
-#### Safety Features
-- **Auto Quit**: Health and energy shield monitoring
-- **Guardian Protection**: Minion health monitoring
-
 ## Settings
 
 Access plugin settings through the ExileCore menu:
@@ -68,7 +63,9 @@ Feel free to submit issues, feature requests, or pull requests to improve the pl
 
 ## License
 
-This project is released under the same license as the original CoPilot project.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+The MIT License is a permissive license that allows anyone to do anything with this software as long as they include the original copyright and license notice.
 
 ## Disclaimer
 
