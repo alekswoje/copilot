@@ -348,7 +348,7 @@ public class AutoPilot
         }
     }
 
-    private LabelOnGround GetBestPortalLabel(PartyElementWindow leaderPartyElement)
+    private LabelOnGround GetBestPortalLabel(PartyElementWindow leaderPartyElement, bool forceSearch = false)
     {
         try
         {
@@ -364,13 +364,18 @@ public class AutoPilot
             var realLevel = BetterFollowbotLite.Instance.GameController?.Area?.CurrentArea?.RealLevel ?? 0;
             var zonesAreDifferent = !leaderPartyElement.ZoneName.Equals(currentZoneName);
 
-            BetterFollowbotLite.Instance.LogMessage($"PORTAL DEBUG: Checking for portals - Current: '{currentZoneName}', Leader: '{leaderZoneName}', Hideout: {isHideout}, Level: {realLevel}, ZonesDifferent: {zonesAreDifferent}");
+            BetterFollowbotLite.Instance.LogMessage($"PORTAL DEBUG: Checking for portals - Current: '{currentZoneName}', Leader: '{leaderZoneName}', Hideout: {isHideout}, Level: {realLevel}, ZonesDifferent: {zonesAreDifferent}, ForceSearch: {forceSearch}");
 
             // Look for portals when leader is in different zone, or when in hideout, or in high level areas
             // But be smarter about it - don't look for portals if zones are the same unless in hideout
-            if (zonesAreDifferent || isHideout || (realLevel >= 68 && zonesAreDifferent)) // TODO: or is chamber of sins a7 or is epilogue
+            // If forceSearch is true, override the zone checking logic
+            if (forceSearch || zonesAreDifferent || isHideout || (realLevel >= 68 && zonesAreDifferent)) // TODO: or is chamber of sins a7 or is epilogue
             {
-                if (zonesAreDifferent)
+                if (forceSearch)
+                {
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL DEBUG: Portal search condition met - FORCE SEARCH enabled");
+                }
+                else if (zonesAreDifferent)
                 {
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL DEBUG: Portal search condition met - leader in different zone");
                 }
@@ -1455,7 +1460,7 @@ public class AutoPilot
                     {
                         BetterFollowbotLite.Instance.LogMessage("FOLLOW TARGET NULL: No pending transition tasks, searching for portal");
                         // Leader is in different zone, look for portals
-                        var portal = GetBestPortalLabel(leaderPartyElement);
+                        var portal = GetBestPortalLabel(leaderPartyElement, forceSearch: false);
                         if (portal != null)
                         {
                             // Clear any existing movement tasks and add portal task
@@ -1575,25 +1580,70 @@ public class AutoPilot
                     var distanceMoved = Vector3.Distance(lastTargetPosition, followTarget.Pos);
                     if (lastTargetPosition != Vector3.Zero && distanceMoved > BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance.Value)
                     {
-                        // Only look for portals if leader is actually in a different zone
-                        if (leaderPartyElement != null && !leaderPartyElement.ZoneName.Equals(BetterFollowbotLite.Instance.GameController?.Area.CurrentArea.DisplayName))
+                        // Check if this is likely a zone transition (moved extremely far)
+                        var isLikelyZoneTransition = distanceMoved > 1000; // Very large distance suggests zone transition
+
+                        if (isLikelyZoneTransition)
                         {
-                            BetterFollowbotLite.Instance.LogMessage($"LEADER MOVED FAR: Leader moved {distanceMoved:F1} units, checking for portals to different zone '{leaderPartyElement.ZoneName}'");
-                            var transition = GetBestPortalLabel(leaderPartyElement);
+                            BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION DETECTED: Leader moved {distanceMoved:F1} units, likely zone transition");
+
+                            // First check if zone names are different (immediate detection)
+                            var zonesAreDifferent = leaderPartyElement != null && !leaderPartyElement.ZoneName.Equals(BetterFollowbotLite.Instance.GameController?.Area.CurrentArea.DisplayName);
+
+                            if (zonesAreDifferent)
+                            {
+                                BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Confirmed different zones - Current: '{BetterFollowbotLite.Instance.GameController?.Area.CurrentArea.DisplayName}', Leader: '{leaderPartyElement?.ZoneName}'");
+                            }
+                            else
+                            {
+                                BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Zone names same but large distance, assuming transition anyway");
+                            }
+
+                            // Look for portals regardless of zone name confirmation - force portal search
+                            var transition = GetBestPortalLabel(leaderPartyElement, forceSearch: true);
                             // Check for Portal within Screen Distance.
                             if (transition != null && transition.ItemOnGround.DistancePlayer < 80)
                             {
-                                BetterFollowbotLite.Instance.LogMessage($"LEADER MOVED FAR: Found nearby portal '{transition.Label?.Text}', adding transition task");
+                                BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Found nearby portal '{transition.Label?.Text}', adding transition task");
                                 tasks.Add(new TaskNode(transition,200, TaskNodeType.Transition));
                             }
                             else
                             {
-                                BetterFollowbotLite.Instance.LogMessage($"LEADER MOVED FAR: No suitable portal found for zone transition");
+                                BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: No suitable portal found for zone transition");
+
+                                // If no portal found but this looks like a zone transition, try party teleport as fallback
+                                if (zonesAreDifferent || distanceMoved > 1500) // Even more aggressive for very large distances
+                                {
+                                    BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: No portal found, trying party teleport fallback");
+
+                                    // Check if teleport confirmation dialog is already open
+                                    var tpConfirmation = GetTpConfirmation();
+                                    if (tpConfirmation != null)
+                                    {
+                                        BetterFollowbotLite.Instance.LogMessage("ZONE TRANSITION: Teleport confirmation dialog already open, handling it");
+                                        var center = tpConfirmation.GetClientRect().Center;
+                                        tasks.Add(new TaskNode(new Vector3(center.X, center.Y, 0), 0, TaskNodeType.TeleportConfirm));
+                                    }
+                                    else
+                                    {
+                                        // Try to click the teleport button
+                                        var tpButton = leaderPartyElement != null ? GetTpButton(leaderPartyElement) : Vector2.Zero;
+                                        if(!tpButton.Equals(Vector2.Zero))
+                                        {
+                                            BetterFollowbotLite.Instance.LogMessage("ZONE TRANSITION: Clicking teleport button to initiate party teleport");
+                                            tasks.Add(new TaskNode(new Vector3(tpButton.X, tpButton.Y, 0), 0, TaskNodeType.TeleportButton));
+                                        }
+                                        else
+                                        {
+                                            BetterFollowbotLite.Instance.LogMessage("ZONE TRANSITION: No teleport button available, cannot follow through transition");
+                                        }
+                                    }
+                                }
                             }
                         }
                         else
                         {
-                            BetterFollowbotLite.Instance.LogMessage($"LEADER MOVED FAR: Leader moved {distanceMoved:F1} units but same zone, using normal movement/dash");
+                            BetterFollowbotLite.Instance.LogMessage($"LEADER MOVED FAR: Leader moved {distanceMoved:F1} units but within reasonable distance, using normal movement/dash");
                         }
                     }
                     //We have no path, set us to go to leader pos.
