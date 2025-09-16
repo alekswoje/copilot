@@ -438,16 +438,17 @@ public class CoPilot : BaseSettingsPlugin<CoPilotSettings>
                                 var linkSourceBuff = buffs.FirstOrDefault(x => x.Name == linkSkill.BuffName);
                                 var linkSourceTimeLeft = linkSourceBuff?.Timer ?? 0;
                                 
-                                // Check distance from leader to mouse cursor (equivalent to DistanceToCursor)
-                                var mouseWorldPos = GameController.IngameState.Camera.ScreenToWorld(GetMousePosition());
-                                var distanceToCursor = Vector3.Distance(leader.Pos, mouseWorldPos);
+                                // Check distance from leader to mouse cursor in screen space
+                                var mouseScreenPos = GetMousePosition();
+                                var leaderScreenPos = Helper.WorldToValidScreenPosition(leader.Pos);
+                                var distanceToCursor = Vector2.Distance(mouseScreenPos, leaderScreenPos);
 
                                 // Logic: SinceLastActivation(1) && ((!PartyLeader.Buffs.Has("flame_link_target") || Buffs["flame_link_source"].Timer < 4) && PartyLeader.DistanceToCursor < 40)
                                 if ((!hasLinkTarget || linkSourceTimeLeft < 4) && distanceToCursor < 40)
                                 {
                                     // Move mouse to leader position
-                                    var leaderScreenPos = GameController.IngameState.Camera.WorldToScreen(leader.Pos);
-                                    Mouse.SetCursorPos(leaderScreenPos);
+                                    var leaderScreenPosForMouse = GameController.IngameState.Camera.WorldToScreen(leader.Pos);
+                                    Mouse.SetCursorPos(leaderScreenPosForMouse);
                                     
                                     // Activate the skill
                                     Keyboard.KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
