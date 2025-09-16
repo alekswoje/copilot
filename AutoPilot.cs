@@ -1601,11 +1601,84 @@ public class AutoPilot
 
                             // Look for portals regardless of zone name confirmation - force portal search
                             var transition = GetBestPortalLabel(leaderPartyElement, forceSearch: true);
-                            // Check for Portal within Screen Distance.
+
+                            // If no portal matched by name, try to find the closest portal (likely the one the leader used)
+                            if (transition == null)
+                            {
+                                BetterFollowbotLite.Instance.LogMessage("ZONE TRANSITION: No portal matched by name, looking for closest portal");
+
+                                // Get all portal labels again and find the closest one
+                                var allPortals = BetterFollowbotLite.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels.Where(x =>
+                                    x != null && x.IsVisible && x.Label != null && x.Label.IsValid && x.Label.IsVisible &&
+                                    x.ItemOnGround != null &&
+                                    (x.ItemOnGround.Metadata.ToLower().Contains("areatransition") || x.ItemOnGround.Metadata.ToLower().Contains("portal")))
+                                    .OrderBy(x => Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, x.ItemOnGround.Pos))
+                                    .ToList();
+
+                                if (allPortals != null && allPortals.Count > 0)
+                                {
+                                    // First, check if there's an Arena portal - give it priority
+                                    var arenaPortal = allPortals.FirstOrDefault(p => p.Label?.Text?.ToLower().Contains("arena") ?? false);
+                                    LabelOnGround selectedPortal;
+
+                                    if (arenaPortal != null)
+                                    {
+                                        var arenaDistance = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, arenaPortal.ItemOnGround.Pos);
+                                        BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Found Arena portal at distance {arenaDistance:F1}");
+
+                                        if (arenaDistance < 200)
+                                        {
+                                            BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Using Arena portal as likely destination");
+                                            selectedPortal = arenaPortal;
+                                        }
+                                        else
+                                        {
+                                            // Arena portal too far, fall back to closest
+                                            selectedPortal = allPortals.First();
+                                            BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Arena portal too far, using closest instead");
+                                        }
+                                    }
+                                    else
+                                    {
+                                        selectedPortal = allPortals.First();
+                                    }
+
+                                    var selectedDistance = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, selectedPortal.ItemOnGround.Pos);
+
+                                    BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Selected portal '{selectedPortal.Label?.Text}' at distance {selectedDistance:F1}");
+
+                                    // If the selected portal is very close (within 200 units), it's likely the one the leader used
+                                    if (selectedDistance < 200)
+                                    {
+                                        BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Using selected portal '{selectedPortal.Label?.Text}' as likely destination");
+                                        transition = selectedPortal; // Set transition so we use this portal
+                                        // Add the transition task immediately since we found a suitable portal
+                                        tasks.Add(new TaskNode(selectedPortal, 200, TaskNodeType.Transition));
+                                    }
+                                    else
+                                    {
+                                        BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Selected portal too far ({selectedDistance:F1}), using party teleport");
+                                    }
+                                }
+                            }
+
+                            // Check for Portal within Screen Distance (original logic) - only if we haven't already added a task
                             if (transition != null && transition.ItemOnGround.DistancePlayer < 80)
                             {
-                                BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Found nearby portal '{transition.Label?.Text}', adding transition task");
-                                tasks.Add(new TaskNode(transition,200, TaskNodeType.Transition));
+                                // Check if we already have a transition task for this portal
+                                bool alreadyHasTask = tasks.Any(t => t.Type == TaskNodeType.Transition &&
+                                                                   t.LabelOnGround != null &&
+                                                                   t.LabelOnGround.ItemOnGround.Id == transition.ItemOnGround.Id);
+
+                                if (!alreadyHasTask)
+                                {
+                                    BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Found nearby portal '{transition.Label?.Text}', adding transition task");
+                                    tasks.Add(new TaskNode(transition,200, TaskNodeType.Transition));
+                                }
+                                else
+                                {
+                                    BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Portal '{transition.Label?.Text}' task already exists, skipping duplicate");
+                                }
                             }
                             else
                             {
