@@ -488,21 +488,14 @@ public class CoPilot : BaseSettingsPlugin<CoPilotSettings>
                                 {
                                     CoPilot.Instance.LogMessage("SMITE: No smite buff found, looking for targets");
 
-                                    // Find monsters within 40 units that are within 50 units of cursor
-                                    var mouseScreenPos = GetMousePosition();
+                                    // Find monsters within 250 units of player (smite attack range)
                                     var targetMonster = enemys
                                         .Where(monster =>
                                         {
-                                            // Check if monster is within 40 units of player
+                                            // Check if monster is within 250 units of player
                                             var distanceToPlayer = Vector3.Distance(playerPosition, monster.Pos);
-                                            if (distanceToPlayer > 40) return false;
-
-                                            // Check if monster is within 50 units of cursor (in screen space)
-                                            var monsterScreenPos = Helper.WorldToValidScreenPosition(monster.Pos);
-                                            var distanceToCursor = Vector2.Distance(mouseScreenPos, monsterScreenPos);
-
-                                            CoPilot.Instance.LogMessage($"SMITE: Monster at distance {distanceToPlayer:F1} from player, {distanceToCursor:F1} from cursor");
-                                            return distanceToCursor < 50;
+                                            CoPilot.Instance.LogMessage($"SMITE: Monster at distance {distanceToPlayer:F1} from player");
+                                            return distanceToPlayer <= 250;
                                         })
                                         .OrderBy(monster => Vector3.Distance(playerPosition, monster.Pos)) // Closest first
                                         .FirstOrDefault();
