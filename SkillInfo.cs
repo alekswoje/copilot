@@ -490,7 +490,7 @@ internal static class SkillInfo
                     vaalHaste.BuffName = "vaal_haste";
                     BetterFollowbotLite.Instance?.LogMessage($"SKILL DETECTED: Vaal Haste - ID: {skill.Id}, InternalName: {skill.InternalName}");
                     break;
-                case "vaal_discipline":
+                case "discipline":
                     vaalDiscipline.Id = skill.Id;
                     vaalDiscipline.BuffName = "vaal_discipline";
                     BetterFollowbotLite.Instance?.LogMessage($"SKILL DETECTED: Vaal Discipline - ID: {skill.Id}, InternalName: {skill.InternalName}");
