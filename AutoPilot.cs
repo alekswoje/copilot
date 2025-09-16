@@ -205,11 +205,21 @@ public class AutoPilot
             // Only execute input tasks here - decision making moved to Render method
             if (tasks?.Count > 0)
             {
-                var currentTask = tasks.First();
-                var taskDistance = Vector3.Distance(CoPilot.Instance.playerPosition, currentTask.WorldPosition);
-                var playerDistanceMoved = Vector3.Distance(CoPilot.Instance.playerPosition, lastPlayerPosition);
+                try
+                {
+                    var currentTask = tasks.First();
+                    if (currentTask?.WorldPosition == null)
+                    {
+                        CoPilot.Instance.LogError("Coroutine: Invalid task with null WorldPosition, removing");
+                        tasks.RemoveAt(0);
+                        yield return new WaitTime(50);
+                        continue;
+                    }
+                    
+                    var taskDistance = Vector3.Distance(CoPilot.Instance.playerPosition, currentTask.WorldPosition);
+                    var playerDistanceMoved = Vector3.Distance(CoPilot.Instance.playerPosition, lastPlayerPosition);
 
-                CoPilot.Instance.LogMessage($"Coroutine executing task: {currentTask.Type}, Task count: {tasks.Count}, Distance: {taskDistance:F1}");
+                    CoPilot.Instance.LogMessage($"Coroutine executing task: {currentTask.Type}, Task count: {tasks.Count}, Distance: {taskDistance:F1}");
 
                 //We are using a same map transition and have moved significnatly since last tick. Mark the transition task as done.
                 if (currentTask.Type == TaskNodeType.Transition && 
@@ -226,30 +236,37 @@ public class AutoPilot
                         CoPilot.Instance.LogMessage($"Movement task executing - Distance to target: {taskDistance:F1}, Required: {CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance.Value * 1.5:F1}");
 
                         // Check for distance-based dashing to keep up with leader
-                        if (CoPilot.Instance.Settings.autoPilotDashEnabled && followTarget != null)
+                        if (CoPilot.Instance.Settings.autoPilotDashEnabled && followTarget != null && followTarget.Pos != null)
                         {
-                            var distanceToLeader = Vector3.Distance(CoPilot.Instance.playerPosition, followTarget.Pos);
-                            CoPilot.Instance.LogMessage($"Movement task: Checking dash - Distance to leader: {distanceToLeader:F1}, Dash enabled: {CoPilot.Instance.Settings.autoPilotDashEnabled}, Threshold: 700");
-                            if (distanceToLeader > 700) // Dash if more than 700 units away from leader
+                            try
                             {
-                                CoPilot.Instance.LogMessage($"Movement task: Dashing to leader - Distance: {distanceToLeader:F1}");
-                                yield return Mouse.SetCursorPosHuman(Helper.WorldToValidScreenPosition(followTarget.Pos));
-                                CoPilot.Instance.LogMessage("Movement task: Dash mouse positioned, pressing key");
-                                yield return new WaitTime(random.Next(25) + 30);
-                                Keyboard.KeyPress(CoPilot.Instance.Settings.autoPilotDashKey);
-                                CoPilot.Instance.LogMessage("Movement task: Dash key pressed, waiting");
-                                yield return new WaitTime(random.Next(25) + 30);
-                                yield return null;
-                                continue;
+                                var distanceToLeader = Vector3.Distance(CoPilot.Instance.playerPosition, followTarget.Pos);
+                                CoPilot.Instance.LogMessage($"Movement task: Checking dash - Distance to leader: {distanceToLeader:F1}, Dash enabled: {CoPilot.Instance.Settings.autoPilotDashEnabled}, Threshold: 700");
+                                if (distanceToLeader > 700) // Dash if more than 700 units away from leader
+                                {
+                                    CoPilot.Instance.LogMessage($"Movement task: Dashing to leader - Distance: {distanceToLeader:F1}");
+                                    yield return Mouse.SetCursorPosHuman(Helper.WorldToValidScreenPosition(followTarget.Pos));
+                                    CoPilot.Instance.LogMessage("Movement task: Dash mouse positioned, pressing key");
+                                    yield return new WaitTime(random.Next(25) + 30);
+                                    Keyboard.KeyPress(CoPilot.Instance.Settings.autoPilotDashKey);
+                                    CoPilot.Instance.LogMessage("Movement task: Dash key pressed, waiting");
+                                    yield return new WaitTime(random.Next(25) + 30);
+                                    yield return null;
+                                    continue;
+                                }
+                                else
+                                {
+                                    CoPilot.Instance.LogMessage($"Movement task: Not dashing - Distance {distanceToLeader:F1} <= 700");
+                                }
                             }
-                            else
+                            catch (Exception e)
                             {
-                                CoPilot.Instance.LogMessage($"Movement task: Not dashing - Distance {distanceToLeader:F1} <= 700");
+                                CoPilot.Instance.LogError($"Movement task: Dash calculation error: {e}");
                             }
                         }
                         else
                         {
-                            CoPilot.Instance.LogMessage($"Movement task: Dash check skipped - Dash enabled: {CoPilot.Instance.Settings.autoPilotDashEnabled}, Follow target: {followTarget != null}");
+                            CoPilot.Instance.LogMessage($"Movement task: Dash check skipped - Dash enabled: {CoPilot.Instance.Settings.autoPilotDashEnabled}, Follow target: {followTarget != null}, Follow target pos: {followTarget?.Pos != null}");
                         }
 
                         // Check for terrain-based dashing
@@ -269,9 +286,20 @@ public class AutoPilot
                         }
 
                         CoPilot.Instance.LogMessage($"Movement task: Moving to {currentTask.WorldPosition}");
-                        var movementScreenPos = Helper.WorldToValidScreenPosition(currentTask.WorldPosition);
-                        CoPilot.Instance.LogMessage($"Movement task: Screen position: {movementScreenPos}");
-                        yield return Mouse.SetCursorPosHuman(movementScreenPos);
+                        try
+                        {
+                            var movementScreenPos = Helper.WorldToValidScreenPosition(currentTask.WorldPosition);
+                            CoPilot.Instance.LogMessage($"Movement task: Screen position: {movementScreenPos}");
+                            yield return Mouse.SetCursorPosHuman(movementScreenPos);
+                        }
+                        catch (Exception e)
+                        {
+                            CoPilot.Instance.LogError($"Movement task: Screen position calculation error: {e}");
+                            // Remove this task and continue
+                            tasks.RemoveAt(0);
+                            yield return new WaitTime(50);
+                            continue;
+                        }
                         CoPilot.Instance.LogMessage("Movement task: Mouse positioned, pressing move key down");
                         CoPilot.Instance.LogMessage($"Movement task: Move key: {CoPilot.Instance.Settings.autoPilotMoveKey}");
                         yield return new WaitTime(random.Next(25) + 30);
@@ -427,6 +455,15 @@ public class AutoPilot
                         continue;
                     }
                 }
+                catch (Exception e)
+                {
+                    CoPilot.Instance.LogError($"Task execution error: {e}");
+                    // Remove the problematic task and continue
+                    if (tasks.Count > 0)
+                    {
+                        tasks.RemoveAt(0);
+                    }
+                }
             }
 
             lastPlayerPosition = CoPilot.Instance.playerPosition;
@@ -518,24 +555,35 @@ public class AutoPilot
                     //We have no path, set us to go to leader pos.
                     else if (tasks.Count == 0 && distanceMoved < 2000 && distanceToLeader > 200 && distanceToLeader < 2000)
                     {
-                        // If very far away, add dash task instead of movement task
-                        if (distanceToLeader > 700 && CoPilot.Instance.Settings.autoPilotDashEnabled)
+                        // Validate followTarget position before creating tasks
+                        if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
                         {
-                            CoPilot.Instance.LogMessage($"Adding Dash task - Distance: {distanceToLeader:F1}, Dash enabled: {CoPilot.Instance.Settings.autoPilotDashEnabled}");
-                            tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
+                            // If very far away, add dash task instead of movement task
+                            if (distanceToLeader > 700 && CoPilot.Instance.Settings.autoPilotDashEnabled)
+                            {
+                                CoPilot.Instance.LogMessage($"Adding Dash task - Distance: {distanceToLeader:F1}, Dash enabled: {CoPilot.Instance.Settings.autoPilotDashEnabled}");
+                                tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
+                            }
+                            else
+                            {
+                                CoPilot.Instance.LogMessage($"Adding Movement task - Distance: {distanceToLeader:F1}, Dash enabled: {CoPilot.Instance.Settings.autoPilotDashEnabled}, Dash threshold: 700");
+                                tasks.Add(new TaskNode(followTarget.Pos, CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance));
+                            }
                         }
                         else
                         {
-                            CoPilot.Instance.LogMessage($"Adding Movement task - Distance: {distanceToLeader:F1}, Dash enabled: {CoPilot.Instance.Settings.autoPilotDashEnabled}, Dash threshold: 700");
-                            tasks.Add(new TaskNode(followTarget.Pos, CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance));
+                            CoPilot.Instance.LogError($"Invalid followTarget position: {followTarget?.Pos}, skipping task creation");
                         }
                     }
                     //We have a path. Check if the last task is far enough away from current one to add a new task node.
                     else if (tasks.Count > 0)
                     {
-                        var distanceFromLastTask = Vector3.Distance(tasks.Last().WorldPosition, followTarget.Pos);
-                        if (distanceFromLastTask >= CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance)
-                            tasks.Add(new TaskNode(followTarget.Pos, CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance));
+                        if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
+                        {
+                            var distanceFromLastTask = Vector3.Distance(tasks.Last().WorldPosition, followTarget.Pos);
+                            if (distanceFromLastTask >= CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance)
+                                tasks.Add(new TaskNode(followTarget.Pos, CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance));
+                        }
                     }
                 }
                 else
