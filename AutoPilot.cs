@@ -94,15 +94,14 @@ public class AutoPilot
             if (tasks.Count == 0 || followTarget == null)
                 return 1.0f; // No path or no target, consider efficient
 
-            // Only check efficiency for paths with multiple nodes (actual pathfinding, not single movements)
-            if (tasks.Count < 2)
-                return 1.0f; // Single task paths are always efficient
+            // Check efficiency even for single tasks if they're movement tasks
+            bool hasMovementTask = tasks.Any(t => t.Type == TaskNodeType.Movement);
 
             // Calculate direct distance from bot to player
             float directDistance = Vector3.Distance(CoPilot.Instance.playerPosition, CoPilot.Instance.localPlayer?.Pos ?? CoPilot.Instance.playerPosition);
 
             // If we're already very close to the player, don't bother with efficiency calculations
-            if (directDistance < 50f)
+            if (directDistance < 30f) // Reduced from 50f
                 return 1.0f;
 
             // Calculate distance along current path
@@ -124,13 +123,18 @@ public class AutoPilot
                 return 1.0f;
 
             // If the path is very short, it's already efficient
-            if (pathDistance < 100f)
+            if (pathDistance < 50f) // Reduced from 100f
                 return 1.0f;
 
             // Calculate efficiency ratio
             float efficiency = directDistance / pathDistance;
 
-            CoPilot.Instance.LogMessage($"Path efficiency: Direct={directDistance:F1}, Path={pathDistance:F1}, Ratio={efficiency:F2}");
+            // More detailed logging for debugging
+            CoPilot.Instance.LogMessage($"Path efficiency: Direct={directDistance:F1}, Path={pathDistance:F1}, Ratio={efficiency:F2}, Tasks={tasks.Count}");
+            if (efficiency < 0.8f) // Log when efficiency is getting low
+            {
+                CoPilot.Instance.LogMessage($"LOW EFFICIENCY DETECTED: {efficiency:F2} - Direct path is {(1f/efficiency):F1}x shorter!");
+            }
             return efficiency;
         }
         catch (Exception e)
@@ -148,21 +152,23 @@ public class AutoPilot
     {
         try
         {
-            // Only check efficiency if we have a meaningful path to optimize
-            if (tasks.Count < 2)
+            // Check even single tasks if they're movement tasks and we have a follow target
+            bool shouldCheckEfficiency = tasks.Count >= 1 && followTarget != null;
+
+            if (!shouldCheckEfficiency)
                 return false;
 
             float efficiency = CalculatePathEfficiency();
 
-            // If direct path is significantly shorter (more than 50% shorter) than following current path
-            if (efficiency < 0.5f)
+            // If direct path is much shorter (more than 30% shorter) than following current path - MORE AGGRESSIVE
+            if (efficiency < 0.7f) // Changed from 0.5f to 0.7f
             {
-                CoPilot.Instance.LogMessage($"Path abandoned for efficiency: {efficiency:F2} < 0.5");
+                CoPilot.Instance.LogMessage($"PATH ABANDONED FOR EFFICIENCY: {efficiency:F2} < 0.7 (Direct path {(1f/efficiency):F1}x shorter)");
                 return true;
             }
 
             // Also check if player is now behind us relative to path direction (more aggressive check)
-            if (tasks.Count > 1 && tasks[0].WorldPosition != null) // Need at least 2 tasks for meaningful path
+            if (tasks.Count >= 1 && tasks[0].WorldPosition != null)
             {
                 Vector3 botPos = CoPilot.Instance.localPlayer?.Pos ?? CoPilot.Instance.playerPosition;
                 Vector3 playerPos = CoPilot.Instance.playerPosition;
@@ -172,12 +178,19 @@ public class AutoPilot
                 Vector3 botToPath = pathTarget - botPos;
                 Vector3 botToPlayer = playerPos - botPos;
 
-                // If player is significantly behind us on the path (negative dot product)
-                float dotProduct = Vector3.Dot(Vector3.Normalize(botToPath), Vector3.Normalize(botToPlayer));
-                if (dotProduct < -0.5f) // Player is more than 120 degrees behind us
+                // Normalize vectors for dot product calculation
+                if (botToPath.Length() > 0 && botToPlayer.Length() > 0)
                 {
-                    CoPilot.Instance.LogMessage($"Path abandoned: Player behind bot (dot={dotProduct:F2})");
-                    return true;
+                    botToPath = Vector3.Normalize(botToPath);
+                    botToPlayer = Vector3.Normalize(botToPlayer);
+
+                    // If player is behind us on the path (negative dot product) - MORE SENSITIVE
+                    float dotProduct = Vector3.Dot(botToPath, botToPlayer);
+                    if (dotProduct < -0.3f) // Changed from -0.5f to -0.3f (107 degrees)
+                    {
+                        CoPilot.Instance.LogMessage($"Path abandoned: Player behind bot (dot={dotProduct:F2})");
+                        return true;
+                    }
                 }
             }
 
@@ -867,8 +880,16 @@ public class AutoPilot
                     tasks.RemoveAll(t => t.Type == TaskNodeType.Movement);
                 }
             } 
-            else if (followTarget != null) 
+            else if (followTarget != null)
             {
+                // CHECK PATH EFFICIENCY BEFORE CREATING NEW PATHS - PREVENT INEFFICIENT PATHS
+                if (ShouldAbandonPathForEfficiency())
+                {
+                    CoPilot.Instance.LogMessage("Preventing inefficient path creation - clearing existing tasks first");
+                    ClearPathForEfficiency();
+                    // Continue with normal path creation logic below
+                }
+
                 // TODO: If in town, do not follow (optional)
                 var distanceToLeader = Vector3.Distance(CoPilot.Instance.playerPosition, followTarget.Pos);
                 //We are NOT within clear path distance range of leader. Logic can continue
