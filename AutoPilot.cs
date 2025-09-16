@@ -86,13 +86,24 @@ public class AutoPilot
 
     /// <summary>
     /// Checks if the player has moved significantly and we should clear the current path for better responsiveness
+    /// More aggressive for 180-degree turns
     /// </summary>
     private bool ShouldClearPathForResponsiveness()
     {
+        return ShouldClearPathForResponsiveness(false);
+    }
+
+    /// <summary>
+    /// Checks if the player has moved significantly and we should clear the current path for better responsiveness
+    /// More aggressive for 180-degree turns
+    /// </summary>
+    private bool ShouldClearPathForResponsiveness(bool isOverrideCheck)
+    {
         try
         {
-            // Don't clear too frequently (max once every 500ms)
-            if ((DateTime.Now - lastPathClearTime).TotalMilliseconds < 500)
+            // For override checks (after click), be more aggressive with timing
+            int rateLimitMs = isOverrideCheck ? 100 : 300; // Override checks can happen more frequently
+            if ((DateTime.Now - lastPathClearTime).TotalMilliseconds < rateLimitMs)
                 return false;
 
             // Need a follow target to check responsiveness
@@ -106,17 +117,47 @@ public class AutoPilot
             // Calculate how much the player has moved since last update
             var playerMovement = Vector3.Distance(CoPilot.Instance.playerPosition, lastPlayerPosition);
             
-            // If player moved more than 50 units, clear path for responsiveness
-            if (playerMovement > 50f)
+            // More aggressive: If player moved more than 30 units, clear path for responsiveness
+            if (playerMovement > 30f)
             {
                 CoPilot.Instance.LogMessage($"RESPONSIVENESS: Player moved {playerMovement:F1} units, clearing path for better tracking");
                 lastPathClearTime = DateTime.Now;
                 return true;
             }
 
+            // Check for 180-degree turn detection - VERY AGGRESSIVE
+            if (tasks.Count > 0 && tasks[0].WorldPosition != null)
+            {
+                Vector3 botPos = CoPilot.Instance.localPlayer?.Pos ?? CoPilot.Instance.playerPosition;
+                Vector3 playerPos = CoPilot.Instance.playerPosition;
+                Vector3 currentTaskTarget = tasks[0].WorldPosition;
+
+                // Calculate direction from bot to current task
+                Vector3 botToTask = currentTaskTarget - botPos;
+                // Calculate direction from bot to player
+                Vector3 botToPlayer = playerPos - botPos;
+
+                if (botToTask.Length() > 10f && botToPlayer.Length() > 10f)
+                {
+                    botToTask = Vector3.Normalize(botToTask);
+                    botToPlayer = Vector3.Normalize(botToPlayer);
+
+                    // Calculate dot product - if negative, player is behind the current task direction
+                    float dotProduct = Vector3.Dot(botToTask, botToPlayer);
+                    
+                    // VERY AGGRESSIVE: If player is more than 60 degrees away from task direction
+                    if (dotProduct < 0.5f) // 60 degrees
+                    {
+                        CoPilot.Instance.LogMessage($"180 DEGREE DETECTION: Player direction conflicts with task (dot={dotProduct:F2}), clearing path");
+                        lastPathClearTime = DateTime.Now;
+                        return true;
+                    }
+                }
+            }
+
             // Also check if we're following an old position that's now far from current player position
             var distanceToCurrentPlayer = Vector3.Distance(CoPilot.Instance.localPlayer?.Pos ?? CoPilot.Instance.playerPosition, followTarget.Pos);
-            if (distanceToCurrentPlayer > 100f) // If target is more than 100 units from bot
+            if (distanceToCurrentPlayer > 80f) // More aggressive - reduced from 100f
             {
                 CoPilot.Instance.LogMessage($"RESPONSIVENESS: Target {distanceToCurrentPlayer:F1} units away, clearing path for better tracking");
                 lastPathClearTime = DateTime.Now;
@@ -833,9 +874,36 @@ public class AutoPilot
 
                     if (!screenPosError && currentTask.Type == TaskNodeType.Movement)
                     {
+                        // LAST CHANCE CHECK: Before executing movement, check if player has turned around
+                        if (ShouldClearPathForResponsiveness())
+                        {
+                            CoPilot.Instance.LogMessage("LAST CHANCE 180 CHECK: Player direction changed before movement execution, aborting current task");
+                            ClearPathForEfficiency();
+                            yield return null; // Skip this movement and recalculate
+                            continue;
+                        }
+
                         CoPilot.Instance.LogMessage("Movement task: Mouse positioned, pressing move key down");
                         CoPilot.Instance.LogMessage($"Movement task: Move key: {CoPilot.Instance.Settings.autoPilotMoveKey}");
                         yield return Mouse.SetCursorPosHuman(movementScreenPos);
+                        
+                        // IMMEDIATE OVERRIDE CHECK: After clicking, check if we need to override with new position
+                        if (ShouldClearPathForResponsiveness(true)) // Use aggressive override timing
+                        {
+                            CoPilot.Instance.LogMessage("IMMEDIATE OVERRIDE: 180 detected after click - overriding with new position!");
+                            ClearPathForEfficiency();
+                            
+                            // INSTANT OVERRIDE: Click the correct position immediately to override old movement
+                            if (followTarget?.Pos != null)
+                            {
+                                var correctScreenPos = Helper.WorldToValidScreenPosition(followTarget.Pos);
+                                yield return Mouse.SetCursorPosHuman(correctScreenPos);
+                                CoPilot.Instance.LogMessage("MOVEMENT OVERRIDE: Clicked correct position to override old movement");
+                            }
+                            yield return null;
+                            continue;
+                        }
+                        
                         if (instantPathOptimization)
                         {
                             // INSTANT MODE: Skip delays for immediate path correction
@@ -899,8 +967,37 @@ public class AutoPilot
 
                     if (shouldDashAndContinue)
                     {
+                        // LAST CHANCE CHECK: Before executing dash, check if player has turned around
+                        if (ShouldClearPathForResponsiveness())
+                        {
+                            CoPilot.Instance.LogMessage("LAST CHANCE 180 CHECK: Player direction changed before dash execution, aborting current task");
+                            ClearPathForEfficiency();
+                            yield return null; // Skip this dash and recalculate
+                            continue;
+                        }
+
                         yield return Mouse.SetCursorPosHuman(Helper.WorldToValidScreenPosition(currentTask.WorldPosition));
                         CoPilot.Instance.LogMessage("Dash: Mouse positioned, pressing dash key");
+                        
+                        // IMMEDIATE OVERRIDE CHECK: After positioning cursor, check if we need to override
+                        if (ShouldClearPathForResponsiveness(true)) // Use aggressive override timing
+                        {
+                            CoPilot.Instance.LogMessage("IMMEDIATE OVERRIDE: 180 detected after dash positioning - overriding with new position!");
+                            ClearPathForEfficiency();
+                            
+                            // INSTANT OVERRIDE: Position cursor to correct location and dash there instead
+                            if (followTarget?.Pos != null)
+                            {
+                                var correctScreenPos = Helper.WorldToValidScreenPosition(followTarget.Pos);
+                                yield return Mouse.SetCursorPosHuman(correctScreenPos);
+                                Keyboard.KeyPress(CoPilot.Instance.Settings.autoPilotDashKey);
+                                lastDashTime = DateTime.Now; // Record dash time for cooldown
+                                CoPilot.Instance.LogMessage("DASH OVERRIDE: Dashed to correct position to override old dash");
+                            }
+                            yield return null;
+                            continue;
+                        }
+                        
                         if (instantPathOptimization)
                         {
                             // INSTANT MODE: Skip delays for immediate path correction
@@ -959,6 +1056,9 @@ public class AutoPilot
             {
                 return;
             }
+
+            // Update player position for responsiveness detection - MORE FREQUENT UPDATES
+            lastPlayerPosition = CoPilot.Instance.playerPosition;
 
             //Cache the current follow target (if present)
             followTarget = GetFollowingTarget();
