@@ -26,6 +26,7 @@ public class AutoPilot
     private bool hasUsedWp;
     private List<TaskNode> tasks = new List<TaskNode>();
     private DateTime lastDashTime = DateTime.MinValue; // Track last dash time for cooldown
+    private bool instantPathOptimization = false; // Flag for instant response when path efficiency is detected
 
     private int numRows, numCols;
     private byte[,] tiles;
@@ -214,6 +215,7 @@ public class AutoPilot
         lastPlayerPosition = Vector3.Zero;
         hasUsedWp = false;
         lastDashTime = DateTime.MinValue; // Reset dash cooldown on area change
+        instantPathOptimization = false; // Reset instant optimization flag
     }
 
     /// <summary>
@@ -224,6 +226,7 @@ public class AutoPilot
         tasks.Clear();
         hasUsedWp = false; // Allow waypoint usage again
         // Note: Don't reset dash cooldown for efficiency clears
+        // instantPathOptimization flag is managed separately
     }
 
     private PartyElementWindow GetLeaderPartyElement()
@@ -423,13 +426,14 @@ public class AutoPilot
 
                 CoPilot.Instance.LogMessage($"Coroutine executing task: {currentTask.Type}, Task count: {tasks.Count}, Distance: {taskDistance:F1}");
 
-                // Check if current path is inefficient and should be abandoned
+                // Check if current path is inefficient and should be abandoned - INSTANT RESPONSE
                 if (ShouldAbandonPathForEfficiency())
                 {
-                    CoPilot.Instance.LogMessage("Clearing inefficient path for direct movement to player");
+                    CoPilot.Instance.LogMessage("INSTANT PATH OPTIMIZATION: Clearing inefficient path for direct movement");
+                    instantPathOptimization = true; // Enable instant mode for immediate response
                     ClearPathForEfficiency(); // Clear all tasks and reset related state
-                    yield return new WaitTime(100); // Brief pause before new path calculation
-                    continue; // Skip current task processing, will recalculate path in next UpdateAutoPilotLogic call
+                    yield return null; // INSTANT: No delay, immediate path recalculation
+                    continue; // Skip current task processing, will recalculate path immediately
                 }
 
                 //We are using a same map transition and have moved significnatly since last tick. Mark the transition task as done.
@@ -697,11 +701,22 @@ public class AutoPilot
                     {
                         yield return Mouse.SetCursorPosHuman(Helper.WorldToValidScreenPosition(followTarget.Pos));
                         CoPilot.Instance.LogMessage("Movement task: Dash mouse positioned, pressing key");
-                        yield return new WaitTime(random.Next(25) + 30);
-                        Keyboard.KeyPress(CoPilot.Instance.Settings.autoPilotDashKey);
-                        lastDashTime = DateTime.Now; // Record dash time for cooldown
-                        CoPilot.Instance.LogMessage("Movement task: Dash key pressed, waiting");
-                        yield return new WaitTime(random.Next(25) + 30);
+                        if (instantPathOptimization)
+                        {
+                            // INSTANT MODE: Skip delays for immediate path correction
+                            CoPilot.Instance.LogMessage("INSTANT PATH OPTIMIZATION: Dash with no delays");
+                            Keyboard.KeyPress(CoPilot.Instance.Settings.autoPilotDashKey);
+                            lastDashTime = DateTime.Now; // Record dash time for cooldown
+                            instantPathOptimization = false; // Reset flag after use
+                        }
+                        else
+                        {
+                            // Normal delays
+                            yield return new WaitTime(random.Next(25) + 30);
+                            Keyboard.KeyPress(CoPilot.Instance.Settings.autoPilotDashKey);
+                            lastDashTime = DateTime.Now; // Record dash time for cooldown
+                            yield return new WaitTime(random.Next(25) + 30);
+                        }
                         yield return null;
                         continue;
                     }
@@ -724,8 +739,18 @@ public class AutoPilot
                         CoPilot.Instance.LogMessage("Movement task: Mouse positioned, pressing move key down");
                         CoPilot.Instance.LogMessage($"Movement task: Move key: {CoPilot.Instance.Settings.autoPilotMoveKey}");
                         yield return Mouse.SetCursorPosHuman(movementScreenPos);
-                        yield return new WaitTime(random.Next(25) + 30);
-                        yield return new WaitTime(random.Next(25) + 30);
+                        if (instantPathOptimization)
+                        {
+                            // INSTANT MODE: Skip delays for immediate path correction
+                            CoPilot.Instance.LogMessage("INSTANT PATH OPTIMIZATION: Movement with no delays");
+                            instantPathOptimization = false; // Reset flag after use
+                        }
+                        else
+                        {
+                            // Normal delays
+                            yield return new WaitTime(random.Next(25) + 30);
+                            yield return new WaitTime(random.Next(25) + 30);
+                        }
                         yield return null;
                         continue;
                     }
@@ -779,11 +804,22 @@ public class AutoPilot
                     {
                         yield return Mouse.SetCursorPosHuman(Helper.WorldToValidScreenPosition(currentTask.WorldPosition));
                         CoPilot.Instance.LogMessage("Dash: Mouse positioned, pressing dash key");
-                        yield return new WaitTime(random.Next(25) + 30);
-                        Keyboard.KeyPress(CoPilot.Instance.Settings.autoPilotDashKey);
-                        lastDashTime = DateTime.Now; // Record dash time for cooldown
-                        CoPilot.Instance.LogMessage("Dash: Key pressed, waiting");
-                        yield return new WaitTime(random.Next(25) + 30);
+                        if (instantPathOptimization)
+                        {
+                            // INSTANT MODE: Skip delays for immediate path correction
+                            CoPilot.Instance.LogMessage("INSTANT PATH OPTIMIZATION: Dash task with no delays");
+                            Keyboard.KeyPress(CoPilot.Instance.Settings.autoPilotDashKey);
+                            lastDashTime = DateTime.Now; // Record dash time for cooldown
+                            instantPathOptimization = false; // Reset flag after use
+                        }
+                        else
+                        {
+                            // Normal delays
+                            yield return new WaitTime(random.Next(25) + 30);
+                            Keyboard.KeyPress(CoPilot.Instance.Settings.autoPilotDashKey);
+                            lastDashTime = DateTime.Now; // Record dash time for cooldown
+                            yield return new WaitTime(random.Next(25) + 30);
+                        }
                         yield return null;
                         continue;
                     }
@@ -885,7 +921,8 @@ public class AutoPilot
                 // CHECK PATH EFFICIENCY BEFORE CREATING NEW PATHS - PREVENT INEFFICIENT PATHS
                 if (ShouldAbandonPathForEfficiency())
                 {
-                    CoPilot.Instance.LogMessage("Preventing inefficient path creation - clearing existing tasks first");
+                    CoPilot.Instance.LogMessage("INSTANT PATH OPTIMIZATION: Preventing inefficient path creation");
+                    instantPathOptimization = true; // Enable instant mode for immediate response
                     ClearPathForEfficiency();
                     // Continue with normal path creation logic below
                 }
