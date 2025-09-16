@@ -385,27 +385,15 @@ public class CoPilot : BaseSettingsPlugin<CoPilotSettings>
                 if (Settings.flameLinkEnabled)
                     try
                     {
-                        CoPilot.Instance.LogMessage("FLAME LINK: Flame link enabled, checking skills");
                         if (skill.Id == SkillInfo.flameLink.Id)
                         {
-                            CoPilot.Instance.LogMessage("FLAME LINK: Flame link skill detected");
                             var linkSkill = SkillInfo.flameLink;
                             var targetBuffName = "flame_link_target";
 
                             if (SkillInfo.ManageCooldown(linkSkill, skill))
                             {
-                                CoPilot.Instance.LogMessage("FLAME LINK: Cooldown check passed");
-
                                 // Get party leader
                                 var partyElements = PartyElements.GetPlayerInfoElementList();
-                                CoPilot.Instance.LogMessage($"FLAME LINK: Found {partyElements.Count} party members");
-
-                                foreach (var elem in partyElements)
-                                {
-                                    CoPilot.Instance.LogMessage($"FLAME LINK: Party member: {elem.PlayerName}");
-                                }
-
-                                CoPilot.Instance.LogMessage($"FLAME LINK: Looking for leader: '{Settings.autoPilotLeader.Value}'");
 
                                 var leaderPartyElement = partyElements
                                     .FirstOrDefault(x => string.Equals(x?.PlayerName?.ToLower(),
@@ -413,16 +401,9 @@ public class CoPilot : BaseSettingsPlugin<CoPilotSettings>
 
                                 if (leaderPartyElement != null)
                                 {
-                                    CoPilot.Instance.LogMessage($"FLAME LINK: Found leader element: {leaderPartyElement.PlayerName}");
-
                                     // Find the actual player entity by name
                                     var playerEntities = GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Player]
                                         .Where(x => x != null && x.IsValid && !x.IsHostile);
-
-                                    foreach (var player in playerEntities)
-                                    {
-                                        CoPilot.Instance.LogMessage($"FLAME LINK: Available player entity: {player.GetComponent<Player>()?.PlayerName ?? "Unknown"}");
-                                    }
 
                                     var leaderEntity = playerEntities
                                         .FirstOrDefault(x => string.Equals(x.GetComponent<Player>()?.PlayerName?.ToLower(),
@@ -430,11 +411,9 @@ public class CoPilot : BaseSettingsPlugin<CoPilotSettings>
 
                                     if (leaderEntity != null)
                                     {
-                                        CoPilot.Instance.LogMessage("FLAME LINK: Found leader entity");
                                         // Set the player entity
                                         leaderPartyElement.Data.PlayerEntity = leaderEntity;
 
-                                        CoPilot.Instance.LogMessage("FLAME LINK: Leader found");
                                         var leader = leaderPartyElement.Data.PlayerEntity;
                                         var leaderBuffs = leader.GetComponent<Buffs>().BuffsList;
 
@@ -445,14 +424,10 @@ public class CoPilot : BaseSettingsPlugin<CoPilotSettings>
                                         var linkSourceBuff = buffs.FirstOrDefault(x => x.Name == linkSkill.BuffName);
                                         var linkSourceTimeLeft = linkSourceBuff?.Timer ?? 0;
 
-                                        CoPilot.Instance.LogMessage($"FLAME LINK: Buff status - Leader has target: {hasLinkTarget}, Source timer: {linkSourceTimeLeft}");
-
                                         // Check distance from leader to mouse cursor in screen space
                                         var mouseScreenPos = GetMousePosition();
                                         var leaderScreenPos = Helper.WorldToValidScreenPosition(leader.Pos);
                                         var distanceToCursor = Vector2.Distance(mouseScreenPos, leaderScreenPos);
-
-                                        CoPilot.Instance.LogMessage($"FLAME LINK: Distance to cursor: {distanceToCursor}");
 
                                         // Logic: Aggressive flame link maintenance - refresh much earlier and with larger distance tolerance
                                         // Emergency linking (no source buff): ignore distance
@@ -460,19 +435,8 @@ public class CoPilot : BaseSettingsPlugin<CoPilotSettings>
                                         var shouldActivate = (!hasLinkTarget || linkSourceTimeLeft < 8 || linkSourceBuff == null) &&
                                                              (linkSourceBuff == null || distanceToCursor < 100);
 
-
-                                        CoPilot.Instance.LogMessage($"FLAME LINK: Activation check - Should activate: {shouldActivate}, !hasLinkTarget: {!hasLinkTarget}, linkSourceTimeLeft < 8: {linkSourceTimeLeft < 8}, noSourceBuff: {linkSourceBuff == null}, distanceCheck: {(linkSourceBuff == null || distanceToCursor < 100)}");
-
                                         if (shouldActivate)
                                         {
-                                            if (linkSourceBuff == null)
-                                            {
-                                                CoPilot.Instance.LogMessage("FLAME LINK: EMERGENCY LINKING - No source buff found, establishing link!");
-                                            }
-                                            else
-                                            {
-                                                CoPilot.Instance.LogMessage("FLAME LINK: Activating flame link!");
-                                            }
                                             // Move mouse to leader position
                                             var leaderScreenPosForMouse = GameController.IngameState.Camera.WorldToScreen(leader.Pos);
                                             Mouse.SetCursorPos(leaderScreenPosForMouse);
@@ -481,39 +445,15 @@ public class CoPilot : BaseSettingsPlugin<CoPilotSettings>
                                             Keyboard.KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
                                             linkSkill.Cooldown = 100;
                                         }
-                                        else
-                                        {
-                                            CoPilot.Instance.LogMessage("FLAME LINK: Activation conditions not met");
-                                        }
-                                    }
-                                    else
-                                    {
-                                        CoPilot.Instance.LogMessage("FLAME LINK: Leader entity not found");
                                     }
                                 }
-                                else
-                                {
-                                    CoPilot.Instance.LogMessage("FLAME LINK: Leader element not found in party list");
-                                }
                             }
-                            else
-                            {
-                                CoPilot.Instance.LogMessage("FLAME LINK: Cooldown check failed");
-                            }
-                        }
-                        else
-                        {
-                            CoPilot.Instance.LogMessage("FLAME LINK: Current skill is not flame link");
                         }
                     }
                     catch (Exception e)
                     {
                         // Error handling without logging
                     }
-                else
-                {
-                    CoPilot.Instance.LogMessage("FLAME LINK: Flame link is not enabled");
-                }
 
                 #endregion
 
