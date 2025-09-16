@@ -327,11 +327,11 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                 {
                     BetterFollowbotLite.Instance.LogMessage($"AURA BLESSING: Processing skill ID {skill.Id}, Name: {skill.Name}, Slot: {skill.SkillSlotIndex}");
 
-                    // Log current relevant buffs for debugging
+                    // Log current relevant buffs for debugging (excluding life regen effects)
                     var relevantBuffs = buffs.Where(b =>
-                        b.Name.Contains("blessing") ||
-                        b.Name.Contains("holy") ||
-                        b.Name.Contains("relic") ||
+                        (b.Name.Contains("blessing") && !b.Name.Contains("life_regen")) ||
+                        (b.Name.Contains("holy") && !b.Name.Contains("life")) ||
+                        (b.Name.Contains("relic") && !b.Name.Contains("life")) ||
                         b.Name.Contains("zealotry") ||
                         b.Name.Contains("aura_spell_damage")).ToList();
                     if (relevantBuffs.Any())
@@ -351,10 +351,12 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                             BetterFollowbotLite.Instance.LogMessage($"HOLY RELIC: Detected Holy Relic skill (ID: {skill.Id}), CanBeUsed: {skill.CanBeUsed}, RemainingUses: {skill.RemainingUses}, IsOnCooldown: {skill.IsOnCooldown}");
 
                             var lowestMinionHp = Summons.GetLowestMinionHpp();
-                            // Check for Holy Relic minion presence (avoiding just the life regen effect)
+                            // Check for Holy Relic minion presence
+                            // Prioritize ReAgent buff names, then check for other indicators
+                            // Note: Avoid "guardian_life_regen" as it's just the life regen effect, not minion presence
                             var hasGuardianBlessingMinion = buffs.Exists(x =>
                                 x.Name == "has_guardians_blessing_minion" ||
-                                (x.Name.Contains("holy") && x.Name.Contains("relic")) ||
+                                (x.Name.Contains("holy") && x.Name.Contains("relic") && !x.Name.Contains("life")) ||
                                 x.Name.Contains("guardian_blessing_minion"));
                             var threshold = Settings.holyRelicHealthThreshold;
 
@@ -384,16 +386,17 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                             BetterFollowbotLite.Instance.LogMessage($"ZEALOTRY: Detected Zealotry skill (ID: {skill.Id}), CanBeUsed: {skill.CanBeUsed}, RemainingUses: {skill.RemainingUses}, IsOnCooldown: {skill.IsOnCooldown}");
 
                             // Check for Zealotry aura buff
+                            // Prioritize ReAgent buff names, then check for aura effects
                             var hasGuardianBlessingAura = buffs.Exists(x =>
                                 x.Name == "has_guardians_blessing_aura" ||
                                 x.Name == "zealotry" ||
                                 x.Name == "player_aura_spell_damage" ||
                                 (x.Name.Contains("blessing") && x.Name.Contains("aura")));
 
-                            // Check for Holy Relic minion presence (same logic as above)
+                            // Check for Holy Relic minion presence (same logic as Holy Relic section)
                             var hasGuardianBlessingMinion = buffs.Exists(x =>
                                 x.Name == "has_guardians_blessing_minion" ||
-                                (x.Name.Contains("holy") && x.Name.Contains("relic")) ||
+                                (x.Name.Contains("holy") && x.Name.Contains("relic") && !x.Name.Contains("life")) ||
                                 x.Name.Contains("guardian_blessing_minion"));
 
                             BetterFollowbotLite.Instance.LogMessage($"ZEALOTRY: Has aura buff: {hasGuardianBlessingAura}, Has minion buff: {hasGuardianBlessingMinion}");
