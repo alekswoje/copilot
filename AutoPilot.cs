@@ -27,6 +27,7 @@ public class AutoPilot
     private List<TaskNode> tasks = new List<TaskNode>();
     private DateTime lastDashTime = DateTime.MinValue; // Track last dash time for cooldown
     private bool instantPathOptimization = false; // Flag for instant response when path efficiency is detected
+    private DateTime lastPathClearTime = DateTime.MinValue; // Track last path clear to prevent spam
 
     private int numRows, numCols;
     private byte[,] tiles;
@@ -76,11 +77,59 @@ public class AutoPilot
     }
 
     /// <summary>
-    /// Checks if enough time has passed since the last dash (1 second cooldown)
+    /// Checks if enough time has passed since the last dash (3 second cooldown)
     /// </summary>
     private bool CanDash()
     {
         return (DateTime.Now - lastDashTime).TotalMilliseconds >= 3000; // Increased from 1000ms to 3000ms (3 seconds)
+    }
+
+    /// <summary>
+    /// Checks if the player has moved significantly and we should clear the current path for better responsiveness
+    /// </summary>
+    private bool ShouldClearPathForResponsiveness()
+    {
+        try
+        {
+            // Don't clear too frequently (max once every 500ms)
+            if ((DateTime.Now - lastPathClearTime).TotalMilliseconds < 500)
+                return false;
+
+            // Need a follow target to check responsiveness
+            if (followTarget == null)
+                return false;
+
+            // Need existing tasks to clear
+            if (tasks.Count == 0)
+                return false;
+
+            // Calculate how much the player has moved since last update
+            var playerMovement = Vector3.Distance(CoPilot.Instance.playerPosition, lastPlayerPosition);
+            
+            // If player moved more than 50 units, clear path for responsiveness
+            if (playerMovement > 50f)
+            {
+                CoPilot.Instance.LogMessage($"RESPONSIVENESS: Player moved {playerMovement:F1} units, clearing path for better tracking");
+                lastPathClearTime = DateTime.Now;
+                return true;
+            }
+
+            // Also check if we're following an old position that's now far from current player position
+            var distanceToCurrentPlayer = Vector3.Distance(CoPilot.Instance.localPlayer?.Pos ?? CoPilot.Instance.playerPosition, followTarget.Pos);
+            if (distanceToCurrentPlayer > 100f) // If target is more than 100 units from bot
+            {
+                CoPilot.Instance.LogMessage($"RESPONSIVENESS: Target {distanceToCurrentPlayer:F1} units away, clearing path for better tracking");
+                lastPathClearTime = DateTime.Now;
+                return true;
+            }
+
+            return false;
+        }
+        catch (Exception e)
+        {
+            CoPilot.Instance.LogError($"Responsiveness check error: {e}");
+            return false;
+        }
     }
 
     /// <summary>
@@ -219,6 +268,7 @@ public class AutoPilot
         hasUsedWp = false;
         lastDashTime = DateTime.MinValue; // Reset dash cooldown on area change
         instantPathOptimization = false; // Reset instant optimization flag
+        lastPathClearTime = DateTime.MinValue; // Reset responsiveness tracking
     }
 
     /// <summary>
@@ -428,6 +478,33 @@ public class AutoPilot
                 var playerDistanceMoved = Vector3.Distance(CoPilot.Instance.playerPosition, lastPlayerPosition);
 
                 CoPilot.Instance.LogMessage($"Coroutine executing task: {currentTask.Type}, Task count: {tasks.Count}, Distance: {taskDistance:F1}");
+
+                // Check if we should clear path for better responsiveness to player movement
+                if (ShouldClearPathForResponsiveness())
+                {
+                    CoPilot.Instance.LogMessage("RESPONSIVENESS: Clearing path for better player tracking");
+                    instantPathOptimization = true; // Enable instant mode for immediate response
+                    ClearPathForEfficiency(); // Clear all tasks and reset related state
+                    
+                    // FORCE IMMEDIATE PATH CREATION - Don't wait for UpdateAutoPilotLogic
+                    if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
+                    {
+                        var instantDistanceToLeader = Vector3.Distance(CoPilot.Instance.playerPosition, followTarget.Pos);
+                        CoPilot.Instance.LogMessage($"RESPONSIVENESS: Creating immediate direct path - Distance: {instantDistanceToLeader:F1}");
+                        
+                        if (instantDistanceToLeader > 1000 && CoPilot.Instance.Settings.autoPilotDashEnabled) // Increased from 700 to 1000
+                        {
+                            tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
+                        }
+                        else
+                        {
+                            tasks.Add(new TaskNode(followTarget.Pos, CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance));
+                        }
+                    }
+                    
+                    yield return null; // INSTANT: No delay, immediate path recalculation
+                    continue; // Skip current task processing, will recalculate path immediately
+                }
 
                 // Check if current path is inefficient and should be abandoned - INSTANT RESPONSE
                 if (ShouldAbandonPathForEfficiency())
@@ -938,6 +1015,31 @@ public class AutoPilot
             } 
             else if (followTarget != null)
             {
+                // CHECK RESPONSIVENESS FIRST - Clear paths when player moves significantly
+                if (ShouldClearPathForResponsiveness())
+                {
+                    CoPilot.Instance.LogMessage("RESPONSIVENESS: Preventing inefficient path creation - clearing for better tracking");
+                    instantPathOptimization = true; // Enable instant mode for immediate response
+                    ClearPathForEfficiency();
+                    
+                    // FORCE IMMEDIATE PATH RECALCULATION - Skip normal logic and create direct path
+                    if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
+                    {
+                        var instantDistanceToLeader = Vector3.Distance(CoPilot.Instance.playerPosition, followTarget.Pos);
+                        CoPilot.Instance.LogMessage($"RESPONSIVENESS: Creating direct path to leader - Distance: {instantDistanceToLeader:F1}");
+                        
+                        if (instantDistanceToLeader > 1000 && CoPilot.Instance.Settings.autoPilotDashEnabled) // Increased from 700 to 1000
+                        {
+                            tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
+                        }
+                        else
+                        {
+                            tasks.Add(new TaskNode(followTarget.Pos, CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance));
+                        }
+                    }
+                    return; // Skip the rest of the path creation logic
+                }
+
                 // CHECK PATH EFFICIENCY BEFORE CREATING NEW PATHS - PREVENT INEFFICIENT PATHS
                 if (ShouldAbandonPathForEfficiency())
                 {
@@ -1006,8 +1108,13 @@ public class AutoPilot
                         if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
                         {
                             var distanceFromLastTask = Vector3.Distance(tasks.Last().WorldPosition, followTarget.Pos);
-                            if (distanceFromLastTask >= CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance)
+                            // More responsive: reduce threshold by half for more frequent path updates
+                            var responsiveThreshold = CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance.Value / 2;
+                            if (distanceFromLastTask >= responsiveThreshold)
+                            {
+                                CoPilot.Instance.LogMessage($"RESPONSIVENESS: Adding new path node - Distance: {distanceFromLastTask:F1}, Threshold: {responsiveThreshold:F1}");
                                 tasks.Add(new TaskNode(followTarget.Pos, CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance));
+                            }
                         }
                     }
                 }
