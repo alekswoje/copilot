@@ -80,7 +80,7 @@ public class AutoPilot
     /// </summary>
     private bool CanDash()
     {
-        return (DateTime.Now - lastDashTime).TotalMilliseconds >= 1000;
+        return (DateTime.Now - lastDashTime).TotalMilliseconds >= 3000; // Increased from 1000ms to 3000ms (3 seconds)
     }
 
     /// <summary>
@@ -99,7 +99,7 @@ public class AutoPilot
             bool hasMovementTask = tasks.Any(t => t.Type == TaskNodeType.Movement);
 
             // Calculate direct distance from bot to player
-            float directDistance = Vector3.Distance(CoPilot.Instance.playerPosition, CoPilot.Instance.localPlayer?.Pos ?? CoPilot.Instance.playerPosition);
+            float directDistance = Vector3.Distance(CoPilot.Instance.localPlayer?.Pos ?? CoPilot.Instance.playerPosition, followTarget?.Pos ?? CoPilot.Instance.playerPosition);
 
             // If we're already very close to the player, don't bother with efficiency calculations
             if (directDistance < 30f) // Reduced from 50f
@@ -157,14 +157,17 @@ public class AutoPilot
             bool shouldCheckEfficiency = tasks.Count >= 1 && followTarget != null;
 
             if (!shouldCheckEfficiency)
+            {
+                CoPilot.Instance.LogMessage($"Path efficiency check skipped: Tasks={tasks.Count}, FollowTarget={followTarget != null}");
                 return false;
+            }
 
             float efficiency = CalculatePathEfficiency();
 
-            // If direct path is much shorter (more than 30% shorter) than following current path - MORE AGGRESSIVE
-            if (efficiency < 0.7f) // Changed from 0.5f to 0.7f
+            // If direct path is much shorter (more than 20% shorter) than following current path - VERY AGGRESSIVE
+            if (efficiency < 0.8f) // Changed from 0.7f to 0.8f for even more aggressive clearing
             {
-                CoPilot.Instance.LogMessage($"PATH ABANDONED FOR EFFICIENCY: {efficiency:F2} < 0.7 (Direct path {(1f/efficiency):F1}x shorter)");
+                CoPilot.Instance.LogMessage($"PATH ABANDONED FOR EFFICIENCY: {efficiency:F2} < 0.8 (Direct path {(1f/efficiency):F1}x shorter)");
                 return true;
             }
 
@@ -185,9 +188,9 @@ public class AutoPilot
                     botToPath = Vector3.Normalize(botToPath);
                     botToPlayer = Vector3.Normalize(botToPlayer);
 
-                    // If player is behind us on the path (negative dot product) - MORE SENSITIVE
-                    float dotProduct = Vector3.Dot(botToPath, botToPlayer);
-                    if (dotProduct < -0.3f) // Changed from -0.5f to -0.3f (107 degrees)
+                            // If player is behind us on the path (negative dot product) - VERY SENSITIVE
+                            float dotProduct = Vector3.Dot(botToPath, botToPlayer);
+                            if (dotProduct < -0.1f) // Changed from -0.3f to -0.1f (95 degrees) - even more sensitive
                     {
                         CoPilot.Instance.LogMessage($"Path abandoned: Player behind bot (dot={dotProduct:F2})");
                         return true;
@@ -439,7 +442,7 @@ public class AutoPilot
                         var instantDistanceToLeader = Vector3.Distance(CoPilot.Instance.playerPosition, followTarget.Pos);
                         CoPilot.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Creating immediate direct path - Distance: {instantDistanceToLeader:F1}");
                         
-                        if (instantDistanceToLeader > 700 && CoPilot.Instance.Settings.autoPilotDashEnabled)
+                        if (instantDistanceToLeader > 1000 && CoPilot.Instance.Settings.autoPilotDashEnabled) // Increased from 700 to 1000
                         {
                             tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
                         }
@@ -948,7 +951,7 @@ public class AutoPilot
                         var instantDistanceToLeader = Vector3.Distance(CoPilot.Instance.playerPosition, followTarget.Pos);
                         CoPilot.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Creating direct path to leader - Distance: {instantDistanceToLeader:F1}");
                         
-                        if (instantDistanceToLeader > 700 && CoPilot.Instance.Settings.autoPilotDashEnabled)
+                        if (instantDistanceToLeader > 1000 && CoPilot.Instance.Settings.autoPilotDashEnabled) // Increased from 700 to 1000
                         {
                             tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
                         }
@@ -981,7 +984,7 @@ public class AutoPilot
                         if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
                         {
                             // If very far away, add dash task instead of movement task
-                            if (distanceToLeader > 700 && CoPilot.Instance.Settings.autoPilotDashEnabled)
+                            if (distanceToLeader > 1000 && CoPilot.Instance.Settings.autoPilotDashEnabled) // Increased from 700 to 1000
                             {
                                 CoPilot.Instance.LogMessage($"Adding Dash task - Distance: {distanceToLeader:F1}, Dash enabled: {CoPilot.Instance.Settings.autoPilotDashEnabled}");
                                 tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
