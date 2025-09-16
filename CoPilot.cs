@@ -466,11 +466,21 @@ public class CoPilot : BaseSettingsPlugin<CoPilotSettings>
                         {
                             CoPilot.Instance.LogMessage("SMITE: Smite skill detected");
 
-                            if (SkillInfo.ManageCooldown(SkillInfo.smite, skill))
+                            // Custom cooldown check for smite that bypasses GCD since it's a buff skill
+                            if (SkillInfo.smite.Cooldown <= 0 &&
+                                !(skill.RemainingUses <= 0 && skill.IsOnCooldown))
                             {
-                                CoPilot.Instance.LogMessage("SMITE: Cooldown check passed");
+                                // Check mana cost
+                                if (!skill.Stats.TryGetValue(GameStat.ManaCost, out var manaCost))
+                                    manaCost = 0;
 
-                                // Check if we don't have the smite buff
+                                if (CoPilot.Instance.player.CurMana >= manaCost ||
+                                    (CoPilot.Instance.localPlayer.Stats.TryGetValue(GameStat.VirtualEnergyShieldProtectsMana, out var hasEldritchBattery) &&
+                                     hasEldritchBattery > 0 && (CoPilot.Instance.player.CurES + CoPilot.Instance.player.CurMana) >= manaCost))
+                                {
+                                    CoPilot.Instance.LogMessage("SMITE: Cooldown check passed");
+
+                                    // Check if we don't have the smite buff
                                 var hasSmiteBuff = buffs.Exists(x => x.Name == "smite_buff");
                                 CoPilot.Instance.LogMessage($"SMITE: Has smite buff: {hasSmiteBuff}");
 
@@ -519,9 +529,14 @@ public class CoPilot : BaseSettingsPlugin<CoPilotSettings>
                                         CoPilot.Instance.LogMessage("SMITE: No suitable targets found within range");
                                     }
                                 }
+                                    else
+                                    {
+                                        CoPilot.Instance.LogMessage("SMITE: Already have smite buff, skipping");
+                                    }
+                                }
                                 else
                                 {
-                                    CoPilot.Instance.LogMessage("SMITE: Already have smite buff, skipping");
+                                    CoPilot.Instance.LogMessage("SMITE: Not enough mana for smite");
                                 }
                             }
                             else
