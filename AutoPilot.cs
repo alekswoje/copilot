@@ -171,8 +171,10 @@ public class AutoPilot
 
     public void StartCoroutine()
     {
+        CoPilot.Instance.LogMessage("AutoPilot: Starting new coroutine");
         autoPilotCoroutine = new Coroutine(AutoPilotLogic(), CoPilot.Instance, "AutoPilot");
         Core.ParallelRunner.Run(autoPilotCoroutine);
+        CoPilot.Instance.LogMessage("AutoPilot: Coroutine started successfully");
     }
     private IEnumerator MouseoverItem(Entity item)
     {
@@ -190,14 +192,17 @@ public class AutoPilot
     }
     private IEnumerator AutoPilotLogic()
     {
+        CoPilot.Instance.LogMessage("AutoPilotLogic: Coroutine started");
         while (true)
         {
-            if (!CoPilot.Instance.Settings.Enable.Value || !CoPilot.Instance.Settings.autoPilotEnabled.Value || CoPilot.Instance.localPlayer == null || !CoPilot.Instance.localPlayer.IsAlive || 
-                !CoPilot.Instance.GameController.IsForeGroundCache || MenuWindow.IsOpened || CoPilot.Instance.GameController.IsLoading || !CoPilot.Instance.GameController.InGame)
+            try
             {
-                yield return new WaitTime(100);
-                continue;
-            }
+                if (!CoPilot.Instance.Settings.Enable.Value || !CoPilot.Instance.Settings.autoPilotEnabled.Value || CoPilot.Instance.localPlayer == null || !CoPilot.Instance.localPlayer.IsAlive || 
+                    !CoPilot.Instance.GameController.IsForeGroundCache || MenuWindow.IsOpened || CoPilot.Instance.GameController.IsLoading || !CoPilot.Instance.GameController.InGame)
+                {
+                    yield return new WaitTime(100);
+                    continue;
+                }
 		        
             // Only execute input tasks here - decision making moved to Render method
             if (tasks?.Count > 0)
@@ -411,6 +416,12 @@ public class AutoPilot
             
             lastPlayerPosition = CoPilot.Instance.playerPosition;
             yield return new WaitTime(50);
+            }
+            catch (Exception e)
+            {
+                CoPilot.Instance.LogError($"AutoPilotLogic Error: {e}");
+                yield return new WaitTime(100);
+            }
         }
         // ReSharper disable once IteratorNeverReturns
     }
@@ -671,7 +682,14 @@ public class AutoPilot
         }
         else if (CoPilot.Instance.Settings.autoPilotEnabled)
         {
-            CoPilot.Instance.LogMessage($"AutoPilot: Coroutine status - Running: {autoPilotCoroutine?.Running}, Task count: {tasks?.Count ?? 0}");
+            if (tasks?.Count > 0)
+            {
+                CoPilot.Instance.LogMessage($"AutoPilot: Coroutine status - Running: {autoPilotCoroutine?.Running}, Task count: {tasks?.Count ?? 0}, First task: {tasks[0].Type}");
+            }
+            else
+            {
+                CoPilot.Instance.LogMessage($"AutoPilot: Coroutine status - Running: {autoPilotCoroutine?.Running}, Task count: {tasks?.Count ?? 0}");
+            }
         }
 			
         if (!CoPilot.Instance.Settings.autoPilotEnabled || CoPilot.Instance.GameController.IsLoading || !CoPilot.Instance.GameController.InGame)
