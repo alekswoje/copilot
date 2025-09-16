@@ -149,8 +149,14 @@ public class AutoPilot
                     if (dotProduct < 0.5f) // 60 degrees
                     {
                         CoPilot.Instance.LogMessage($"180 DEGREE DETECTION: Player direction conflicts with task (dot={dotProduct:F2}), clearing path");
+                        CoPilot.Instance.LogMessage($"DEBUG: Bot pos: {botPos}, Player pos: {playerPos}, Task target: {currentTaskTarget}");
+                        CoPilot.Instance.LogMessage($"DEBUG: Bot->Task vector: {botToTask}, Bot->Player vector: {botToPlayer}");
                         lastPathClearTime = DateTime.Now;
                         return true;
+                    }
+                    else
+                    {
+                        CoPilot.Instance.LogMessage($"DEBUG: Direction check OK - dot product: {dotProduct:F2} (>= 0.5 threshold)");
                     }
                 }
             }
@@ -885,23 +891,38 @@ public class AutoPilot
 
                         CoPilot.Instance.LogMessage("Movement task: Mouse positioned, pressing move key down");
                         CoPilot.Instance.LogMessage($"Movement task: Move key: {CoPilot.Instance.Settings.autoPilotMoveKey}");
+                        CoPilot.Instance.LogMessage($"DEBUG: About to click at screen position: {movementScreenPos}, World position: {currentTask.WorldPosition}");
+                        CoPilot.Instance.LogMessage($"DEBUG: Current player position: {CoPilot.Instance.playerPosition}");
+                        CoPilot.Instance.LogMessage($"DEBUG: Current followTarget position: {followTarget?.Pos}");
                         yield return Mouse.SetCursorPosHuman(movementScreenPos);
                         
                         // IMMEDIATE OVERRIDE CHECK: After clicking, check if we need to override with new position
+                        CoPilot.Instance.LogMessage("DEBUG: Checking for immediate override after click...");
                         if (ShouldClearPathForResponsiveness(true)) // Use aggressive override timing
                         {
                             CoPilot.Instance.LogMessage("IMMEDIATE OVERRIDE: 180 detected after click - overriding with new position!");
+                            CoPilot.Instance.LogMessage($"DEBUG: Override triggered - clearing path and clicking new position");
                             ClearPathForEfficiency();
                             
                             // INSTANT OVERRIDE: Click the correct position immediately to override old movement
                             if (followTarget?.Pos != null)
                             {
                                 var correctScreenPos = Helper.WorldToValidScreenPosition(followTarget.Pos);
+                                CoPilot.Instance.LogMessage($"DEBUG: Override click - Old position: {currentTask.WorldPosition}, New position: {followTarget.Pos}");
+                                CoPilot.Instance.LogMessage($"DEBUG: Override click - Screen position: {correctScreenPos}");
                                 yield return Mouse.SetCursorPosHuman(correctScreenPos);
                                 CoPilot.Instance.LogMessage("MOVEMENT OVERRIDE: Clicked correct position to override old movement");
                             }
+                            else
+                            {
+                                CoPilot.Instance.LogMessage("DEBUG: Override failed - followTarget.Pos is null");
+                            }
                             yield return null;
                             continue;
+                        }
+                        else
+                        {
+                            CoPilot.Instance.LogMessage("DEBUG: No override needed - continuing with normal movement");
                         }
                         
                         if (instantPathOptimization)
@@ -1212,8 +1233,9 @@ public class AutoPilot
                             var responsiveThreshold = CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance.Value / 2;
                             if (distanceFromLastTask >= responsiveThreshold)
                             {
-                                CoPilot.Instance.LogMessage($"RESPONSIVENESS: Adding new path node - Distance: {distanceFromLastTask:F1}, Threshold: {responsiveThreshold:F1}");
-                                tasks.Add(new TaskNode(followTarget.Pos, CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance));
+                        CoPilot.Instance.LogMessage($"RESPONSIVENESS: Adding new path node - Distance: {distanceFromLastTask:F1}, Threshold: {responsiveThreshold:F1}");
+                        CoPilot.Instance.LogMessage($"DEBUG: Creating task to position: {followTarget.Pos} (Player at: {CoPilot.Instance.playerPosition})");
+                        tasks.Add(new TaskNode(followTarget.Pos, CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance));
                             }
                         }
                     }
