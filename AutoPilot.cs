@@ -218,6 +218,8 @@ public class AutoPilot
                 switch (currentTask.Type)
                 {
                     case TaskNodeType.Movement:
+                        CoPilot.Instance.LogMessage($"Movement task executing - Distance to target: {taskDistance:F1}, Required: {CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance.Value * 1.5:F1}");
+                        
                         // Check for distance-based dashing to keep up with leader
                         if (CoPilot.Instance.Settings.autoPilotDashEnabled && followTarget != null)
                         {
@@ -254,6 +256,17 @@ public class AutoPilot
                             CoPilot.Instance.LogMessage($"Movement task completed - Distance: {taskDistance:F1}");
                             tasks.RemoveAt(0);
                             lastPlayerPosition = CoPilot.Instance.playerPosition;
+                        }
+                        else
+                        {
+                            // Timeout mechanism - if we've been trying to reach this task for too long, give up
+                            currentTask.AttemptCount++;
+                            if (currentTask.AttemptCount > 10) // 10 attempts = ~5 seconds
+                            {
+                                CoPilot.Instance.LogMessage($"Movement task timeout - Distance: {taskDistance:F1}, Attempts: {currentTask.AttemptCount}");
+                                tasks.RemoveAt(0);
+                                lastPlayerPosition = CoPilot.Instance.playerPosition;
+                            }
                         }
                         yield return null;
                         continue;
@@ -443,20 +456,21 @@ public class AutoPilot
                     if (transition != null && transition.ItemOnGround.DistancePlayer < 80)
                         tasks.Add(new TaskNode(transition,200, TaskNodeType.Transition));
                 }
-                //We have no path, set us to go to leader pos.
-                else if (tasks.Count == 0 && distanceMoved < 2000 && distanceToLeader > 200 && distanceToLeader < 2000)
-                {
-                    // If very far away, add dash task instead of movement task
-                    if (distanceToLeader > 700 && CoPilot.Instance.Settings.autoPilotDashEnabled)
-                    {
-                        CoPilot.Instance.LogMessage($"Adding Dash task - Distance: {distanceToLeader:F1}");
-                        tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
-                    }
-                    else
-                    {
-                        tasks.Add(new TaskNode(followTarget.Pos, CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance));
-                    }
-                }
+                 //We have no path, set us to go to leader pos.
+                 else if (tasks.Count == 0 && distanceMoved < 2000 && distanceToLeader > 200 && distanceToLeader < 2000)
+                 {
+                     // If very far away, add dash task instead of movement task
+                     if (distanceToLeader > 700 && CoPilot.Instance.Settings.autoPilotDashEnabled)
+                     {
+                         CoPilot.Instance.LogMessage($"Adding Dash task - Distance: {distanceToLeader:F1}");
+                         tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
+                     }
+                     else
+                     {
+                         CoPilot.Instance.LogMessage($"Adding Movement task - Distance: {distanceToLeader:F1}");
+                         tasks.Add(new TaskNode(followTarget.Pos, CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance));
+                     }
+                 }
 						
                 //We have a path. Check if the last task is far enough away from current one to add a new task node.
                 else if (tasks.Count > 0)
