@@ -351,6 +351,8 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                             BetterFollowbotLite.Instance.LogMessage($"HOLY RELIC: Detected Holy Relic skill (ID: {skill.Id}), CanBeUsed: {skill.CanBeUsed}, RemainingUses: {skill.RemainingUses}, IsOnCooldown: {skill.IsOnCooldown}");
 
                             var lowestMinionHp = Summons.GetLowestMinionHpp();
+                            // Convert HP percentage from 0-1 range to 0-100 range for comparison
+                            var lowestMinionHpPercent = lowestMinionHp * 100f;
                             // Check for Holy Relic minion presence
                             // Prioritize ReAgent buff names, then check for other indicators
                             // Note: Avoid "guardian_life_regen" as it's just the life regen effect, not minion presence
@@ -360,10 +362,10 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                 x.Name.Contains("guardian_blessing_minion"));
                             var threshold = Settings.holyRelicHealthThreshold;
 
-                            BetterFollowbotLite.Instance.LogMessage($"HOLY RELIC: Lowest minion HP: {lowestMinionHp:F1}%, Threshold: {threshold}%, Has minion buff: {hasGuardianBlessingMinion}");
+                            BetterFollowbotLite.Instance.LogMessage($"HOLY RELIC: Lowest minion HP: {lowestMinionHpPercent:F1}%, Threshold: {threshold}%, Has minion buff: {hasGuardianBlessingMinion}");
 
                             // Check conditions
-                            var healthLow = lowestMinionHp < threshold;
+                            var healthLow = lowestMinionHpPercent < threshold;
                             var missingBuff = !hasGuardianBlessingMinion;
 
                             BetterFollowbotLite.Instance.LogMessage($"HOLY RELIC: Health low: {healthLow}, Missing buff: {missingBuff}, Should summon: {healthLow || missingBuff}");
