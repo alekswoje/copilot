@@ -54,7 +54,6 @@ This plugin is a fork of the original [CoPilot](https://github.com/totalschaden/
 
 Special thanks to:
 - The ExileCore/PoeHelper development team
-- The Path of Exile community
 - All contributors to the original CoPilot project
 
 ## Contributing
