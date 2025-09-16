@@ -224,6 +224,7 @@ public class AutoPilot
                             var distanceToLeader = Vector3.Distance(CoPilot.Instance.playerPosition, followTarget.Pos);
                             if (distanceToLeader > 700) // Dash if more than 700 units away from leader
                             {
+                                CoPilot.Instance.LogMessage($"Movement task: Dashing to leader - Distance: {distanceToLeader:F1}");
                                 yield return Mouse.SetCursorPosHuman(Helper.WorldToValidScreenPosition(followTarget.Pos));
                                 yield return new WaitTime(random.Next(25) + 30);
                                 Keyboard.KeyPress(CoPilot.Instance.Settings.autoPilotDashKey);
@@ -235,7 +236,11 @@ public class AutoPilot
                         
                         // Check for terrain-based dashing
                         if (CoPilot.Instance.Settings.autoPilotDashEnabled && CheckDashTerrain(currentTask.WorldPosition.WorldToGrid()))
+                        {
                             yield return null;
+                            continue;
+                        }
+                        
                         yield return Mouse.SetCursorPosHuman(Helper.WorldToValidScreenPosition(currentTask.WorldPosition));
                         yield return new WaitTime(random.Next(25) + 30);
                         Input.KeyDown(CoPilot.Instance.Settings.autoPilotMoveKey);
@@ -245,8 +250,11 @@ public class AutoPilot
                         //Within bounding range. Task is complete
                         //Note: Was getting stuck on close objects... testing hacky fix.
                         if (taskDistance <= CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance.Value * 1.5)
+                        {
+                            CoPilot.Instance.LogMessage($"Movement task completed - Distance: {taskDistance:F1}");
                             tasks.RemoveAt(0);
-                        yield return null;
+                            lastPlayerPosition = CoPilot.Instance.playerPosition;
+                        }
                         yield return null;
                         continue;
                     case TaskNodeType.Loot:
