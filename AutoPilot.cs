@@ -1806,12 +1806,12 @@ namespace BetterFollowbotLite;
                             if (distanceToLeader > 1000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 700 to 1000
                             {
                                 // CRITICAL: Don't add dash tasks if we have any active transition-related task OR teleport in progress
-                                var hasTransitionTasks = tasks.Any(t =>
+                                var shouldSkipDashTasks = tasks.Any(t =>
                                     t.Type == TaskNodeType.Transition ||
                                     t.Type == TaskNodeType.TeleportConfirm ||
                                     t.Type == TaskNodeType.TeleportButton);
 
-                                if (hasTransitionTasks || IsTeleportInProgress)
+                                if (shouldSkipDashTasks || IsTeleportInProgress)
                                 {
                                     BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Skipping dash task creation - transition/teleport active ({tasks.Count} tasks, teleport={IsTeleportInProgress})");
                                 }
