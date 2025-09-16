@@ -286,6 +286,7 @@ public class CoPilot : BaseSettingsPlugin<CoPilotSettings>
                 {
                     Keyboard.KeyPress(Settings.autoPilotMoveKey);
                 }
+                autoPilot.UpdateAutoPilotLogic();
                 autoPilot.Render();
             }
             catch (Exception e)
