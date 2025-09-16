@@ -36,13 +36,15 @@ A Path of Exile plugin for ExileCore/PoeHelper that provides automated follow bo
 - **Aura Blessing**: Automated aura and blessing casting
 - **Flame Link**: Party member linking functionality
 - **Smite**: Automated smite buff maintenance
+- **Vaal Haste**: Automated vaal haste activation when available
+- **Vaal Discipline**: Automated vaal discipline when energy shield drops below threshold
 
 ## Settings
 
 Access plugin settings through the ExileCore menu:
 - Enable/Disable individual features
 - Configure hotkeys and thresholds
-- Adjust automation parameters
+- Adjust automation parameters (e.g., Vaal Discipline ES% threshold)
 - Debug mode for troubleshooting
 
 ## Credits

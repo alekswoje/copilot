@@ -70,6 +70,14 @@ public class BetterFollowbotLiteSettings : ISettings
 
     #endregion
 
+    #region Vaal Skills
+
+    public ToggleNode vaalHasteEnabled = new ToggleNode(false);
+    public ToggleNode vaalDisciplineEnabled = new ToggleNode(false);
+    public RangeNode<int> vaalDisciplineEsp = new RangeNode<int>(70, 0, 100);
+
+    #endregion
+
     #region Input Keys
 
     public HotkeyNode inputKey1 = new HotkeyNode(Keys.Z);

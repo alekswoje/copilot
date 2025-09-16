@@ -186,6 +186,24 @@ internal class ImGuiDrawSettings
             // Error handling without logging
         }
 
+        try
+        {
+            ImGui.PushID(30);
+            if (ImGui.TreeNodeEx("Vaal Skills", collapsingHeaderFlags))
+            {
+                BetterFollowbotLite.Instance.Settings.vaalHasteEnabled.Value = ImGuiExtension.Checkbox("Vaal Haste Enabled",
+                    BetterFollowbotLite.Instance.Settings.vaalHasteEnabled.Value);
+                BetterFollowbotLite.Instance.Settings.vaalDisciplineEnabled.Value = ImGuiExtension.Checkbox("Vaal Discipline Enabled",
+                    BetterFollowbotLite.Instance.Settings.vaalDisciplineEnabled.Value);
+                BetterFollowbotLite.Instance.Settings.vaalDisciplineEsp.Value =
+                    ImGuiExtension.IntSlider("Vaal Discipline ES%", BetterFollowbotLite.Instance.Settings.vaalDisciplineEsp);
+            }
+        }
+        catch (Exception e)
+        {
+            // Error handling without logging
+        }
+
         //ImGui.End();
     }
 }

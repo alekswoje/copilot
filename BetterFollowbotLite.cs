@@ -551,6 +551,105 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
                 #endregion
 
+                #region Vaal Skills
+
+                if (Settings.vaalHasteEnabled)
+                    try
+                    {
+                        if (skill.Id == SkillInfo.vaalHaste.Id)
+                        {
+                            BetterFollowbotLite.Instance.LogMessage("VAAL HASTE: Vaal Haste skill detected");
+
+                            // Custom cooldown check for vaal haste
+                            if (SkillInfo.vaalHaste.Cooldown <= 0 &&
+                                !(skill.RemainingUses <= 0 && skill.IsOnCooldown))
+                            {
+                                // Check if we don't already have the vaal haste buff
+                                var hasVaalHasteBuff = buffs.Exists(x => x.Name == "vaal_haste");
+                                BetterFollowbotLite.Instance.LogMessage($"VAAL HASTE: Has vaal haste buff: {hasVaalHasteBuff}");
+
+                                if (!hasVaalHasteBuff)
+                                {
+                                    BetterFollowbotLite.Instance.LogMessage("VAAL HASTE: No vaal haste buff found, activating");
+
+                                    // Activate the skill
+                                    Keyboard.KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
+                                    SkillInfo.vaalHaste.Cooldown = 100;
+
+                                    BetterFollowbotLite.Instance.LogMessage("VAAL HASTE: Vaal Haste activated successfully");
+                                }
+                                else
+                                {
+                                    BetterFollowbotLite.Instance.LogMessage("VAAL HASTE: Already have vaal haste buff, skipping");
+                                }
+                            }
+                            else
+                            {
+                                BetterFollowbotLite.Instance.LogMessage("VAAL HASTE: Cooldown check failed");
+                            }
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        // Error handling without logging
+                    }
+
+                if (Settings.vaalDisciplineEnabled)
+                    try
+                    {
+                        if (skill.Id == SkillInfo.vaalDiscipline.Id)
+                        {
+                            BetterFollowbotLite.Instance.LogMessage("VAAL DISCIPLINE: Vaal Discipline skill detected");
+
+                            // Custom cooldown check for vaal discipline
+                            if (SkillInfo.vaalDiscipline.Cooldown <= 0 &&
+                                !(skill.RemainingUses <= 0 && skill.IsOnCooldown))
+                            {
+                                // Check if ES is below threshold
+                                var esPercentage = player.ESPercentage;
+                                var threshold = (float)Settings.vaalDisciplineEsp / 100;
+
+                                BetterFollowbotLite.Instance.LogMessage($"VAAL DISCIPLINE: ES%: {esPercentage:F1}, Threshold: {threshold:F2}");
+
+                                if (esPercentage < threshold)
+                                {
+                                    // Check if we don't already have the vaal discipline buff
+                                    var hasVaalDisciplineBuff = buffs.Exists(x => x.Name == "vaal_discipline");
+                                    BetterFollowbotLite.Instance.LogMessage($"VAAL DISCIPLINE: Has vaal discipline buff: {hasVaalDisciplineBuff}");
+
+                                    if (!hasVaalDisciplineBuff)
+                                    {
+                                        BetterFollowbotLite.Instance.LogMessage("VAAL DISCIPLINE: ES below threshold and no buff found, activating");
+
+                                        // Activate the skill
+                                        Keyboard.KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
+                                        SkillInfo.vaalDiscipline.Cooldown = 100;
+
+                                        BetterFollowbotLite.Instance.LogMessage("VAAL DISCIPLINE: Vaal Discipline activated successfully");
+                                    }
+                                    else
+                                    {
+                                        BetterFollowbotLite.Instance.LogMessage("VAAL DISCIPLINE: Already have vaal discipline buff, skipping");
+                                    }
+                                }
+                                else
+                                {
+                                    BetterFollowbotLite.Instance.LogMessage("VAAL DISCIPLINE: ES above threshold, skipping");
+                                }
+                            }
+                            else
+                            {
+                                BetterFollowbotLite.Instance.LogMessage("VAAL DISCIPLINE: Cooldown check failed");
+                            }
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        // Error handling without logging
+                    }
+
+                #endregion
+
                 /*
                 #region Spider
 

@@ -83,6 +83,10 @@ internal static class SkillInfo
     internal static Skill flameLink = new Skill();
     internal static Skill smite = new Skill();
 
+    // Vaal Skills
+    internal static Skill vaalHaste = new Skill();
+    internal static Skill vaalDiscipline = new Skill();
+
     internal static void ResetSkills()
     {
         enduringCry = new Skill();
@@ -144,6 +148,8 @@ internal static class SkillInfo
         auraEnvy = new Skill();
         flameLink = new Skill();
         smite = new Skill();
+        vaalHaste = new Skill();
+        vaalDiscipline = new Skill();
     }
 
     public static void GetDeltaTime()
@@ -478,6 +484,14 @@ internal static class SkillInfo
                 case "smite":
                     smite.Id = skill.Id;
                     smite.BuffName = "smite_buff";
+                    break;
+                case "vaal_haste":
+                    vaalHaste.Id = skill.Id;
+                    vaalHaste.BuffName = "vaal_haste";
+                    break;
+                case "vaal_discipline":
+                    vaalDiscipline.Id = skill.Id;
+                    vaalDiscipline.BuffName = "vaal_discipline";
                     break;
             }
         }
