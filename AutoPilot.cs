@@ -328,7 +328,18 @@ public class AutoPilot
     /// </summary>
     private void ClearPathForEfficiency()
     {
+        // CRITICAL: Preserve transition tasks during efficiency clears
+        // Remove all tasks except transition tasks to maintain zone transition priority
+        var transitionTasks = tasks.Where(t => t.Type == TaskNodeType.Transition).ToList();
         tasks.Clear();
+
+        // Re-add transition tasks to preserve zone transition functionality
+        foreach (var transitionTask in transitionTasks)
+        {
+            tasks.Add(transitionTask);
+            BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Preserved transition task during efficiency clear");
+        }
+
         hasUsedWp = false; // Allow waypoint usage again
         // Note: Don't reset dash cooldown for efficiency clears
         // instantPathOptimization flag is managed separately
@@ -747,7 +758,15 @@ public class AutoPilot
 
                         if (instantDistanceToLeader > 1000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 700 to 1000
                         {
-                            tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
+                            // CRITICAL: Don't add dash tasks if we have an active transition task
+                            if (!tasks.Any(t => t.Type == TaskNodeType.Transition))
+                            {
+                                tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
+                            }
+                            else
+                            {
+                                BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Skipping instant dash task - transition task active");
+                            }
                         }
                         else
                         {
@@ -772,7 +791,15 @@ public class AutoPilot
 
                         if (instantDistanceToLeader > 1000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 700 to 1000
                         {
-                            tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
+                            // CRITICAL: Don't add dash tasks if we have an active transition task
+                            if (!tasks.Any(t => t.Type == TaskNodeType.Transition))
+                            {
+                                tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
+                            }
+                            else
+                            {
+                                BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Skipping instant dash task - transition task active");
+                            }
                         }
                         else
                         {
@@ -1539,7 +1566,15 @@ public class AutoPilot
                         
                         if (instantDistanceToLeader > 1000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 700 to 1000
                         {
-                            tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
+                            // CRITICAL: Don't add dash tasks if we have an active transition task
+                            if (!tasks.Any(t => t.Type == TaskNodeType.Transition))
+                            {
+                                tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
+                            }
+                            else
+                            {
+                                BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Skipping instant dash task - transition task active");
+                            }
                         }
                         else
                         {
@@ -1566,7 +1601,15 @@ public class AutoPilot
                         
                         if (instantDistanceToLeader > 1000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 700 to 1000
                         {
-                            tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
+                            // CRITICAL: Don't add dash tasks if we have an active transition task
+                            if (!tasks.Any(t => t.Type == TaskNodeType.Transition))
+                            {
+                                tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
+                            }
+                            else
+                            {
+                                BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Skipping instant dash task - transition task active");
+                            }
                         }
                         else
                         {
@@ -1660,8 +1703,8 @@ public class AutoPilot
 
                                     BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Selected portal '{selectedPortal.Label?.Text}' at distance {selectedDistance:F1}");
 
-                                    // If the selected portal is very close (within 200 units), it's likely the one the leader used
-                                    if (selectedDistance < 200)
+                                    // If the selected portal is reasonably close (within 500 units), it's likely the one the leader used
+                                    if (selectedDistance < 500)
                                     {
                                         BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Using selected portal '{selectedPortal.Label?.Text}' as likely destination");
                                         transition = selectedPortal; // Set transition so we use this portal
@@ -1744,8 +1787,16 @@ public class AutoPilot
                             // If very far away, add dash task instead of movement task
                             if (distanceToLeader > 1000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 700 to 1000
                             {
-                                BetterFollowbotLite.Instance.LogMessage($"Adding Dash task - Distance: {distanceToLeader:F1}, Dash enabled: {BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled}");
-                                tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
+                                // CRITICAL: Don't add dash tasks if we have an active transition task
+                                if (tasks.Any(t => t.Type == TaskNodeType.Transition))
+                                {
+                                    BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Skipping dash task creation - transition task active");
+                                }
+                                else
+                                {
+                                    BetterFollowbotLite.Instance.LogMessage($"Adding Dash task - Distance: {distanceToLeader:F1}, Dash enabled: {BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled}");
+                                    tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
+                                }
                             }
                             else
                             {
