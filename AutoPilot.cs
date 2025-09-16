@@ -433,7 +433,15 @@ public class AutoPilot
                 //We have no path, set us to go to leader pos.
                 else if (tasks.Count == 0 && distanceMoved < 2000 && distanceToLeader > 200 && distanceToLeader < 2000)
                 {
-                    tasks.Add(new TaskNode(followTarget.Pos, CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance));
+                    // If very far away, add dash task instead of movement task
+                    if (distanceToLeader > 700 && CoPilot.Instance.Settings.autoPilotDashEnabled)
+                    {
+                        tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
+                    }
+                    else
+                    {
+                        tasks.Add(new TaskNode(followTarget.Pos, CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance));
+                    }
                 }
 						
                 //We have a path. Check if the last task is far enough away from current one to add a new task node.
@@ -485,16 +493,6 @@ public class AutoPilot
                 lastTargetPosition = followTarget.Pos;
         }
         
-        // Check for distance-based dashing outside of movement tasks
-        if (CoPilot.Instance.Settings.autoPilotDashEnabled && followTarget != null)
-        {
-            var distanceToLeader = Vector3.Distance(CoPilot.Instance.playerPosition, followTarget.Pos);
-            if (distanceToLeader > 700) // Dash if more than 700 units away from leader
-            {
-                // Add dash task
-                tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
-            }
-        }
     }
     // ReSharper disable once IteratorNeverReturns
         
