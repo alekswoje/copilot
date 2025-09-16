@@ -432,6 +432,23 @@ public class AutoPilot
                     CoPilot.Instance.LogMessage("INSTANT PATH OPTIMIZATION: Clearing inefficient path for direct movement");
                     instantPathOptimization = true; // Enable instant mode for immediate response
                     ClearPathForEfficiency(); // Clear all tasks and reset related state
+                    
+                    // FORCE IMMEDIATE PATH CREATION - Don't wait for UpdateAutoPilotLogic
+                    if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
+                    {
+                        var instantDistanceToLeader = Vector3.Distance(CoPilot.Instance.playerPosition, followTarget.Pos);
+                        CoPilot.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Creating immediate direct path - Distance: {instantDistanceToLeader:F1}");
+                        
+                        if (instantDistanceToLeader > 700 && CoPilot.Instance.Settings.autoPilotDashEnabled)
+                        {
+                            tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
+                        }
+                        else
+                        {
+                            tasks.Add(new TaskNode(followTarget.Pos, CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance));
+                        }
+                    }
+                    
                     yield return null; // INSTANT: No delay, immediate path recalculation
                     continue; // Skip current task processing, will recalculate path immediately
                 }
@@ -924,7 +941,23 @@ public class AutoPilot
                     CoPilot.Instance.LogMessage("INSTANT PATH OPTIMIZATION: Preventing inefficient path creation");
                     instantPathOptimization = true; // Enable instant mode for immediate response
                     ClearPathForEfficiency();
-                    // Continue with normal path creation logic below
+                    
+                    // FORCE IMMEDIATE PATH RECALCULATION - Skip normal logic and create direct path
+                    if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
+                    {
+                        var instantDistanceToLeader = Vector3.Distance(CoPilot.Instance.playerPosition, followTarget.Pos);
+                        CoPilot.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Creating direct path to leader - Distance: {instantDistanceToLeader:F1}");
+                        
+                        if (instantDistanceToLeader > 700 && CoPilot.Instance.Settings.autoPilotDashEnabled)
+                        {
+                            tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
+                        }
+                        else
+                        {
+                            tasks.Add(new TaskNode(followTarget.Pos, CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance));
+                        }
+                    }
+                    return; // Skip the rest of the path creation logic
                 }
 
                 // TODO: If in town, do not follow (optional)
