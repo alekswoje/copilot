@@ -1583,7 +1583,7 @@ public class AutoPilot
                         BetterFollowbotLite.Instance.LogMessage("ZONE TRANSITION: Transition task already active, skipping movement processing");
                         return; // Exit early to prevent interference
                     }
-                {
+
                     //Leader moved VERY far in one frame. Check for transition to use to follow them.
                     var distanceMoved = Vector3.Distance(lastTargetPosition, followTarget.Pos);
                     if (lastTargetPosition != Vector3.Zero && distanceMoved > BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance.Value)
