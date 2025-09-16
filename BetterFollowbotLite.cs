@@ -551,36 +551,44 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                             var leaderPos = autoPilot.FollowTarget.Pos;
                                             var distanceToLeader = Vector3.Distance(playerPosition, leaderPos);
 
-                                            // IMPORTANT: Don't dash if we have any active transition-related task OR teleport in progress
-                                            var hasTransitionTask = autoPilot.Tasks.Any(t =>
-                                                t.Type == TaskNodeType.Transition ||
-                                                t.Type == TaskNodeType.TeleportConfirm ||
-                                                t.Type == TaskNodeType.TeleportButton);
-
-                                            if (hasTransitionTask || AutoPilot.IsTeleportInProgress)
+                                            // CRITICAL: Don't dash if teleport is in progress (strongest protection)
+                                            if (AutoPilot.IsTeleportInProgress)
                                             {
-                                                BetterFollowbotLite.Instance.LogMessage($"SMITE: Transition/teleport active ({autoPilot.Tasks.Count} tasks, teleport={AutoPilot.IsTeleportInProgress}), skipping dash");
-                                            }
-                                            else if (distanceToLeader > 50) // Only dash if we're not already close to leader
-                                            {
-                                                BetterFollowbotLite.Instance.LogMessage($"SMITE: Dashing to leader - Distance: {distanceToLeader:F1}");
-
-                                                // Position mouse towards leader
-                                                var leaderScreenPos = GameController.IngameState.Camera.WorldToScreen(leaderPos);
-                                                Mouse.SetCursorPos(leaderScreenPos);
-
-                                                // Small delay to ensure mouse movement is registered
-                                                System.Threading.Thread.Sleep(50);
-
-                                                // Execute dash
-                                                Keyboard.KeyPress(Settings.autoPilotDashKey);
-                                                autoPilot.lastDashTime = DateTime.Now;
-
-                                                BetterFollowbotLite.Instance.LogMessage("SMITE: Dash to leader executed");
+                                                BetterFollowbotLite.Instance.LogMessage("SMITE: TELEPORT IN PROGRESS - blocking all dash attempts");
                                             }
                                             else
                                             {
-                                                BetterFollowbotLite.Instance.LogMessage("SMITE: Already close to leader, skipping dash");
+                                                // Fallback: Check for transition tasks
+                                                var hasTransitionTask = autoPilot.Tasks.Any(t =>
+                                                    t.Type == TaskNodeType.Transition ||
+                                                    t.Type == TaskNodeType.TeleportConfirm ||
+                                                    t.Type == TaskNodeType.TeleportButton);
+
+                                                if (hasTransitionTask)
+                                                {
+                                                    BetterFollowbotLite.Instance.LogMessage($"SMITE: Transition/teleport task active ({autoPilot.Tasks.Count} tasks), skipping dash");
+                                                }
+                                                else if (distanceToLeader > 50) // Only dash if we're not already close to leader
+                                                {
+                                                    BetterFollowbotLite.Instance.LogMessage($"SMITE: Dashing to leader - Distance: {distanceToLeader:F1}");
+
+                                                    // Position mouse towards leader
+                                                    var leaderScreenPos = GameController.IngameState.Camera.WorldToScreen(leaderPos);
+                                                    Mouse.SetCursorPos(leaderScreenPos);
+
+                                                    // Small delay to ensure mouse movement is registered
+                                                    System.Threading.Thread.Sleep(50);
+
+                                                    // Execute dash
+                                                    Keyboard.KeyPress(Settings.autoPilotDashKey);
+                                                    autoPilot.lastDashTime = DateTime.Now;
+
+                                                    BetterFollowbotLite.Instance.LogMessage("SMITE: Dash to leader executed");
+                                                }
+                                                else
+                                                {
+                                                    BetterFollowbotLite.Instance.LogMessage("SMITE: Already close to leader, skipping dash");
+                                                }
                                             }
                                         }
                                         else

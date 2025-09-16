@@ -1404,6 +1404,13 @@ namespace BetterFollowbotLite;
     {
         try
         {
+            // GLOBAL TELEPORT PROTECTION: Block ALL task creation and responsiveness during teleport
+            if (IsTeleportInProgress)
+            {
+                BetterFollowbotLite.Instance.LogMessage($"TELEPORT: Blocking all task creation - teleport in progress ({tasks.Count} tasks)");
+                return; // Exit immediately to prevent any interference
+            }
+
             if (!BetterFollowbotLite.Instance.Settings.Enable.Value || !BetterFollowbotLite.Instance.Settings.autoPilotEnabled.Value || BetterFollowbotLite.Instance.localPlayer == null || !BetterFollowbotLite.Instance.localPlayer.IsAlive ||
                 !BetterFollowbotLite.Instance.GameController.IsForeGroundCache || MenuWindow.IsOpened || BetterFollowbotLite.Instance.GameController.IsLoading || !BetterFollowbotLite.Instance.GameController.InGame)
             {
