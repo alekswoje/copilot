@@ -205,6 +205,8 @@ public class AutoPilot
                 var currentTask = tasks.First();
                 var taskDistance = Vector3.Distance(CoPilot.Instance.playerPosition, currentTask.WorldPosition);
                 var playerDistanceMoved = Vector3.Distance(CoPilot.Instance.playerPosition, lastPlayerPosition);
+                
+                CoPilot.Instance.LogMessage($"Coroutine executing task: {currentTask.Type}, Task count: {tasks.Count}, Distance: {taskDistance:F1}");
 
                 //We are using a same map transition and have moved significnatly since last tick. Mark the transition task as done.
                 if (currentTask.Type == TaskNodeType.Transition && 
@@ -263,11 +265,18 @@ public class AutoPilot
                             }
                         }
                         
-                        yield return Mouse.SetCursorPosHuman(Helper.WorldToValidScreenPosition(currentTask.WorldPosition));
+                        CoPilot.Instance.LogMessage($"Movement task: Moving to {currentTask.WorldPosition}");
+                        var screenPos = Helper.WorldToValidScreenPosition(currentTask.WorldPosition);
+                        CoPilot.Instance.LogMessage($"Movement task: Screen position: {screenPos}");
+                        yield return Mouse.SetCursorPosHuman(screenPos);
+                        CoPilot.Instance.LogMessage("Movement task: Mouse positioned, pressing move key down");
+                        CoPilot.Instance.LogMessage($"Movement task: Move key: {CoPilot.Instance.Settings.autoPilotMoveKey}");
                         yield return new WaitTime(random.Next(25) + 30);
                         Input.KeyDown(CoPilot.Instance.Settings.autoPilotMoveKey);
+                        CoPilot.Instance.LogMessage("Movement task: Move key down pressed, waiting");
                         yield return new WaitTime(random.Next(25) + 30);
                         Input.KeyUp(CoPilot.Instance.Settings.autoPilotMoveKey);
+                        CoPilot.Instance.LogMessage("Movement task: Move key released");
 
                         //Within bounding range. Task is complete
                         //Note: Was getting stuck on close objects... testing hacky fix.
@@ -657,7 +666,12 @@ public class AutoPilot
         // Restart coroutine if it died
         if (CoPilot.Instance.Settings.autoPilotEnabled && (autoPilotCoroutine == null || !autoPilotCoroutine.Running))
         {
+            CoPilot.Instance.LogMessage("AutoPilot: Restarting coroutine - it was dead");
             StartCoroutine();
+        }
+        else if (CoPilot.Instance.Settings.autoPilotEnabled)
+        {
+            CoPilot.Instance.LogMessage($"AutoPilot: Coroutine status - Running: {autoPilotCoroutine?.Running}, Task count: {tasks?.Count ?? 0}");
         }
 			
         if (!CoPilot.Instance.Settings.autoPilotEnabled || CoPilot.Instance.GameController.IsLoading || !CoPilot.Instance.GameController.InGame)
