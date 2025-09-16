@@ -618,6 +618,74 @@ public class AutoPilot
                 // Waypoint-related variables
                 Vector2 waypointScreenPos = Vector2.Zero;
 
+                // PRE-MOVEMENT OVERRIDE CHECK: Check if we should override BEFORE executing movement
+                if (currentTask.Type == TaskNodeType.Movement)
+                {
+                    CoPilot.Instance.LogMessage("DEBUG: Checking for pre-movement override...");
+                    
+                    // SIMPLIFIED OVERRIDE: Just check if target is far from current player position
+                    var playerPos = CoPilot.Instance.playerPosition;
+                    var botPos = CoPilot.Instance.localPlayer?.Pos ?? CoPilot.Instance.playerPosition;
+                    var targetPos = currentTask.WorldPosition;
+                    
+                    // Calculate direction from bot to target vs bot to player
+                    var botToTarget = targetPos - botPos;
+                    var botToPlayer = playerPos - botPos;
+                    
+                    bool shouldOverride = false;
+                    string overrideReason = "";
+                    
+                    // Check 1: Is target far from player?
+                    var targetToPlayerDistance = Vector3.Distance(targetPos, playerPos);
+                    if (targetToPlayerDistance > 400f)
+                    {
+                        shouldOverride = true;
+                        overrideReason = $"Target {targetToPlayerDistance:F1} units from player";
+                    }
+                    
+                    // Check 2: Are we going opposite direction from player?
+                    if (!shouldOverride && botToTarget.Length() > 10f && botToPlayer.Length() > 10f)
+                    {
+                        var dotProduct = Vector3.Dot(Vector3.Normalize(botToTarget), Vector3.Normalize(botToPlayer));
+                        if (dotProduct < 0.3f) // Going more than 72 degrees away from player
+                        {
+                            shouldOverride = true;
+                            overrideReason = $"Direction conflict (dot={dotProduct:F2})";
+                        }
+                    }
+                    
+                    CoPilot.Instance.LogMessage($"DEBUG: Pre-movement override check - {overrideReason}, Should override: {shouldOverride}");
+                    
+                    if (shouldOverride)
+                    {
+                        CoPilot.Instance.LogMessage($"PRE-MOVEMENT OVERRIDE: 180 detected before movement - overriding with new position! (Reason: {overrideReason})");
+                        CoPilot.Instance.LogMessage($"DEBUG: Override triggered - clearing path and clicking new position");
+                        ClearPathForEfficiency();
+                        
+                        // INSTANT OVERRIDE: Click towards the player's current position instead of stale followTarget
+                        // Calculate a position closer to the player (not the exact player position to avoid issues)
+                        var directionToPlayer = playerPos - botPos;
+                        if (directionToPlayer.Length() > 10f) // Only if player is far enough away
+                        {
+                            directionToPlayer = Vector3.Normalize(directionToPlayer);
+                            var correctionTarget = botPos + (directionToPlayer * 200f); // Move 200 units towards player
+                            
+                            var correctScreenPos = Helper.WorldToValidScreenPosition(correctionTarget);
+                            CoPilot.Instance.LogMessage($"DEBUG: Override click - Old position: {currentTask.WorldPosition}, Player position: {playerPos}");
+                            CoPilot.Instance.LogMessage($"DEBUG: Override click - Correction target: {correctionTarget}, Screen position: {correctScreenPos}");
+                            yield return Mouse.SetCursorPosHuman(correctScreenPos);
+                            CoPilot.Instance.LogMessage("PRE-MOVEMENT OVERRIDE: Clicked towards player position to override old movement");
+                            
+                            // Skip the rest of this movement task since we've overridden it
+                            continue;
+                        }
+                        else
+                        {
+                            CoPilot.Instance.LogMessage("DEBUG: Override skipped - player too close to bot");
+                        }
+                    }
+                }
+
                 try
                 {
                     switch (currentTask.Type)
@@ -691,72 +759,9 @@ public class AutoPilot
                                     screenPosError = true;
                                 }
 
+                                
                                 if (!screenPosError)
                                 {
-                                    // PRE-MOVEMENT OVERRIDE CHECK: Check if we should override BEFORE executing movement
-                                    CoPilot.Instance.LogMessage("DEBUG: Checking for pre-movement override...");
-                                    
-                                    // SIMPLIFIED OVERRIDE: Just check if target is far from current player position
-                                    var playerPos = CoPilot.Instance.playerPosition;
-                                    var botPos = CoPilot.Instance.localPlayer?.Pos ?? CoPilot.Instance.playerPosition;
-                                    var targetPos = currentTask.WorldPosition;
-                                    
-                                    // Calculate direction from bot to target vs bot to player
-                                    var botToTarget = targetPos - botPos;
-                                    var botToPlayer = playerPos - botPos;
-                                    
-                                    bool shouldOverride = false;
-                                    string overrideReason = "";
-                                    
-                                    // Check 1: Is target far from player?
-                                    var targetToPlayerDistance = Vector3.Distance(targetPos, playerPos);
-                                    if (targetToPlayerDistance > 400f)
-                                    {
-                                        shouldOverride = true;
-                                        overrideReason = $"Target {targetToPlayerDistance:F1} units from player";
-                                    }
-                                    
-                                    // Check 2: Are we going opposite direction from player?
-                                    if (!shouldOverride && botToTarget.Length() > 10f && botToPlayer.Length() > 10f)
-                                    {
-                                        var dotProduct = Vector3.Dot(Vector3.Normalize(botToTarget), Vector3.Normalize(botToPlayer));
-                                        if (dotProduct < 0.3f) // Going more than 72 degrees away from player
-                                        {
-                                            shouldOverride = true;
-                                            overrideReason = $"Direction conflict (dot={dotProduct:F2})";
-                                        }
-                                    }
-                                    
-                                    CoPilot.Instance.LogMessage($"DEBUG: Pre-movement override check - {overrideReason}, Should override: {shouldOverride}");
-                                    
-                                    if (shouldOverride)
-                                    {
-                                        CoPilot.Instance.LogMessage($"PRE-MOVEMENT OVERRIDE: 180 detected before movement - overriding with new position! (Reason: {overrideReason})");
-                                        CoPilot.Instance.LogMessage($"DEBUG: Override triggered - clearing path and clicking new position");
-                                        ClearPathForEfficiency();
-                                        
-                                        // INSTANT OVERRIDE: Click towards the player's current position instead of stale followTarget
-                                        // Calculate a position closer to the player (not the exact player position to avoid issues)
-                                        var directionToPlayer = playerPos - botPos;
-                                        if (directionToPlayer.Length() > 10f) // Only if player is far enough away
-                                        {
-                                            directionToPlayer = Vector3.Normalize(directionToPlayer);
-                                            var correctionTarget = botPos + (directionToPlayer * 200f); // Move 200 units towards player
-                                            
-                                            var correctScreenPos = Helper.WorldToValidScreenPosition(correctionTarget);
-                                            CoPilot.Instance.LogMessage($"DEBUG: Override click - Old position: {currentTask.WorldPosition}, Player position: {playerPos}");
-                                            CoPilot.Instance.LogMessage($"DEBUG: Override click - Correction target: {correctionTarget}, Screen position: {correctScreenPos}");
-                                            yield return Mouse.SetCursorPosHuman(correctScreenPos);
-                                            CoPilot.Instance.LogMessage("PRE-MOVEMENT OVERRIDE: Clicked towards player position to override old movement");
-                                            
-                                            // Skip the rest of this movement task since we've overridden it
-                                            continue;
-                                        }
-                                        else
-                                        {
-                                            CoPilot.Instance.LogMessage("DEBUG: Override skipped - player too close to bot");
-                                        }
-                                    }
                                     
                                     try
                                     {
