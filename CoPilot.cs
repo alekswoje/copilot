@@ -519,7 +519,40 @@ public class CoPilot : BaseSettingsPlugin<CoPilotSettings>
                                     }
                                     else
                                     {
-                                        CoPilot.Instance.LogMessage("SMITE: No suitable targets found within range");
+                                        CoPilot.Instance.LogMessage("SMITE: No suitable targets found within range, dashing to leader");
+
+                                        // Dash to leader to get near monsters
+                                        if (Settings.autoPilotDashEnabled && (DateTime.Now - autoPilot.lastDashTime).TotalMilliseconds >= 3000 && autoPilot.followTarget != null)
+                                        {
+                                            var leaderPos = autoPilot.followTarget.Pos;
+                                            var distanceToLeader = Vector3.Distance(playerPosition, leaderPos);
+
+                                            if (distanceToLeader > 50) // Only dash if we're not already close to leader
+                                            {
+                                                CoPilot.Instance.LogMessage($"SMITE: Dashing to leader - Distance: {distanceToLeader:F1}");
+
+                                                // Position mouse towards leader
+                                                var leaderScreenPos = GameController.IngameState.Camera.WorldToScreen(leaderPos);
+                                                Mouse.SetCursorPos(leaderScreenPos);
+
+                                                // Small delay to ensure mouse movement is registered
+                                                System.Threading.Thread.Sleep(50);
+
+                                                // Execute dash
+                                                Keyboard.KeyPress(Settings.autoPilotDashKey);
+                                                autoPilot.lastDashTime = DateTime.Now;
+
+                                                CoPilot.Instance.LogMessage("SMITE: Dash to leader executed");
+                                            }
+                                            else
+                                            {
+                                                CoPilot.Instance.LogMessage("SMITE: Already close to leader, skipping dash");
+                                            }
+                                        }
+                                        else
+                                        {
+                                            CoPilot.Instance.LogMessage("SMITE: Dash not available or not enabled");
+                                        }
                                     }
                                 }
                                     else

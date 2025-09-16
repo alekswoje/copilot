@@ -25,7 +25,7 @@ public class AutoPilot
 
     private bool hasUsedWp;
     private List<TaskNode> tasks = new List<TaskNode>();
-    private DateTime lastDashTime = DateTime.MinValue; // Track last dash time for cooldown
+    internal DateTime lastDashTime = DateTime.MinValue; // Track last dash time for cooldown
     private bool instantPathOptimization = false; // Flag for instant response when path efficiency is detected
     private DateTime lastPathClearTime = DateTime.MinValue; // Track last path clear to prevent spam
     private DateTime lastResponsivenessCheck = DateTime.MinValue; // Track last responsiveness check to prevent spam
