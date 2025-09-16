@@ -904,18 +904,26 @@ public class AutoPilot
                             CoPilot.Instance.LogMessage($"DEBUG: Override triggered - clearing path and clicking new position");
                             ClearPathForEfficiency();
                             
-                            // INSTANT OVERRIDE: Click the correct position immediately to override old movement
-                            if (followTarget?.Pos != null)
+                            // INSTANT OVERRIDE: Click towards the player's current position instead of stale followTarget
+                            var playerPos = CoPilot.Instance.playerPosition;
+                            var botPos = CoPilot.Instance.localPlayer?.Pos ?? CoPilot.Instance.playerPosition;
+                            
+                            // Calculate a position closer to the player (not the exact player position to avoid issues)
+                            var directionToPlayer = playerPos - botPos;
+                            if (directionToPlayer.Length() > 10f) // Only if player is far enough away
                             {
-                                var correctScreenPos = Helper.WorldToValidScreenPosition(followTarget.Pos);
-                                CoPilot.Instance.LogMessage($"DEBUG: Override click - Old position: {currentTask.WorldPosition}, New position: {followTarget.Pos}");
-                                CoPilot.Instance.LogMessage($"DEBUG: Override click - Screen position: {correctScreenPos}");
+                                directionToPlayer = Vector3.Normalize(directionToPlayer);
+                                var correctionTarget = botPos + (directionToPlayer * 200f); // Move 200 units towards player
+                                
+                                var correctScreenPos = Helper.WorldToValidScreenPosition(correctionTarget);
+                                CoPilot.Instance.LogMessage($"DEBUG: Override click - Old position: {currentTask.WorldPosition}, Player position: {playerPos}");
+                                CoPilot.Instance.LogMessage($"DEBUG: Override click - Correction target: {correctionTarget}, Screen position: {correctScreenPos}");
                                 yield return Mouse.SetCursorPosHuman(correctScreenPos);
-                                CoPilot.Instance.LogMessage("MOVEMENT OVERRIDE: Clicked correct position to override old movement");
+                                CoPilot.Instance.LogMessage("MOVEMENT OVERRIDE: Clicked towards player position to override old movement");
                             }
                             else
                             {
-                                CoPilot.Instance.LogMessage("DEBUG: Override failed - followTarget.Pos is null");
+                                CoPilot.Instance.LogMessage("DEBUG: Override skipped - player too close to bot");
                             }
                             yield return null;
                             continue;
@@ -1006,14 +1014,28 @@ public class AutoPilot
                             CoPilot.Instance.LogMessage("IMMEDIATE OVERRIDE: 180 detected after dash positioning - overriding with new position!");
                             ClearPathForEfficiency();
                             
-                            // INSTANT OVERRIDE: Position cursor to correct location and dash there instead
-                            if (followTarget?.Pos != null)
+                            // INSTANT OVERRIDE: Position cursor towards player and dash there instead
+                            var playerPos = CoPilot.Instance.playerPosition;
+                            var botPos = CoPilot.Instance.localPlayer?.Pos ?? CoPilot.Instance.playerPosition;
+                            
+                            // Calculate a position closer to the player for dash correction
+                            var directionToPlayer = playerPos - botPos;
+                            if (directionToPlayer.Length() > 10f) // Only if player is far enough away
                             {
-                                var correctScreenPos = Helper.WorldToValidScreenPosition(followTarget.Pos);
+                                directionToPlayer = Vector3.Normalize(directionToPlayer);
+                                var correctionTarget = botPos + (directionToPlayer * 400f); // Dash 400 units towards player
+                                
+                                var correctScreenPos = Helper.WorldToValidScreenPosition(correctionTarget);
+                                CoPilot.Instance.LogMessage($"DEBUG: Dash override - Old position: {currentTask.WorldPosition}, Player position: {playerPos}");
+                                CoPilot.Instance.LogMessage($"DEBUG: Dash override - Correction target: {correctionTarget}");
                                 yield return Mouse.SetCursorPosHuman(correctScreenPos);
                                 Keyboard.KeyPress(CoPilot.Instance.Settings.autoPilotDashKey);
                                 lastDashTime = DateTime.Now; // Record dash time for cooldown
-                                CoPilot.Instance.LogMessage("DASH OVERRIDE: Dashed to correct position to override old dash");
+                                CoPilot.Instance.LogMessage("DASH OVERRIDE: Dashed towards player position to override old dash");
+                            }
+                            else
+                            {
+                                CoPilot.Instance.LogMessage("DEBUG: Dash override skipped - player too close to bot");
                             }
                             yield return null;
                             continue;
