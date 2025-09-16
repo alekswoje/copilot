@@ -82,7 +82,7 @@ internal class ImGuiDrawSettings
         }
         catch (Exception e)
         {
-            CoPilot.Instance.LogError(e.ToString());
+            // Error handling without logging
         }
 
         try
@@ -140,7 +140,7 @@ internal class ImGuiDrawSettings
         }
         catch (Exception e)
         {
-            CoPilot.Instance.LogError(e.ToString());
+            // Error handling without logging
         }
 
         if (!CoPilot.Instance.Settings.confirm5)
@@ -181,7 +181,7 @@ internal class ImGuiDrawSettings
         }
         catch (Exception e)
         {
-            CoPilot.Instance.LogError(e.ToString());
+            // Error handling without logging
         }
 
         try
@@ -232,7 +232,7 @@ internal class ImGuiDrawSettings
         }
         catch (Exception e)
         {
-            CoPilot.Instance.LogError(e.ToString());
+            // Error handling without logging
         }
             
 
@@ -265,7 +265,7 @@ internal class ImGuiDrawSettings
         }
         catch (Exception e)
         {
-            CoPilot.Instance.LogError(e.ToString());
+            // Error handling without logging
         }
 
 
@@ -300,7 +300,7 @@ internal class ImGuiDrawSettings
         }
         catch (Exception e)
         {
-            CoPilot.Instance.LogError(e.ToString());
+            // Error handling without logging
         }
 
         try
@@ -320,7 +320,7 @@ internal class ImGuiDrawSettings
         }
         catch (Exception e)
         {
-            CoPilot.Instance.LogError(e.ToString());
+            // Error handling without logging
         }
 
 

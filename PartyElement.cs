@@ -62,7 +62,7 @@ public static class PartyElements
         }
         catch (Exception e)
         {
-            CoPilot.Instance.LogError("Character: " + e, 5);
+            // Error handling without logging
         }
 
         return playersInParty;

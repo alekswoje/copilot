@@ -295,7 +295,6 @@ public class AutoPilot
         }
         catch (Exception e)
         {
-            CoPilot.Instance.LogError($"Path abandonment check error: {e}");
             return false;
         }
     }
@@ -459,10 +458,8 @@ public class AutoPilot
 
     public void StartCoroutine()
     {
-        CoPilot.Instance.LogMessage("AutoPilot: Starting new coroutine");
         autoPilotCoroutine = new Coroutine(AutoPilotLogic(), CoPilot.Instance, "AutoPilot");
         Core.ParallelRunner.Run(autoPilotCoroutine);
-        CoPilot.Instance.LogMessage("AutoPilot: Coroutine started successfully");
     }
     private IEnumerator MouseoverItem(Entity item)
     {
@@ -480,7 +477,6 @@ public class AutoPilot
     }
     private IEnumerator AutoPilotLogic()
     {
-        CoPilot.Instance.LogMessage("AutoPilotLogic: Coroutine started");
         while (true)
         {
             if (!CoPilot.Instance.Settings.Enable.Value || !CoPilot.Instance.Settings.autoPilotEnabled.Value || CoPilot.Instance.localPlayer == null || !CoPilot.Instance.localPlayer.IsAlive ||
@@ -502,7 +498,6 @@ public class AutoPilot
                 }
                 catch (Exception e)
                 {
-                    CoPilot.Instance.LogError($"Task access error: {e}");
                     taskAccessError = true;
                 }
 
@@ -514,7 +509,6 @@ public class AutoPilot
 
                 if (currentTask?.WorldPosition == null)
                 {
-                    CoPilot.Instance.LogError("Coroutine: Invalid task with null WorldPosition, removing");
                     tasks.RemoveAt(0);
                     yield return new WaitTime(50);
                     continue;
@@ -523,12 +517,9 @@ public class AutoPilot
                 var taskDistance = Vector3.Distance(CoPilot.Instance.playerPosition, currentTask.WorldPosition);
                 var playerDistanceMoved = Vector3.Distance(CoPilot.Instance.playerPosition, lastPlayerPosition);
 
-                CoPilot.Instance.LogMessage($"Coroutine executing task: {currentTask.Type}, Task count: {tasks.Count}, Distance: {taskDistance:F1}");
-
                 // Check if we should clear path for better responsiveness to player movement
                 if (ShouldClearPathForResponsiveness())
                 {
-                    CoPilot.Instance.LogMessage("RESPONSIVENESS: Clearing path for better player tracking");
                     instantPathOptimization = true; // Enable instant mode for immediate response
                     ClearPathForEfficiency(); // Clear all tasks and reset related state
                     
@@ -536,8 +527,7 @@ public class AutoPilot
                     if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
                     {
                         var instantDistanceToLeader = Vector3.Distance(CoPilot.Instance.playerPosition, followTarget.Pos);
-                        CoPilot.Instance.LogMessage($"RESPONSIVENESS: Creating immediate direct path - Distance: {instantDistanceToLeader:F1}");
-                        
+
                         if (instantDistanceToLeader > 1000 && CoPilot.Instance.Settings.autoPilotDashEnabled) // Increased from 700 to 1000
                         {
                             tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
@@ -555,7 +545,6 @@ public class AutoPilot
                 // Check if current path is inefficient and should be abandoned - INSTANT RESPONSE
                 if (ShouldAbandonPathForEfficiency())
                 {
-                    CoPilot.Instance.LogMessage("INSTANT PATH OPTIMIZATION: Clearing inefficient path for direct movement");
                     instantPathOptimization = true; // Enable instant mode for immediate response
                     ClearPathForEfficiency(); // Clear all tasks and reset related state
                     
@@ -563,8 +552,7 @@ public class AutoPilot
                     if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
                     {
                         var instantDistanceToLeader = Vector3.Distance(CoPilot.Instance.playerPosition, followTarget.Pos);
-                        CoPilot.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Creating immediate direct path - Distance: {instantDistanceToLeader:F1}");
-                        
+
                         if (instantDistanceToLeader > 1000 && CoPilot.Instance.Settings.autoPilotDashEnabled) // Increased from 700 to 1000
                         {
                             tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
@@ -620,8 +608,6 @@ public class AutoPilot
                 // PRE-MOVEMENT OVERRIDE CHECK: Check if we should override BEFORE executing movement
                 if (currentTask.Type == TaskNodeType.Movement)
                 {
-                    CoPilot.Instance.LogMessage("DEBUG: Checking for pre-movement override...");
-                    
                     // SIMPLIFIED OVERRIDE: Just check if target is far from current player position
                     var playerPos = CoPilot.Instance.playerPosition;
                     var botPos = CoPilot.Instance.localPlayer?.Pos ?? CoPilot.Instance.playerPosition;
@@ -652,13 +638,9 @@ public class AutoPilot
                             overrideReason = $"Direction conflict (dot={dotProduct:F2})";
                         }
                     }
-                    
-                    CoPilot.Instance.LogMessage($"DEBUG: Pre-movement override check - {overrideReason}, Should override: {shouldOverride}");
-                    
+
                     if (shouldOverride)
                     {
-                        CoPilot.Instance.LogMessage($"PRE-MOVEMENT OVERRIDE: 180 detected before movement - overriding with new position! (Reason: {overrideReason})");
-                        CoPilot.Instance.LogMessage($"DEBUG: Override triggered - clearing path and clicking new position");
                         ClearPathForEfficiency();
                         
                         // INSTANT OVERRIDE: Click towards the player's current position instead of stale followTarget
@@ -670,17 +652,10 @@ public class AutoPilot
                             var correctionTarget = botPos + (directionToPlayer * 200f); // Move 200 units towards player
                             
                             var correctScreenPos = Helper.WorldToValidScreenPosition(correctionTarget);
-                            CoPilot.Instance.LogMessage($"DEBUG: Override click - Old position: {currentTask.WorldPosition}, Player position: {playerPos}");
-                            CoPilot.Instance.LogMessage($"DEBUG: Override click - Correction target: {correctionTarget}, Screen position: {correctScreenPos}");
                             yield return Mouse.SetCursorPosHuman(correctScreenPos);
-                            CoPilot.Instance.LogMessage("PRE-MOVEMENT OVERRIDE: Clicked towards player position to override old movement");
-                            
+
                             // Skip the rest of this movement task since we've overridden it
                             continue;
-                        }
-                        else
-                        {
-                            CoPilot.Instance.LogMessage("DEBUG: Override skipped - player too close to bot");
                         }
                     }
                 }
@@ -690,71 +665,55 @@ public class AutoPilot
                     switch (currentTask.Type)
                     {
                         case TaskNodeType.Movement:
-                            CoPilot.Instance.LogMessage($"Movement task executing - Distance to target: {taskDistance:F1}, Required: {CoPilot.Instance.Settings.autoPilotPathfindingNodeDistance.Value * 1.5:F1}");
-
                             // Check for distance-based dashing to keep up with leader
                             if (CoPilot.Instance.Settings.autoPilotDashEnabled && followTarget != null && followTarget.Pos != null && CanDash())
                             {
                                 try
                                 {
                                     var distanceToLeader = Vector3.Distance(CoPilot.Instance.playerPosition, followTarget.Pos);
-                                    CoPilot.Instance.LogMessage($"Movement task: Checking dash - Distance to leader: {distanceToLeader:F1}, Dash enabled: {CoPilot.Instance.Settings.autoPilotDashEnabled}, Threshold: 700, Can dash: {CanDash()}");
                                     if (distanceToLeader > 700 && IsCursorPointingTowardsTarget(followTarget.Pos)) // Dash if more than 700 units away and cursor is pointing towards leader
                                     {
-                                        CoPilot.Instance.LogMessage($"Movement task: Dashing to leader - Distance: {distanceToLeader:F1}, Cursor direction valid");
                                         shouldDashToLeader = true;
-                                    }
-                                    else if (distanceToLeader > 700 && !IsCursorPointingTowardsTarget(followTarget.Pos))
-                                    {
-                                        CoPilot.Instance.LogMessage($"Movement task: Not dashing - Distance: {distanceToLeader:F1} but cursor not pointing towards target");
-                                    }
-                                    else
-                                    {
-                                        CoPilot.Instance.LogMessage($"Movement task: Not dashing - Distance {distanceToLeader:F1} <= 700");
                                     }
                                 }
                                 catch (Exception e)
                                 {
-                                    CoPilot.Instance.LogError($"Movement task: Dash calculation error: {e}");
+                                    // Error handling without logging
                                 }
                             }
                             else
                             {
-                                CoPilot.Instance.LogMessage($"Movement task: Dash check skipped - Dash enabled: {CoPilot.Instance.Settings.autoPilotDashEnabled}, Follow target: {followTarget != null}, Follow target pos: {followTarget?.Pos != null}");
+                                // Dash check skipped
                             }
 
                             // Check for terrain-based dashing
                             if (CoPilot.Instance.Settings.autoPilotDashEnabled && CanDash())
                             {
-                                CoPilot.Instance.LogMessage("Movement task: Checking terrain dash");
+                                // Terrain dash check
                                 if (CheckDashTerrain(currentTask.WorldPosition.WorldToGrid()) && IsCursorPointingTowardsTarget(currentTask.WorldPosition))
                                 {
-                                    CoPilot.Instance.LogMessage("Movement task: Terrain dash executed - Cursor direction valid");
+                                    // Terrain dash executed
                                     shouldTerrainDash = true;
                                 }
                                 else if (CheckDashTerrain(currentTask.WorldPosition.WorldToGrid()) && !IsCursorPointingTowardsTarget(currentTask.WorldPosition))
                                 {
-                                    CoPilot.Instance.LogMessage("Movement task: Terrain dash blocked - Cursor not pointing towards target");
+                                    // Terrain dash blocked - cursor not pointing towards target
                                 }
                                 else
                                 {
-                                    CoPilot.Instance.LogMessage("Movement task: No terrain dash needed");
+                                    // No terrain dash needed
                                 }
                             }
 
                             // Skip movement logic if dashing
                             if (!shouldDashToLeader && !shouldTerrainDash)
                             {
-                                CoPilot.Instance.LogMessage($"Movement task: Moving to {currentTask.WorldPosition}");
-
                                 try
                                 {
                                     movementScreenPos = Helper.WorldToValidScreenPosition(currentTask.WorldPosition);
-                                    CoPilot.Instance.LogMessage($"Movement task: Screen position: {movementScreenPos}");
                                 }
                                 catch (Exception e)
                                 {
-                                    CoPilot.Instance.LogError($"Movement task: Screen position calculation error: {e}");
                                     screenPosError = true;
                                 }
 
