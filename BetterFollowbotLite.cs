@@ -522,9 +522,9 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                         BetterFollowbotLite.Instance.LogMessage("SMITE: No suitable targets found within range, dashing to leader");
 
                                         // Dash to leader to get near monsters
-                                        if (Settings.autoPilotDashEnabled && (DateTime.Now - autoPilot.lastDashTime).TotalMilliseconds >= 3000 && autoPilot.followTarget != null)
+                                        if (Settings.autoPilotDashEnabled && (DateTime.Now - autoPilot.lastDashTime).TotalMilliseconds >= 3000 && autoPilot.FollowTarget != null)
                                         {
-                                            var leaderPos = autoPilot.followTarget.Pos;
+                                            var leaderPos = autoPilot.FollowTarget.Pos;
                                             var distanceToLeader = Vector3.Distance(playerPosition, leaderPos);
 
                                             if (distanceToLeader > 50) // Only dash if we're not already close to leader

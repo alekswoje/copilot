@@ -23,6 +23,8 @@ public class AutoPilot
     private Vector3 lastPlayerPosition;
     private Entity followTarget;
 
+    public Entity FollowTarget => followTarget;
+
     private bool hasUsedWp;
     private List<TaskNode> tasks = new List<TaskNode>();
     internal DateTime lastDashTime = DateTime.MinValue; // Track last dash time for cooldown
