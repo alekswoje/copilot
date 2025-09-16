@@ -560,9 +560,8 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                         {
                             BetterFollowbotLite.Instance.LogMessage($"VAAL HASTE: Vaal Haste skill detected - ID: {skill.Id}, Name: {skill.Name}");
 
-                            // Custom cooldown check for vaal haste
-                            if (SkillInfo.vaalHaste.Cooldown <= 0 &&
-                                !(skill.RemainingUses <= 0 && skill.IsOnCooldown))
+                            // Vaal skills use charges, not traditional cooldowns
+                            if (!(skill.RemainingUses <= 0 && skill.IsOnCooldown))
                             {
                                 // Check if we don't already have the vaal haste buff
                                 var hasVaalHasteBuff = buffs.Exists(x => x.Name == "vaal_haste");
@@ -574,7 +573,6 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
                                     // Activate the skill
                                     Keyboard.KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
-                                    SkillInfo.vaalHaste.Cooldown = 100;
 
                                     BetterFollowbotLite.Instance.LogMessage("VAAL HASTE: Vaal Haste activated successfully");
                                 }
@@ -601,9 +599,8 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                         {
                             BetterFollowbotLite.Instance.LogMessage($"VAAL DISCIPLINE: Vaal Discipline skill detected - ID: {skill.Id}, Name: {skill.Name}");
 
-                            // Custom cooldown check for vaal discipline
-                            if (SkillInfo.vaalDiscipline.Cooldown <= 0 &&
-                                !(skill.RemainingUses <= 0 && skill.IsOnCooldown))
+                            // Vaal skills use charges, not traditional cooldowns
+                            if (!(skill.RemainingUses <= 0 && skill.IsOnCooldown))
                             {
                                 // Check if ES is below threshold
                                 var esPercentage = player.ESPercentage;
@@ -623,7 +620,6 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
                                         // Activate the skill
                                         Keyboard.KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
-                                        SkillInfo.vaalDiscipline.Cooldown = 100;
 
                                         BetterFollowbotLite.Instance.LogMessage("VAAL DISCIPLINE: Vaal Discipline activated successfully");
                                     }
