@@ -169,13 +169,23 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
     public override void AreaChange(AreaInstance area)
     {
         base.AreaChange(area);
+
+        // Log area change details
+        var newAreaName = area?.DisplayName ?? "Unknown";
+        var isHideout = area?.IsHideout ?? false;
+        var realLevel = area?.RealLevel ?? 0;
+
+        LogMessage($"AREA CHANGE: Transitioned to '{newAreaName}' - Hideout: {isHideout}, Level: {realLevel}");
+
         SkillInfo.ResetSkills();
         skills = null;
 
         var coroutine = new Coroutine(WaitForSkillsAfterAreaChange(), this);
         Core.ParallelRunner.Run(coroutine);
-            
+
         autoPilot.AreaChange();
+
+        LogMessage("AREA CHANGE: Area change processing completed");
     }
         
     public override void DrawSettings()

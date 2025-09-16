@@ -353,20 +353,70 @@ public class AutoPilot
         try
         {
             if (leaderPartyElement == null)
+            {
+                BetterFollowbotLite.Instance.LogMessage("PORTAL DEBUG: GetBestPortalLabel called with null leaderPartyElement");
                 return null;
+            }
 
             var currentZoneName = BetterFollowbotLite.Instance.GameController?.Area.CurrentArea.DisplayName;
+            var leaderZoneName = leaderPartyElement.ZoneName;
+            var isHideout = (bool)BetterFollowbotLite.Instance?.GameController?.Area?.CurrentArea?.IsHideout;
+            var realLevel = BetterFollowbotLite.Instance.GameController?.Area?.CurrentArea?.RealLevel ?? 0;
+
+            BetterFollowbotLite.Instance.LogMessage($"PORTAL DEBUG: Checking for portals - Current: '{currentZoneName}', Leader: '{leaderZoneName}', Hideout: {isHideout}, Level: {realLevel}");
+
             // Look for portals when leader is in different zone, or when in hideout, or in high level areas
-            if(!leaderPartyElement.ZoneName.Equals(currentZoneName) || (bool)BetterFollowbotLite.Instance?.GameController?.Area?.CurrentArea?.IsHideout || BetterFollowbotLite.Instance.GameController?.Area?.CurrentArea?.RealLevel >= 68) // TODO: or is chamber of sins a7 or is epilogue
+            if (!leaderPartyElement.ZoneName.Equals(currentZoneName) || isHideout || realLevel >= 68) // TODO: or is chamber of sins a7 or is epilogue
             {
+                BetterFollowbotLite.Instance.LogMessage($"PORTAL DEBUG: Portal search condition met - different zones or hideout/high level");
+
                 var allPortalLabels =
                     BetterFollowbotLite.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels.Where(x =>
                             x != null && x.IsVisible && x.Label != null && x.Label.IsValid && x.Label.IsVisible && x.ItemOnGround != null &&
                             (x.ItemOnGround.Metadata.ToLower().Contains("areatransition") || x.ItemOnGround.Metadata.ToLower().Contains("portal") ))
                         .ToList();
 
+                BetterFollowbotLite.Instance.LogMessage($"PORTAL DEBUG: Found {allPortalLabels?.Count ?? 0} total portal labels");
+
                 if (allPortalLabels == null || allPortalLabels.Count == 0)
+                {
+                    BetterFollowbotLite.Instance.LogMessage("PORTAL DEBUG: No portal labels found on ground");
+
+                    // If we're looking for an Arena portal specifically, add some additional debugging
+                    if (leaderPartyElement.ZoneName?.ToLower().Contains("arena") ?? false)
+                    {
+                        BetterFollowbotLite.Instance.LogMessage("PORTAL DEBUG: Looking for Arena portal - checking all entities on ground");
+
+                        // Look for any entities that might be portals even without labels
+                        var allEntities = BetterFollowbotLite.Instance.GameController?.EntityListWrapper?.Entities;
+                        if (allEntities != null)
+                        {
+                            var potentialPortals = allEntities.Where(e =>
+                                e?.Type == EntityType.WorldItem &&
+                                e.IsTargetable &&
+                                e.HasComponent<WorldItem>() &&
+                                (e.Metadata.ToLower().Contains("areatransition") || e.Metadata.ToLower().Contains("portal"))
+                            ).ToList();
+
+                            BetterFollowbotLite.Instance.LogMessage($"PORTAL DEBUG: Found {potentialPortals.Count} potential portal entities without labels");
+                            foreach (var portal in potentialPortals)
+                            {
+                                var distance = Vector3.Distance(lastTargetPosition, portal.Pos);
+                                BetterFollowbotLite.Instance.LogMessage($"PORTAL DEBUG: Portal entity at distance {distance:F1}, Metadata: {portal.Metadata}");
+                            }
+                        }
+                    }
+
                     return null;
+                }
+
+                // Log all available portals for debugging
+                foreach (var portal in allPortalLabels)
+                {
+                    var labelText = portal.Label?.Text ?? "NULL";
+                    var distance = Vector3.Distance(lastTargetPosition, portal.ItemOnGround.Pos);
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL DEBUG: Available portal - Text: '{labelText}', Distance: {distance:F1}");
+                }
 
                 // First, try to find portals that lead to the leader's zone by checking the label text
                 var matchingPortals = allPortalLabels.Where(x =>
@@ -374,46 +424,145 @@ public class AutoPilot
                     try
                     {
                         var labelText = x.Label?.Text?.ToLower() ?? "";
-                        var leaderZoneName = leaderPartyElement.ZoneName?.ToLower() ?? "";
+                        var leaderZone = leaderPartyElement.ZoneName?.ToLower() ?? "";
                         var currentZone = currentZoneName?.ToLower() ?? "";
 
-                        // Check if the portal label contains the leader's zone name
-                        // This handles cases like "Portal to The Lair of the Hydra" containing "The Lair of the Hydra"
-                        var matchesLeaderZone = !string.IsNullOrEmpty(labelText) &&
-                                               !string.IsNullOrEmpty(leaderZoneName) &&
-                                               labelText.Contains(leaderZoneName);
+                        BetterFollowbotLite.Instance.LogMessage($"PORTAL DEBUG: Evaluating portal '{x.Label?.Text}' for leader zone '{leaderZone}'");
 
-                        // Don't take portals that lead back to current zone
+                        // Enhanced portal matching logic
+                        var matchesLeaderZone = MatchesPortalToZone(labelText, leaderZone, x.Label?.Text ?? "");
                         var notCurrentZone = !string.IsNullOrEmpty(labelText) &&
                                            !string.IsNullOrEmpty(currentZone) &&
-                                           !labelText.Contains(currentZone);
+                                           !MatchesPortalToZone(labelText, currentZone, x.Label?.Text ?? "");
+
+                        BetterFollowbotLite.Instance.LogMessage($"PORTAL DEBUG: Portal '{x.Label?.Text}' - Matches leader: {matchesLeaderZone}, Not current: {notCurrentZone}");
 
                         return matchesLeaderZone && notCurrentZone;
                     }
-                    catch
+                    catch (Exception ex)
                     {
+                        BetterFollowbotLite.Instance.LogMessage($"PORTAL DEBUG: Error evaluating portal: {ex.Message}");
                         return false;
                     }
                 }).OrderBy(x => Vector3.Distance(lastTargetPosition, x.ItemOnGround.Pos)).ToList();
 
+                BetterFollowbotLite.Instance.LogMessage($"PORTAL DEBUG: Found {matchingPortals.Count} portals matching leader zone");
+
                 // If we found portals that match the leader's zone, use those
                 if (matchingPortals.Count > 0)
                 {
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL FOUND: Using portal '{matchingPortals.First().Label?.Text}' that matches leader zone '{leaderPartyElement.ZoneName}'");
-                    return matchingPortals.First();
+                    var selectedPortal = matchingPortals.First();
+                    var labelText = selectedPortal.Label?.Text ?? "NULL";
+                    var distance = Vector3.Distance(lastTargetPosition, selectedPortal.ItemOnGround.Pos);
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL FOUND: Using portal '{labelText}' that matches leader zone '{leaderPartyElement.ZoneName}' (Distance: {distance:F1})");
+                    return selectedPortal;
                 }
 
                 // No fallback portal selection - let the caller handle party teleport instead
                 BetterFollowbotLite.Instance.LogMessage($"PORTAL: No matching portal found for leader zone '{leaderPartyElement.ZoneName}' - will use party teleport");
+
+                // Log some portal suggestions for debugging
+                foreach (var portal in allPortalLabels.Take(3))
+                {
+                    var labelText = portal.Label?.Text ?? "NULL";
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL SUGGESTION: Available portal '{labelText}'");
+                }
+
                 return null;
             }
+
+            BetterFollowbotLite.Instance.LogMessage("PORTAL DEBUG: Portal search condition not met - same zone and not hideout");
             return null;
         }
-        catch
+        catch (Exception ex)
         {
+            BetterFollowbotLite.Instance.LogMessage($"PORTAL DEBUG: Exception in GetBestPortalLabel: {ex.Message}");
             return null;
         }
     }
+
+    /// <summary>
+    /// Enhanced portal-to-zone matching that handles various portal text formats
+    /// </summary>
+    private bool MatchesPortalToZone(string portalLabel, string zoneName, string originalLabel)
+    {
+        if (string.IsNullOrEmpty(portalLabel) || string.IsNullOrEmpty(zoneName))
+            return false;
+
+        portalLabel = portalLabel.ToLower();
+        zoneName = zoneName.ToLower();
+
+        BetterFollowbotLite.Instance.LogMessage($"PORTAL MATCH: Checking '{originalLabel}' against zone '{zoneName}'");
+
+        // Exact match
+        if (portalLabel.Contains(zoneName))
+        {
+            BetterFollowbotLite.Instance.LogMessage($"PORTAL MATCH: Exact match found for '{zoneName}'");
+            return true;
+        }
+
+        // Handle common portal prefixes/suffixes
+        var portalPatterns = new[]
+        {
+            $"portal to {zoneName}",
+            $"portal to the {zoneName}",
+            $"{zoneName} portal",
+            $"enter {zoneName}",
+            $"enter the {zoneName}",
+            $"go to {zoneName}",
+            $"go to the {zoneName}",
+            $"{zoneName} entrance",
+            $"{zoneName} gate"
+        };
+
+        foreach (var pattern in portalPatterns)
+        {
+            if (portalLabel.Contains(pattern))
+            {
+                BetterFollowbotLite.Instance.LogMessage($"PORTAL MATCH: Pattern match found '{pattern}' for '{zoneName}'");
+                return true;
+            }
+        }
+
+        // Handle special cases like "Arena" portal
+        if (zoneName.Contains("arena") && (portalLabel.Contains("arena") || portalLabel.Contains("pit") || portalLabel.Contains("combat")))
+        {
+            BetterFollowbotLite.Instance.LogMessage($"PORTAL MATCH: Special case - Arena portal detected for zone '{zoneName}'");
+            return true;
+        }
+
+        // Handle exact portal label matches (case-insensitive)
+        if (portalLabel.Equals(zoneName, StringComparison.OrdinalIgnoreCase))
+        {
+            BetterFollowbotLite.Instance.LogMessage($"PORTAL MATCH: Exact zone name match for '{zoneName}'");
+            return true;
+        }
+
+        // Handle partial matches where zone name is contained in portal label
+        if (portalLabel.Contains(zoneName, StringComparison.OrdinalIgnoreCase))
+        {
+            BetterFollowbotLite.Instance.LogMessage($"PORTAL MATCH: Zone name contained in portal label for '{zoneName}'");
+            return true;
+        }
+
+        // Handle hideout portals
+        if (zoneName.Contains("hideout") && (portalLabel.Contains("hideout") || portalLabel.Contains("home")))
+        {
+            BetterFollowbotLite.Instance.LogMessage($"PORTAL MATCH: Hideout portal detected for zone '{zoneName}'");
+            return true;
+        }
+
+        // Handle town portals
+        if (zoneName.Contains("town") && (portalLabel.Contains("town") || portalLabel.Contains("waypoint")))
+        {
+            BetterFollowbotLite.Instance.LogMessage($"PORTAL MATCH: Town portal detected for zone '{zoneName}'");
+            return true;
+        }
+
+        BetterFollowbotLite.Instance.LogMessage($"PORTAL MATCH: No match found for '{originalLabel}' against zone '{zoneName}'");
+        return false;
+    }
+
     private Vector2 GetTpButton(PartyElementWindow leaderPartyElement)
     {
         try
@@ -829,13 +978,49 @@ public class AutoPilot
                         }
                         case TaskNodeType.Transition:
                         {
+                            BetterFollowbotLite.Instance.LogMessage($"TRANSITION: Executing transition task - Attempt {currentTask.AttemptCount + 1}/6");
+
+                            // Log portal information
+                            var portalLabel = currentTask.LabelOnGround?.Label?.Text ?? "NULL";
+                            var portalPos = currentTask.LabelOnGround?.ItemOnGround?.Pos ?? Vector3.Zero;
+                            var distanceToPortal = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, portalPos);
+
+                            BetterFollowbotLite.Instance.LogMessage($"TRANSITION: Portal '{portalLabel}' at distance {distanceToPortal:F1}");
+
+                            // Check if portal is still visible and valid
+                            var isPortalVisible = currentTask.LabelOnGround?.Label?.IsVisible ?? false;
+                            var isPortalValid = currentTask.LabelOnGround?.Label?.IsValid ?? false;
+
+                            BetterFollowbotLite.Instance.LogMessage($"TRANSITION: Portal visibility - Visible: {isPortalVisible}, Valid: {isPortalValid}");
+
+                            if (!isPortalVisible || !isPortalValid)
+                            {
+                                BetterFollowbotLite.Instance.LogMessage("TRANSITION: Portal no longer visible or valid, removing task");
+                                tasks.RemoveAt(0);
+                                yield return new WaitTime(100);
+                                continue;
+                            }
+
                             //Click the transition
                             Input.KeyUp(BetterFollowbotLite.Instance.Settings.autoPilotMoveKey);
-                            transitionPos = new Vector2(currentTask.LabelOnGround.Label.GetClientRect().Center.X, currentTask.LabelOnGround.Label.GetClientRect().Center.Y);
+
+                            // Get the portal click position with more detailed logging
+                            var portalRect = currentTask.LabelOnGround.Label.GetClientRect();
+                            transitionPos = new Vector2(portalRect.Center.X, portalRect.Center.Y);
+
+                            BetterFollowbotLite.Instance.LogMessage($"TRANSITION: Portal click position - X: {transitionPos.X:F1}, Y: {transitionPos.Y:F1}");
+                            BetterFollowbotLite.Instance.LogMessage($"TRANSITION: Portal screen rect - Left: {portalRect.Left:F1}, Top: {portalRect.Top:F1}, Width: {portalRect.Width:F1}, Height: {portalRect.Height:F1}");
 
                             currentTask.AttemptCount++;
                             if (currentTask.AttemptCount > 6)
+                            {
+                                BetterFollowbotLite.Instance.LogMessage("TRANSITION: Max attempts reached (6), removing transition task");
                                 tasks.RemoveAt(0);
+                            }
+                            else
+                            {
+                                BetterFollowbotLite.Instance.LogMessage("TRANSITION: Transition task queued for execution");
+                            }
                             shouldTransitionAndContinue = true;
                             break;
                         }
@@ -1005,9 +1190,27 @@ public class AutoPilot
 
                     if (shouldTransitionAndContinue)
                     {
+                        BetterFollowbotLite.Instance.LogMessage("TRANSITION: Starting portal click sequence");
+
+                        // Move mouse to portal position
+                        BetterFollowbotLite.Instance.LogMessage($"TRANSITION: Moving mouse to portal position ({transitionPos.X:F1}, {transitionPos.Y:F1})");
+                        yield return Mouse.SetCursorPosHuman(transitionPos);
+
+                        // Wait a bit for mouse to settle
                         yield return new WaitTime(60);
-                        yield return Mouse.SetCursorPosAndLeftClickHuman(transitionPos, 100);
+
+                        // Perform the click with additional logging
+                        BetterFollowbotLite.Instance.LogMessage("TRANSITION: Performing left click on portal");
+                        var currentMousePos = BetterFollowbotLite.Instance.GetMousePosition();
+                        BetterFollowbotLite.Instance.LogMessage($"TRANSITION: Mouse position before click - X: {currentMousePos.X:F1}, Y: {currentMousePos.Y:F1}");
+
+                        yield return Mouse.LeftClick();
+
+                        // Wait for transition to start
+                        BetterFollowbotLite.Instance.LogMessage("TRANSITION: Waiting for transition to process");
                         yield return new WaitTime(300);
+
+                        BetterFollowbotLite.Instance.LogMessage("TRANSITION: Portal click sequence completed");
                         yield return null;
                         continue;
                     }
@@ -1157,26 +1360,33 @@ public class AutoPilot
 
             if (followTarget == null && leaderPartyElement != null && !leaderPartyElement.ZoneName.Equals(BetterFollowbotLite.Instance.GameController?.Area.CurrentArea.DisplayName))
             {
+                var currentZone = BetterFollowbotLite.Instance.GameController?.Area.CurrentArea.DisplayName ?? "Unknown";
+                var leaderZone = leaderPartyElement.ZoneName ?? "Unknown";
+
+                BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Leader is in different zone - Current: '{currentZone}', Leader: '{leaderZone}'");
+
                 // Only add transition tasks if we don't already have any pending
                 if (!hasTransitionTasks)
                 {
+                    BetterFollowbotLite.Instance.LogMessage("ZONE TRANSITION: No pending transition tasks, searching for portal");
                     var portal = GetBestPortalLabel(leaderPartyElement);
                     if (portal != null)
                     {
                         // Hideout -> Map || Chamber of Sins A7 -> Map
-                        BetterFollowbotLite.Instance.LogMessage($"PORTAL: Found portal '{portal.Label?.Text}' leading to leader zone '{leaderPartyElement.ZoneName}'");
+                        BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Found portal '{portal.Label?.Text}' leading to leader zone '{leaderPartyElement.ZoneName}'");
                         tasks.Add(new TaskNode(portal, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
+                        BetterFollowbotLite.Instance.LogMessage("ZONE TRANSITION: Portal transition task added to queue");
                     }
                     else
                     {
                         // No matching portal found, use party teleport (blue swirl)
-                        BetterFollowbotLite.Instance.LogMessage($"TELEPORT: No matching portal found for '{leaderPartyElement.ZoneName}', using party teleport");
+                        BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: No matching portal found for '{leaderPartyElement.ZoneName}', falling back to party teleport");
 
                         // FIRST: Check if teleport confirmation dialog is already open (handle it immediately)
                         var tpConfirmation = GetTpConfirmation();
                         if (tpConfirmation != null)
                         {
-                            BetterFollowbotLite.Instance.LogMessage("TELEPORT: Confirmation dialog already open, handling it");
+                            BetterFollowbotLite.Instance.LogMessage("ZONE TRANSITION: Teleport confirmation dialog already open, handling it");
                             // Add teleport confirmation task
                             var center = tpConfirmation.GetClientRect().Center;
                             tasks.Add(new TaskNode(new Vector3(center.X, center.Y, 0), 0, TaskNodeType.TeleportConfirm));
@@ -1187,15 +1397,19 @@ public class AutoPilot
                             var tpButton = leaderPartyElement != null ? GetTpButton(leaderPartyElement) : Vector2.Zero;
                             if(!tpButton.Equals(Vector2.Zero))
                             {
-                                BetterFollowbotLite.Instance.LogMessage("TELEPORT: Clicking teleport button to open confirmation dialog");
+                                BetterFollowbotLite.Instance.LogMessage("ZONE TRANSITION: Clicking teleport button to initiate party teleport");
                                 tasks.Add(new TaskNode(new Vector3(tpButton.X, tpButton.Y, 0), 0, TaskNodeType.TeleportButton));
                             }
                             else
                             {
-                                BetterFollowbotLite.Instance.LogMessage("TELEPORT: No teleport button available");
+                                BetterFollowbotLite.Instance.LogMessage("ZONE TRANSITION: No teleport button available - cannot transition to leader's zone");
                             }
                         }
                     }
+                }
+                else
+                {
+                    BetterFollowbotLite.Instance.LogMessage("ZONE TRANSITION: Transition tasks already pending, waiting for completion");
                 }
             }
             else if (followTarget == null)
@@ -1203,28 +1417,37 @@ public class AutoPilot
                 // Leader is not in current zone - look for portals to follow them
                 if (leaderPartyElement != null && !leaderPartyElement.ZoneName.Equals(BetterFollowbotLite.Instance.GameController?.Area.CurrentArea.DisplayName))
                 {
+                    var currentZone = BetterFollowbotLite.Instance.GameController?.Area.CurrentArea.DisplayName ?? "Unknown";
+                    var leaderZone = leaderPartyElement.ZoneName ?? "Unknown";
+
+                    BetterFollowbotLite.Instance.LogMessage($"FOLLOW TARGET NULL: Leader in different zone - Current: '{currentZone}', Leader: '{leaderZone}'");
+
                     // Only add transition tasks if we don't already have any pending
                     if (!hasTransitionTasks)
                     {
+                        BetterFollowbotLite.Instance.LogMessage("FOLLOW TARGET NULL: No pending transition tasks, searching for portal");
                         // Leader is in different zone, look for portals
                         var portal = GetBestPortalLabel(leaderPartyElement);
                         if (portal != null)
                         {
                             // Clear any existing movement tasks and add portal task
+                            var movementTaskCount = tasks.Count(t => t.Type == TaskNodeType.Movement);
                             tasks.RemoveAll(t => t.Type == TaskNodeType.Movement);
-                            BetterFollowbotLite.Instance.LogMessage($"PORTAL: Found portal '{portal.Label?.Text}' for leader in zone '{leaderPartyElement.ZoneName}'");
+                            BetterFollowbotLite.Instance.LogMessage($"FOLLOW TARGET NULL: Cleared {movementTaskCount} movement tasks, adding portal transition");
+                            BetterFollowbotLite.Instance.LogMessage($"FOLLOW TARGET NULL: Found portal '{portal.Label?.Text}' for leader in zone '{leaderPartyElement.ZoneName}'");
                             tasks.Add(new TaskNode(portal, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
+                            BetterFollowbotLite.Instance.LogMessage("FOLLOW TARGET NULL: Portal transition task added to queue");
                         }
                         else
                         {
                             // No matching portal found, use party teleport
-                            BetterFollowbotLite.Instance.LogMessage($"TELEPORT: No matching portal found for '{leaderPartyElement.ZoneName}', using party teleport");
+                            BetterFollowbotLite.Instance.LogMessage($"FOLLOW TARGET NULL: No matching portal found for '{leaderPartyElement.ZoneName}', using party teleport fallback");
 
                             // FIRST: Check if teleport confirmation dialog is already open (handle it immediately)
                             var tpConfirmation = GetTpConfirmation();
                             if (tpConfirmation != null)
                             {
-                                BetterFollowbotLite.Instance.LogMessage("TELEPORT: Confirmation dialog already open, handling it");
+                                BetterFollowbotLite.Instance.LogMessage("FOLLOW TARGET NULL: Teleport confirmation dialog already open, handling it");
                                 // Add teleport confirmation task
                                 var center = tpConfirmation.GetClientRect().Center;
                                 tasks.Add(new TaskNode(new Vector3(center.X, center.Y, 0), 0, TaskNodeType.TeleportConfirm));
@@ -1235,21 +1458,30 @@ public class AutoPilot
                                 var tpButton = leaderPartyElement != null ? GetTpButton(leaderPartyElement) : Vector2.Zero;
                                 if(!tpButton.Equals(Vector2.Zero))
                                 {
-                                    BetterFollowbotLite.Instance.LogMessage("TELEPORT: Clicking teleport button to open confirmation dialog");
+                                    BetterFollowbotLite.Instance.LogMessage("FOLLOW TARGET NULL: Clicking teleport button to initiate party teleport");
                                     tasks.Add(new TaskNode(new Vector3(tpButton.X, tpButton.Y, 0), 0, TaskNodeType.TeleportButton));
                                 }
                                 else
                                 {
-                                    BetterFollowbotLite.Instance.LogMessage("TELEPORT: No teleport button available");
+                                    BetterFollowbotLite.Instance.LogMessage("FOLLOW TARGET NULL: No teleport button available - cannot follow leader to new zone");
                                 }
                             }
                         }
+                    }
+                    else
+                    {
+                        BetterFollowbotLite.Instance.LogMessage("FOLLOW TARGET NULL: Transition tasks already pending, waiting for completion");
                     }
                 }
                 else
                 {
                     // Leader party element not available or in same zone, clear movement tasks
-                    tasks.RemoveAll(t => t.Type == TaskNodeType.Movement);
+                    var movementTaskCount = tasks.Count(t => t.Type == TaskNodeType.Movement);
+                    if (movementTaskCount > 0)
+                    {
+                        tasks.RemoveAll(t => t.Type == TaskNodeType.Movement);
+                        BetterFollowbotLite.Instance.LogMessage($"FOLLOW TARGET NULL: Cleared {movementTaskCount} movement tasks - leader in same zone or party element unavailable");
+                    }
                 }
             } 
             else if (followTarget != null)
@@ -1531,7 +1763,30 @@ public class AutoPilot
 
             foreach (var portal in portalLabels)
             {
-                BetterFollowbotLite.Instance.Graphics.DrawLine(portal.Label.GetClientRectCache.TopLeft, portal.Label.GetClientRectCache.TopRight, 2f,Color.Firebrick);
+                var portalLabel = portal.Label?.Text ?? "Unknown";
+                var portalPos = Helper.WorldToValidScreenPosition(portal.ItemOnGround.Pos);
+                var labelRect = portal.Label.GetClientRectCache;
+
+                // Draw portal outline
+                BetterFollowbotLite.Instance.Graphics.DrawLine(labelRect.TopLeft, labelRect.TopRight, 2f, Color.Firebrick);
+                BetterFollowbotLite.Instance.Graphics.DrawLine(labelRect.TopRight, labelRect.BottomRight, 2f, Color.Firebrick);
+                BetterFollowbotLite.Instance.Graphics.DrawLine(labelRect.BottomRight, labelRect.BottomLeft, 2f, Color.Firebrick);
+                BetterFollowbotLite.Instance.Graphics.DrawLine(labelRect.BottomLeft, labelRect.TopLeft, 2f, Color.Firebrick);
+
+                // Draw portal label above the portal
+                var labelPos = new System.Numerics.Vector2(labelRect.TopLeft.X, labelRect.TopLeft.Y - 20);
+                BetterFollowbotLite.Instance.Graphics.DrawText($"Portal: {portalLabel}", labelPos, Color.Yellow);
+
+                // Draw distance from player to portal
+                var distance = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, portal.ItemOnGround.Pos);
+                var distancePos = new System.Numerics.Vector2(labelRect.TopLeft.X, labelRect.TopLeft.Y - 35);
+                BetterFollowbotLite.Instance.Graphics.DrawText($"{distance:F1}m", distancePos, Color.Cyan);
+
+                // Highlight Arena portals specially
+                if (portalLabel.ToLower().Contains("arena"))
+                {
+                    BetterFollowbotLite.Instance.Graphics.DrawText("ARENA PORTAL", new System.Numerics.Vector2(labelRect.TopLeft.X, labelRect.TopLeft.Y - 50), Color.OrangeRed);
+                }
             }
         }
         catch (Exception)
@@ -1611,6 +1866,21 @@ public class AutoPilot
         BetterFollowbotLite.Instance.Graphics.DrawText("AutoPilot: Active", new System.Numerics.Vector2(350, 120));
         BetterFollowbotLite.Instance.Graphics.DrawText("Coroutine: " + (autoPilotCoroutine.Running ? "Active" : "Dead"), new System.Numerics.Vector2(350, 140));
         BetterFollowbotLite.Instance.Graphics.DrawText("Leader: " + (followTarget != null ? "Found" : "Null"), new System.Numerics.Vector2(350, 160));
-        BetterFollowbotLite.Instance.Graphics.DrawLine(new System.Numerics.Vector2(490, 120), new System.Numerics.Vector2(490,180), 1, Color.White);
+
+        // Add transition task debugging
+        var transitionTasks = tasks.Where(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.TeleportConfirm || t.Type == TaskNodeType.TeleportButton);
+        if (transitionTasks.Any())
+        {
+            var currentTransitionTask = transitionTasks.First();
+            BetterFollowbotLite.Instance.Graphics.DrawText($"Transition: {currentTransitionTask.Type}", new System.Numerics.Vector2(350, 180), Color.Yellow);
+
+            if (currentTransitionTask.Type == TaskNodeType.Transition && currentTransitionTask.LabelOnGround != null)
+            {
+                var portalLabel = currentTransitionTask.LabelOnGround.Label?.Text ?? "Unknown";
+                BetterFollowbotLite.Instance.Graphics.DrawText($"Portal: {portalLabel}", new System.Numerics.Vector2(350, 200), Color.Yellow);
+            }
+        }
+
+        BetterFollowbotLite.Instance.Graphics.DrawLine(new System.Numerics.Vector2(490, 120), new System.Numerics.Vector2(490,220), 1, Color.White);
     }
 }
