@@ -131,7 +131,50 @@ namespace BetterFollowbotLite;
     {
         try
         {
-            // Look for portal entities near the leader's position immediately
+            // IMMEDIATE APPROACH: Look for any interactive objects very close to leader first
+            var immediateEntities = BetterFollowbotLite.Instance.GameController.Entities
+                .Where(e => e.IsValid && e.GetComponent<Positioned>() != null)
+                .Select(e => new
+                {
+                    Entity = e,
+                    Position = e.GetComponent<Positioned>().GridPosition,
+                    Distance = Vector3.Distance(new Vector3(e.GetComponent<Positioned>().GridPosition.X, e.GetComponent<Positioned>().GridPosition.Y, 0), leaderPosition),
+                    Type = e.Type.ToString()
+                })
+                .Where(e => e.Distance < 100) // Very close objects only
+                .OrderBy(e => e.Distance)
+                .ToList();
+
+            // Try clicking on the closest interactive object immediately
+            if (immediateEntities.Any())
+            {
+                var closest = immediateEntities.First();
+                BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: IMMEDIATE - Found closest {closest.Type} at distance {closest.Distance:F0}, trying direct click");
+
+                var portalGridPos = closest.Position;
+                var portalPos = new Vector3(portalGridPos.X, portalGridPos.Y, 0);
+                var screenPos = BetterFollowbotLite.Instance.GameController.IngameState.Camera.WorldToScreen(portalPos);
+
+                // Try clicking on this object immediately
+                Mouse.SetCursorPos(screenPos);
+                System.Threading.Thread.Sleep(50);
+                Mouse.LeftMouseDown();
+                System.Threading.Thread.Sleep(30);
+                Mouse.LeftMouseUp();
+
+                // Check if we moved
+                System.Threading.Thread.Sleep(100);
+                var currentPos = BetterFollowbotLite.Instance.playerPosition;
+                var distanceFromLeader = Vector3.Distance(currentPos, leaderPosition);
+
+                if (distanceFromLeader > 30) // We moved significantly
+                {
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: IMMEDIATE SUCCESS! Moved {distanceFromLeader:F0} units - portal interaction worked!");
+                    return;
+                }
+            }
+
+            // Look for portal entities near the leader's position
             var allEntities = BetterFollowbotLite.Instance.GameController.Entities
                 .Where(e => e.IsValid && e.GetComponent<Positioned>() != null)
                 .ToList();
@@ -390,7 +433,7 @@ namespace BetterFollowbotLite;
             // Randomize the order to make it less predictable
             var randomizedOffsets = offsets.OrderBy(x => random.Next()).ToArray();
             var clicksTried = 0;
-            const int maxClicks = 12; // Limit clicks to prevent taking too long
+            const int maxClicks = 8; // Limit clicks to be faster and more focused
 
             foreach (var offset in randomizedOffsets)
             {
