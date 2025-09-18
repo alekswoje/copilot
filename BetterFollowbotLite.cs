@@ -309,51 +309,72 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                 if (Settings.autoPilotEnabled.Value && Settings.autoPilotGrace.Value && buffs != null && buffs.Exists(x => x.Name == "grace_period"))
                 {
                     var timeSinceAreaChange = (DateTime.Now - lastAreaChangeTime).TotalSeconds;
-                    LogMessage($"GRACE PERIOD: Active grace period detected, time since area change: {timeSinceAreaChange:F1}s");
+                    var timeSinceLastGraceLog = (DateTime.Now - lastGraceLogTime).TotalSeconds;
 
-                    if (timeSinceAreaChange > 3.0) // Wait longer to ensure zone is stable
+                    // Only log grace period status every 2 seconds to reduce spam
+                    if (timeSinceLastGraceLog > 2.0)
                     {
-                        LogMessage("GRACE PERIOD: Zone stabilization period passed, checking if safe to remove grace");
+                        LogMessage($"GRACE PERIOD: Active grace period detected, time since area change: {timeSinceAreaChange:F1}s");
+                        lastGraceLogTime = DateTime.Now;
+                    }
+
+                    if (timeSinceAreaChange > 1.5) // Reduced stabilization time for faster response
+                    {
+                        // Add a small additional delay (0.5s) after zone change to allow entities to load
+                        if (timeSinceAreaChange > 2.0)
+                        {
+                        // Only log stabilization completion once
+                        if (timeSinceLastGraceLog > 2.0)
+                        {
+                            LogMessage("GRACE PERIOD: Zone stabilization period passed, checking if safe to remove grace");
+                        }
 
                         // Check player position to ensure they're not moving
                         var shouldRemoveGrace = true;
 
                         if (localPlayer != null)
                         {
-                            var positionComponent = localPlayer.GetComponent<Positioned>();
-                            if (positionComponent != null)
+                            // Use the same position method as the main render loop for consistency
+                            var currentPos = localPlayer.Pos;
+
+                            // Check if we've moved significantly since last check (use same position tracking as render)
+                            var distanceMoved = Vector3.Distance(currentPos, playerPosition);
+
+                            // Use a more reasonable threshold and add some tolerance for position updates
+                            if (distanceMoved > 10.0f)
                             {
-                                var currentPos2D = positionComponent.GridPosition;
-                                var currentPos3D = new Vector3(currentPos2D.X, currentPos2D.Y, 0);
-
-                                // Check if we've moved significantly since last check
-                                var distanceMoved = Vector3.Distance(currentPos3D, playerPosition);
-
-                                // If moved more than 5 units, player is likely moving - don't remove grace yet
-                                if (distanceMoved > 5.0f)
+                                shouldRemoveGrace = false;
+                                // Only log movement detection every 2 seconds to reduce spam
+                                if (timeSinceLastGraceLog > 2.0)
                                 {
-                                    shouldRemoveGrace = false;
                                     LogMessage($"GRACE PERIOD: Player moving ({distanceMoved:F1} units) - waiting to remove grace");
                                 }
-                                else
+                            }
+                            else
+                            {
+                                // Only log stationary detection when we first become stationary
+                                if (timeSinceLastGraceLog > 2.0)
                                 {
                                     LogMessage($"GRACE PERIOD: Player stationary ({distanceMoved:F1} units moved) - safe to remove grace");
                                 }
-
-                                // Update stored position for next check
-                                playerPosition = currentPos3D;
                             }
+
+                            // Update stored position for next check (sync with render loop)
+                            playerPosition = currentPos;
                         }
 
                         if (shouldRemoveGrace)
                         {
                             // Check if we've recently pressed a key to avoid spam
                             var timeSinceLastAction = (DateTime.Now - lastTimeAny).TotalSeconds;
-                            LogMessage($"GRACE PERIOD: Time since last action: {timeSinceLastAction:F1}s");
 
-                            if (timeSinceLastAction > 1.0) // Increased cooldown to 1 second
+                            if (timeSinceLastAction > 0.5) // Reduced cooldown for faster grace removal
                             {
-                                LogMessage("GRACE PERIOD: Removing grace period buff by pressing move key");
+                                // Only log grace removal every 2 seconds to reduce spam
+                                if (timeSinceLastGraceLog > 2.0)
+                                {
+                                    LogMessage("GRACE PERIOD: Removing grace period buff by pressing move key");
+                                }
                                 Keyboard.KeyPress(Settings.autoPilotMoveKey.Value);
                                 lastTimeAny = DateTime.Now;
                             }
@@ -361,6 +382,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                             {
                                 LogMessage("GRACE PERIOD: Waiting for action cooldown before removing grace");
                             }
+                        }
                         }
                     }
                     else
