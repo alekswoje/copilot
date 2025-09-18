@@ -209,7 +209,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         if (leaderEntity != null)
         {
             LogMessage($"AREA CHANGE: Leader entity found immediately - Name: '{leaderEntity.GetComponent<Player>()?.PlayerName}', Distance: {Vector3.Distance(playerPosition, leaderEntity.Pos):F1}");
-            autoPilot.FollowTarget = leaderEntity;
+            autoPilot.SetFollowTarget(leaderEntity);
         }
         else
         {

@@ -28,6 +28,19 @@ namespace BetterFollowbotLite;
 
     public Entity FollowTarget => followTarget;
 
+    /// <summary>
+    /// Sets the follow target entity
+    /// </summary>
+    /// <param name="target">The entity to follow</param>
+    public void SetFollowTarget(Entity target)
+    {
+        followTarget = target;
+        if (target != null)
+        {
+            lastTargetPosition = target.Pos;
+        }
+    }
+
     private bool hasUsedWp;
     private List<TaskNode> tasks = new List<TaskNode>();
 
