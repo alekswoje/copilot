@@ -152,11 +152,8 @@ namespace BetterFollowbotLite;
 
             BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Found {portalEntities.Count} Portal entities and {allPotentialPortals.Count} potential portal entities");
 
-            // Log all entity types to help identify portal types
-            var entityTypes = allEntities.GroupBy(e => e.Type.ToString())
-                                        .Select(g => $"{g.Key}: {g.Count}")
-                                        .Take(10); // Limit to first 10 types
-            BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Entity types found: {string.Join(", ", entityTypes)}");
+            // Log entity type summary
+            BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Scanning {allEntities.Count} entities for portals");
 
             foreach (var portal in portalEntities.Concat(allPotentialPortals).Distinct())
             {
