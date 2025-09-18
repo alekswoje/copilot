@@ -174,6 +174,13 @@ namespace BetterFollowbotLite;
                 }
             }
 
+            // Special handling for "The Warden's Quarters" in "The Upper Prison"
+            var currentZone = BetterFollowbotLite.Instance.GameController?.Area.CurrentArea.DisplayName ?? "Unknown";
+            if (currentZone.Contains("Upper Prison"))
+            {
+                BetterFollowbotLite.Instance.LogMessage("PORTAL FOLLOW: Detected Upper Prison zone - looking for Warden's Quarters portal");
+            }
+
             // Look for portal entities near the leader's position
             var allEntities = BetterFollowbotLite.Instance.GameController.Entities
                 .Where(e => e.IsValid && e.GetComponent<Positioned>() != null)
@@ -208,6 +215,7 @@ namespace BetterFollowbotLite;
             BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Found {possiblePortals.Count} portal entities");
 
             // First, try with a much larger search radius (2000 units)
+            // First, try a much smaller radius for immediate portals
             var portals = possiblePortals
                 .Select(e => new
                 {
@@ -215,18 +223,35 @@ namespace BetterFollowbotLite;
                     Position = e.GetComponent<Positioned>().GridPosition,
                     Distance = Vector3.Distance(new Vector3(e.GetComponent<Positioned>().GridPosition.X, e.GetComponent<Positioned>().GridPosition.Y, 0), leaderPosition),
                     Type = e.Type.ToString(),
-                    Name = "Portal" // Simplified name
+                    Name = e.GetComponent<ObjectMagicProperties>()?.Name ?? "Portal"
                 })
-                .Where(p => p.Distance < 2000) // Within 2000 units of leader (much larger range)
+                .Where(p => p.Distance < 300) // Within 300 units of leader (reasonable portal distance)
                 .OrderBy(p => p.Distance)
                 .ToList();
 
-            BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Found {portals.Count} portals within 2000 units of leader");
-
-            // If no portals found within 2000 units, search ALL entities for portal-like objects
+            // If no portals found within 300 units, try up to 800 units but prioritize closer ones
             if (!portals.Any())
             {
-                BetterFollowbotLite.Instance.LogMessage("PORTAL FOLLOW: No portals within 2000 units, searching ALL entities for portal-like objects");
+                portals = possiblePortals
+                    .Select(e => new
+                    {
+                        Entity = e,
+                        Position = e.GetComponent<Positioned>().GridPosition,
+                        Distance = Vector3.Distance(new Vector3(e.GetComponent<Positioned>().GridPosition.X, e.GetComponent<Positioned>().GridPosition.Y, 0), leaderPosition),
+                        Type = e.Type.ToString(),
+                        Name = e.GetComponent<ObjectMagicProperties>()?.Name ?? "Portal"
+                    })
+                    .Where(p => p.Distance < 800) // Within 800 units of leader (extended but reasonable range)
+                    .OrderBy(p => p.Distance)
+                    .ToList();
+            }
+
+            BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Found {portals.Count} portals within search radius of leader");
+
+            // If no portals found within reasonable range, search ALL entities for portal-like objects
+            if (!portals.Any())
+            {
+                BetterFollowbotLite.Instance.LogMessage("PORTAL FOLLOW: No portals within reasonable range, searching ALL entities for portal-like objects");
 
                 var allPortalLike = allEntities.Where(e =>
                     e.GetComponent<Positioned>() != null &&
@@ -246,7 +271,7 @@ namespace BetterFollowbotLite;
                         Position = e.GetComponent<Positioned>().GridPosition,
                         Distance = Vector3.Distance(new Vector3(e.GetComponent<Positioned>().GridPosition.X, e.GetComponent<Positioned>().GridPosition.Y, 0), leaderPosition),
                         Type = e.Type.ToString(),
-                        Name = "Portal-Like"
+                        Name = e.GetComponent<ObjectMagicProperties>()?.Name ?? "Portal-Like"
                     })
                     .OrderBy(p => p.Distance)
                     .Take(5) // Take closest 5
@@ -255,10 +280,22 @@ namespace BetterFollowbotLite;
                 BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Taking {portals.Count} closest portal-like entities");
             }
 
+            // Special handling for "The Warden's Quarters" portal
+            var wardensPortal = portals.FirstOrDefault(p =>
+                p.Entity.GetComponent<ObjectMagicProperties>()?.Name?.Contains("Warden") == true ||
+                p.Entity.GetComponent<ObjectMagicProperties>()?.Name?.Contains("Quarters") == true);
+
+            if (wardensPortal != null)
+            {
+                BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Found Warden's Quarters portal! Prioritizing this portal.");
+                portals = new[] { wardensPortal }.ToList(); // Only use the Warden's portal
+            }
+
             // Log details of found portals
             foreach (var portal in portals)
             {
-                BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Found {portal.Type} '{portal.Name}' at distance {portal.Distance:F0}");
+                var entityName = portal.Entity.GetComponent<ObjectMagicProperties>()?.Name ?? "Unknown";
+                BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Found {portal.Type} '{entityName}' at distance {portal.Distance:F0}");
             }
 
             if (portals.Any())
