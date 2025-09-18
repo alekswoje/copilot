@@ -235,6 +235,47 @@ internal class ImGuiDrawSettings
             // Error handling without logging
         }
 
+        try
+        {
+            // Summon Skeletons
+            ImGui.PushStyleColor(ImGuiCol.Header, BetterFollowbotLite.Instance.Settings.summonSkeletonsEnabled ? green : red);
+            ImGui.PushID(33);
+            if (ImGui.TreeNodeEx("Summon Skeletons", collapsingHeaderFlags))
+            {
+                BetterFollowbotLite.Instance.Settings.summonSkeletonsEnabled.Value = ImGuiExtension.Checkbox("Auto Summon Skeletons",
+                    BetterFollowbotLite.Instance.Settings.summonSkeletonsEnabled.Value);
+
+                BetterFollowbotLite.Instance.Settings.summonSkeletonsRange.Value =
+                    ImGuiExtension.IntSlider("Summon Range", BetterFollowbotLite.Instance.Settings.summonSkeletonsRange);
+
+                BetterFollowbotLite.Instance.Settings.summonSkeletonsMinCount.Value =
+                    ImGuiExtension.IntSlider("Minimum Skeleton Count", BetterFollowbotLite.Instance.Settings.summonSkeletonsMinCount);
+
+                ImGui.TextWrapped("Logic:\n• Automatically summons skeletons when close to party leader\n• Only works within specified range of the leader\n• Maintains minimum skeleton count\n• Requires 'Summon Skeletons' skill on skill bar");
+            }
+        }
+        catch (Exception e)
+        {
+            // Error handling without logging
+        }
+
+        try
+        {
+            // Auto Level Gems
+            ImGui.PushStyleColor(ImGuiCol.Header, BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled ? green : red);
+            ImGui.PushID(34);
+            if (ImGui.TreeNodeEx("Auto Level Gems", collapsingHeaderFlags))
+            {
+                BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value = ImGuiExtension.Checkbox("Auto Level Gems",
+                    BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value);
+                ImGui.TextWrapped("Logic:\n• Automatically levels up gems when the gem level up panel appears\n• Clicks the level up button for each available gem\n• Only levels up one gem per frame to avoid spam\n• Useful for automated gem leveling during farming runs");
+            }
+        }
+        catch (Exception e)
+        {
+            // Error handling without logging
+        }
+
         //ImGui.End();
     }
 }

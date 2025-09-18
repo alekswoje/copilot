@@ -280,7 +280,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                             System.Threading.Thread.Sleep(200);
 
                             // Verify the mouse is actually at the target position
-                            var currentMousePos = Mouse.GetCursorPosition();
+                            var currentMousePos = GetMousePosition();
                             var distanceFromTarget = Vector2.Distance(currentMousePos, checkpointCenter);
 
                             if (distanceFromTarget < 10) // Within reasonable tolerance
@@ -328,6 +328,165 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
             catch (Exception e)
             {
                 BetterFollowbotLite.Instance.LogMessage($"AUTO RESPAWN: Exception occurred - {e.Message}");
+            }
+
+            #endregion
+
+            #region Summon Skeletons
+
+            if (Settings.summonSkeletonsEnabled && Gcd())
+            {
+                try
+                {
+                    // Check if we have a party leader to follow
+                    var leaderPartyElement = PartyElements.GetPlayerInfoElementList()
+                        .FirstOrDefault(x => string.Equals(x?.PlayerName?.ToLower(),
+                            Settings.autoPilotLeader.Value.ToLower(), StringComparison.CurrentCultureIgnoreCase));
+
+                    if (leaderPartyElement != null)
+                    {
+                        // Find the actual leader entity
+                        var playerEntities = GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Player]
+                            .Where(x => x != null && x.IsValid && !x.IsHostile);
+
+                        var leaderEntity = playerEntities
+                            .FirstOrDefault(x => string.Equals(x.GetComponent<Player>()?.PlayerName?.ToLower(),
+                                Settings.autoPilotLeader.Value.ToLower(), StringComparison.CurrentCultureIgnoreCase));
+
+                        if (leaderEntity != null)
+                        {
+                            // Check distance to leader
+                            var distanceToLeader = Vector3.Distance(playerPosition, leaderEntity.Pos);
+
+                            // Only summon if within range
+                            if (distanceToLeader <= Settings.summonSkeletonsRange.Value)
+                            {
+                                // Count current skeletons
+                                var skeletonCount = Summons.GetSkeletonCount();
+
+                                // Summon if we have less than the minimum required
+                                if (skeletonCount < Settings.summonSkeletonsMinCount.Value)
+                                {
+                                    // Find the summon skeletons skill
+                                    var summonSkeletonsSkill = skills.FirstOrDefault(s =>
+                                        s.Name.Contains("Summon Skeletons") ||
+                                        s.Name.Contains("summon") && s.Name.Contains("skeleton"));
+
+                                    if (summonSkeletonsSkill != null && summonSkeletonsSkill.IsOnSkillBar && summonSkeletonsSkill.CanBeUsed)
+                                    {
+                                        BetterFollowbotLite.Instance.LogMessage($"SUMMON SKELETONS: Current: {skeletonCount}, Required: {Settings.summonSkeletonsMinCount.Value}, Distance to leader: {distanceToLeader:F1}");
+
+                                        // Use the summon skeletons skill
+                                        Keyboard.KeyPress(GetSkillInputKey(summonSkeletonsSkill.SkillSlotIndex));
+                                        lastTimeAny = DateTime.Now; // Update global cooldown
+
+                                        BetterFollowbotLite.Instance.LogMessage("SUMMON SKELETONS: Summoned skeletons successfully");
+                                    }
+                                    else if (summonSkeletonsSkill == null)
+                                    {
+                                        BetterFollowbotLite.Instance.LogMessage("SUMMON SKELETONS: Summon Skeletons skill not found in skill bar");
+                                    }
+                                    else if (!summonSkeletonsSkill.CanBeUsed)
+                                    {
+                                        BetterFollowbotLite.Instance.LogMessage("SUMMON SKELETONS: Summon Skeletons skill is on cooldown or unavailable");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    BetterFollowbotLite.Instance.LogMessage($"SUMMON SKELETONS: Exception occurred - {e.Message}");
+                }
+            }
+
+            #endregion
+
+            #region Auto Level Gems
+
+            if (Settings.autoLevelGemsEnabled && Gcd())
+            {
+                try
+                {
+                    // Check if the gem level up panel is visible
+                    var gemLvlUpPanel = GameController.IngameState.IngameUi.GemLvlUpPanel;
+                    if (gemLvlUpPanel != null && gemLvlUpPanel.IsVisible)
+                    {
+                        // Get the array of gems to level up
+                        var gemsToLvlUp = gemLvlUpPanel.GemsToLvlUp;
+                        if (gemsToLvlUp != null && gemsToLvlUp.Count > 0)
+                        {
+                            BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Found {gemsToLvlUp.Count} gems available for leveling");
+
+                            // Process each gem in the array
+                            foreach (var gem in gemsToLvlUp)
+                            {
+                                if (gem != null && gem.IsVisible)
+                                {
+                                    try
+                                    {
+                                        // Get the children of the gem element
+                                        var gemChildren = gem.Children;
+                                        if (gemChildren != null && gemChildren.Count > 1)
+                                        {
+                                            // Get the second child ([1]) which contains the level up button
+                                            var levelUpButton = gemChildren[1];
+                                            if (levelUpButton != null && levelUpButton.IsVisible)
+                                            {
+                                                // Get the center position of the level up button
+                                                var buttonRect = levelUpButton.GetClientRectCache;
+                                                var buttonCenter = buttonRect.Center;
+
+                                                BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Leveling up gem at position X: {buttonCenter.X:F1}, Y: {buttonCenter.Y:F1}");
+
+                                                // Move mouse to the button and click
+                                                Mouse.SetCursorPos(buttonCenter);
+
+                                                // Wait a bit for mouse to settle
+                                                System.Threading.Thread.Sleep(100);
+
+                                                // Click the level up button
+                                                Mouse.LeftClick();
+
+                                                // Add a small delay between gem level ups
+                                                System.Threading.Thread.Sleep(200);
+
+                                                BetterFollowbotLite.Instance.LogMessage("AUTO LEVEL GEMS: Gem level up clicked successfully");
+
+                                                // Update global cooldown after leveling a gem
+                                                lastTimeAny = DateTime.Now;
+
+                                                // Only level up one gem per frame to avoid spam
+                                                break;
+                                            }
+                                            else
+                                            {
+                                                BetterFollowbotLite.Instance.LogMessage("AUTO LEVEL GEMS: Level up button not found or not visible");
+                                            }
+                                        }
+                                        else
+                                        {
+                                            BetterFollowbotLite.Instance.LogMessage("AUTO LEVEL GEMS: Gem children not found or insufficient count");
+                                        }
+                                    }
+                                    catch (Exception gemEx)
+                                    {
+                                        BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Error processing individual gem - {gemEx.Message}");
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            BetterFollowbotLite.Instance.LogMessage("AUTO LEVEL GEMS: No gems available for leveling");
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Exception occurred - {e.Message}");
+                }
             }
 
             #endregion

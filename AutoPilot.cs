@@ -80,19 +80,19 @@ namespace BetterFollowbotLite;
                 var screenDirection = new Vector2(directionToTarget.X, -directionToTarget.Z); // Z is depth, flip for screen Y
                 screenDirection.Normalize();
 
-                // Calculate direction from player to cursor in screen space
-                var playerToCursor = mouseScreenPos - playerScreenPos;
-                if (playerToCursor.Length() < 30) // Cursor is too close to player in screen space
+                // Calculate direction from player to cursor in screen space (off-screen version)
+                var playerToCursorOffscreen = mouseScreenPos - playerScreenPos;
+                if (playerToCursorOffscreen.Length() < 30) // Cursor is too close to player in screen space
                     return false; // Can't determine direction reliably
 
-                playerToCursor.Normalize();
+                playerToCursorOffscreen.Normalize();
 
-                // Calculate the angle between the two directions
-                var dotProduct = Vector2.Dot(screenDirection, playerToCursor);
-                var angle = Math.Acos(Math.Max(-1, Math.Min(1, dotProduct))) * (180.0 / Math.PI);
+                // Calculate the angle between the two directions (off-screen version)
+                var dotProductOffscreen = Vector2.Dot(screenDirection, playerToCursorOffscreen);
+                var angleOffscreen = Math.Acos(Math.Max(-1, Math.Min(1, dotProductOffscreen))) * (180.0 / Math.PI);
 
                 // Allow up to 90 degrees difference for off-screen targets (more lenient)
-                return angle <= 90.0;
+                return angleOffscreen <= 90.0;
             }
 
             // Original logic for on-screen targets
@@ -974,9 +974,7 @@ namespace BetterFollowbotLite;
                     }
                 }
 
-                try
-                {
-                    switch (currentTask.Type)
+                switch (currentTask.Type)
                     {
                         case TaskNodeType.Movement:
                             // Check for distance-based dashing to keep up with leader
@@ -1288,21 +1286,13 @@ namespace BetterFollowbotLite;
                             break;
                         }
                     }
-                }
-                catch (Exception e)
-                {
-                    BetterFollowbotLite.Instance.LogError($"Task execution error: {e}");
-                    taskExecutionError = true;
-                }
 
-                // Handle error cleanup
-                if (taskExecutionError)
+                // Handle error cleanup (simplified without try-catch)
+                if (currentTask != null && currentTask.AttemptCount > 20)
                 {
-                    // Remove the problematic task and continue
-                    if (tasks.Count > 0 && currentTask != null)
-                    {
-                        tasks.Remove(currentTask);
-                    }
+                    // Remove task if it's been attempted too many times
+                    BetterFollowbotLite.Instance.LogMessage($"Task timeout - Too many attempts ({currentTask.AttemptCount}), removing task");
+                    tasks.Remove(currentTask);
                 }
 
                 // Handle portal invalidation after try-catch

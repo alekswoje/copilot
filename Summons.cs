@@ -23,4 +23,20 @@ internal class Summons
             x?.Entity?.GetComponent<Life>() != null && x.Entity.Path.Contains("AnimatedArmour"));
         return animatedGuardian?.Entity.GetComponent<Life>().HPPercentage ?? hpp;
     }
+
+    public static int GetSkeletonCount()
+    {
+        try
+        {
+            return BetterFollowbotLite.Instance.localPlayer.GetComponent<Actor>().DeployedObjects
+                .Count(x => x?.Entity != null && x.Entity.IsAlive &&
+                           (x.Entity.Path.Contains("Skeleton") ||
+                            x.Entity.Path.Contains("skeleton") ||
+                            x.Entity.Metadata.ToLower().Contains("skeleton")));
+        }
+        catch
+        {
+            return 0;
+        }
+    }
 }

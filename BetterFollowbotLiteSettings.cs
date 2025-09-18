@@ -86,6 +86,20 @@ public class BetterFollowbotLiteSettings : ISettings
 
     #endregion
 
+    #region Summon Skeletons
+
+    public ToggleNode summonSkeletonsEnabled = new ToggleNode(false);
+    public RangeNode<int> summonSkeletonsRange = new RangeNode<int>(500, 100, 2000);
+    public RangeNode<int> summonSkeletonsMinCount = new RangeNode<int>(5, 1, 20);
+
+    #endregion
+
+    #region Auto Level Gems
+
+    public ToggleNode autoLevelGemsEnabled = new ToggleNode(false);
+
+    #endregion
+
     #region Input Keys
 
     public HotkeyNode inputKey1 = new HotkeyNode(Keys.Z);
