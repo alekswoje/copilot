@@ -80,12 +80,6 @@ public class BetterFollowbotLiteSettings : ISettings
 
     #endregion
 
-    #region Auto Respawn
-
-    public ToggleNode autoRespawnEnabled = new ToggleNode(false);
-
-    #endregion
-
     #region Summon Skeletons
 
     public ToggleNode summonSkeletonsEnabled = new ToggleNode(false);
@@ -94,6 +88,12 @@ public class BetterFollowbotLiteSettings : ISettings
 
     #endregion
 
+    #region Auto Respawn
+
+    public ToggleNode autoRespawnEnabled = new ToggleNode(false);
+
+    #endregion
+    
     #region Auto Level Gems
 
     public ToggleNode autoLevelGemsEnabled = new ToggleNode(false);
