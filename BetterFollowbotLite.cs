@@ -581,43 +581,43 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                         // Get the children for navigation
                         var children = invitesPanel.Children;
 
-                        // Navigate the UI hierarchy - based on logs, we have InvitesPanel -> Child[0] -> Child[0/1/2]
+                        // Navigate the UI hierarchy as originally specified: InvitesPanel -> Children[0] -> Children[2] -> Children[0]
                         if (children != null && children.Count > 0)
                         {
                             var firstChild = children[0];
-                            if (firstChild != null && firstChild.Children != null && firstChild.Children.Count >= 3)
+                            if (firstChild != null && firstChild.Children != null && firstChild.Children.Count > 2)
                             {
-                                // Try each of the 3 children to find the accept button
-                                for (int i = 0; i < Math.Min(3, firstChild.Children.Count); i++)
+                                var secondChild = firstChild.Children[2];
+                                if (secondChild != null && secondChild.Children != null && secondChild.Children.Count > 0)
                                 {
-                                    var potentialButton = firstChild.Children[i];
-                                    if (potentialButton != null && potentialButton.IsVisible)
+                                    var acceptButton = secondChild.Children[0];
+                                    if (acceptButton != null && acceptButton.IsVisible)
                                     {
-                                        // Get the center position of this potential button
-                                        var buttonRect = potentialButton.GetClientRectCache;
+                                        // Get the center position of the accept button
+                                        var buttonRect = acceptButton.GetClientRectCache;
                                         var buttonCenter = buttonRect.Center;
 
-                                        BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Checking button {i} at position X: {buttonCenter.X:F1}, Y: {buttonCenter.Y:F1}");
+                                        BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Accept button position - X: {buttonCenter.X:F1}, Y: {buttonCenter.Y:F1}");
 
-                                        // Move mouse to this button
+                                        // Move mouse to the accept button
                                         Mouse.SetCursorPos(buttonCenter);
 
-                                        // Wait for mouse to settle
-                                        System.Threading.Thread.Sleep(200);
+                                        // Wait for mouse to settle - longer delay to avoid AutoPilot interference
+                                        System.Threading.Thread.Sleep(300);
 
                                         // Verify mouse position
                                         var currentMousePos = GetMousePosition();
                                         var distanceFromTarget = Vector2.Distance(currentMousePos, buttonCenter);
-                                        BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Mouse distance from button {i}: {distanceFromTarget:F1}");
+                                        BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Mouse distance from target: {distanceFromTarget:F1}");
 
-                                        if (distanceFromTarget < 10) // Close enough to target
+                                        if (distanceFromTarget < 15) // Allow slightly more tolerance
                                         {
                                             // Perform click with verification
-                                            BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Clicking button {i}");
+                                            BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Performing left click on accept button");
 
                                             // First click attempt
                                             Mouse.LeftClick();
-                                            System.Threading.Thread.Sleep(200);
+                                            System.Threading.Thread.Sleep(300); // Longer delay
 
                                             // Check if we successfully joined a party
                                             var partyAfterClick = PartyElements.GetPlayerInfoElementList();
@@ -625,17 +625,16 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
                                             if (joinedParty)
                                             {
-                                                BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Button {i} click successful - joined party!");
-                                                break; // Success, exit the loop
+                                                BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Click successful - joined party!");
                                             }
                                             else
                                             {
-                                                BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Button {i} first click didn't work, trying second click");
+                                                BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: First click didn't work, attempting second click");
 
-                                                // Second click attempt
-                                                System.Threading.Thread.Sleep(500);
+                                                // Second click attempt with longer delay
+                                                System.Threading.Thread.Sleep(600);
                                                 Mouse.LeftClick();
-                                                System.Threading.Thread.Sleep(200);
+                                                System.Threading.Thread.Sleep(300);
 
                                                 // Check again
                                                 partyAfterClick = PartyElements.GetPlayerInfoElementList();
@@ -643,27 +642,38 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
                                                 if (joinedParty)
                                                 {
-                                                    BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Button {i} second click successful - joined party!");
-                                                    break; // Success, exit the loop
+                                                    BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Second click successful - joined party!");
                                                 }
                                                 else
                                                 {
-                                                    BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Button {i} both clicks failed");
+                                                    BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Both clicks failed - still not in party");
                                                 }
                                             }
                                         }
+                                        else
+                                        {
+                                            BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Mouse positioning failed - too far from target ({distanceFromTarget:F1})");
+                                        }
+
+                                        // Update cooldowns
+                                        lastTimeAny = DateTime.Now;
+                                        lastAutoJoinPartyAttempt = DateTime.Now;
+
+                                        BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Party invite acceptance attempt completed");
+                                    }
+                                    else
+                                    {
+                                        BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Accept button not found or not visible");
                                     }
                                 }
-
-                                // Update cooldowns regardless of success/failure
-                                lastTimeAny = DateTime.Now;
-                                lastAutoJoinPartyAttempt = DateTime.Now;
-
-                                BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Party invite acceptance attempt completed");
+                                else
+                                {
+                                    BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: UI hierarchy navigation failed at second child");
+                                }
                             }
                             else
                             {
-                                BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: First child doesn't have enough children (need at least 3)");
+                                BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: UI hierarchy navigation failed at first child");
                             }
                         }
                         else
