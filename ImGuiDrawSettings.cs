@@ -162,13 +162,16 @@ internal class ImGuiDrawSettings
 
         try
         {
-            // Smite Buff - depends on Flame Link
-            ImGui.PushStyleColor(ImGuiCol.Header, (BetterFollowbotLite.Instance.Settings.smiteEnabled && BetterFollowbotLite.Instance.Settings.flameLinkEnabled) ? green : red);
+            // Smite Buff - independent of Flame Link
+            ImGui.PushStyleColor(ImGuiCol.Header, BetterFollowbotLite.Instance.Settings.smiteEnabled ? green : red);
             ImGui.PushID(29);
             if (ImGui.TreeNodeEx("Smite Buff", collapsingHeaderFlags))
             {
-                BetterFollowbotLite.Instance.Settings.smiteEnabled.Value = ImGuiExtension.Checkbox("Enabled",
-                    BetterFollowbotLite.Instance.Settings.smiteEnabled.Value);
+                bool currentValue = BetterFollowbotLite.Instance.Settings.smiteEnabled.Value;
+                if (ImGuiExtension.Checkbox("Enabled", currentValue) != currentValue)
+                {
+                    BetterFollowbotLite.Instance.Settings.smiteEnabled.Value = !currentValue;
+                }
             }
         }
         catch (Exception e)
@@ -178,9 +181,9 @@ internal class ImGuiDrawSettings
 
         try
         {
-            // Vaal Skills - depends on Flame Link
+            // Vaal Skills - independent of Flame Link
             bool vaalSkillsEnabled = BetterFollowbotLite.Instance.Settings.vaalHasteEnabled || BetterFollowbotLite.Instance.Settings.vaalDisciplineEnabled;
-            ImGui.PushStyleColor(ImGuiCol.Header, (vaalSkillsEnabled && BetterFollowbotLite.Instance.Settings.flameLinkEnabled) ? green : red);
+            ImGui.PushStyleColor(ImGuiCol.Header, vaalSkillsEnabled ? green : red);
             ImGui.PushID(30);
             if (ImGui.TreeNodeEx("Vaal Skills", collapsingHeaderFlags))
             {
@@ -194,22 +197,23 @@ internal class ImGuiDrawSettings
                     BetterFollowbotLite.Instance.Settings.vaalDisciplineEnabled.Value = newCombinedState;
                 }
 
-                // Individual skill checkboxes (only show if Flame Link is enabled)
-                if (BetterFollowbotLite.Instance.Settings.flameLinkEnabled)
+                // Individual skill checkboxes (always available)
+                ImGui.Indent();
+
+                bool vaalHasteValue = BetterFollowbotLite.Instance.Settings.vaalHasteEnabled.Value;
+                if (ImGuiExtension.Checkbox("Vaal Haste", vaalHasteValue) != vaalHasteValue)
                 {
-                    ImGui.Indent();
-                    BetterFollowbotLite.Instance.Settings.vaalHasteEnabled.Value =
-                        ImGuiExtension.Checkbox("Vaal Haste", BetterFollowbotLite.Instance.Settings.vaalHasteEnabled.Value);
-                    BetterFollowbotLite.Instance.Settings.vaalDisciplineEnabled.Value =
-                        ImGuiExtension.Checkbox("Vaal Discipline", BetterFollowbotLite.Instance.Settings.vaalDisciplineEnabled.Value);
-                    BetterFollowbotLite.Instance.Settings.vaalDisciplineEsp.Value =
-                        ImGuiExtension.IntSlider("Vaal Discipline ES%", BetterFollowbotLite.Instance.Settings.vaalDisciplineEsp);
-                    ImGui.Unindent();
+                    BetterFollowbotLite.Instance.Settings.vaalHasteEnabled.Value = !vaalHasteValue;
                 }
-                else
+
+                bool vaalDisciplineValue = BetterFollowbotLite.Instance.Settings.vaalDisciplineEnabled.Value;
+                if (ImGuiExtension.Checkbox("Vaal Discipline", vaalDisciplineValue) != vaalDisciplineValue)
                 {
-                    ImGui.TextColored(new Vector4(1.0f, 0.5f, 0.0f, 1.0f), "Requires Flame Link to be enabled");
+                    BetterFollowbotLite.Instance.Settings.vaalDisciplineEnabled.Value = !vaalDisciplineValue;
                 }
+                BetterFollowbotLite.Instance.Settings.vaalDisciplineEsp.Value =
+                    ImGuiExtension.IntSlider("Vaal Discipline ES%", BetterFollowbotLite.Instance.Settings.vaalDisciplineEsp);
+                ImGui.Unindent();
             }
         }
         catch (Exception e)
@@ -248,8 +252,11 @@ internal class ImGuiDrawSettings
             ImGui.PushID(32);
             if (ImGui.TreeNodeEx("Auto Respawn", collapsingHeaderFlags))
             {
-                BetterFollowbotLite.Instance.Settings.autoRespawnEnabled.Value = ImGuiExtension.Checkbox("Auto Respawn",
-                    BetterFollowbotLite.Instance.Settings.autoRespawnEnabled.Value);
+                bool currentValue = BetterFollowbotLite.Instance.Settings.autoRespawnEnabled.Value;
+                if (ImGuiExtension.Checkbox("Auto Respawn", currentValue) != currentValue)
+                {
+                    BetterFollowbotLite.Instance.Settings.autoRespawnEnabled.Value = !currentValue;
+                }
             }
         }
         catch (Exception e)
@@ -286,8 +293,11 @@ internal class ImGuiDrawSettings
             ImGui.PushID(34);
             if (ImGui.TreeNodeEx("Auto Level Gems", collapsingHeaderFlags))
             {
-                BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value =
-                    ImGuiExtension.Checkbox("Auto Level Gems", BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value);
+                bool currentValue = BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value;
+                if (ImGuiExtension.Checkbox("Auto Level Gems", currentValue) != currentValue)
+                {
+                    BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value = !currentValue;
+                }
 
                 // Debug: Show current value
                 ImGui.Text($"Current: {BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value}");
