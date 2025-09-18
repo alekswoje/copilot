@@ -385,15 +385,15 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
                             if (timeSinceLastAction > 0.2) // Very fast cooldown for immediate grace removal
                             {
-                                // Move mouse to random position near center (±100 pixels) before pressing move key
+                                // Move mouse to random position near center (±35 pixels) before pressing move key
                                 var screenRect = GameController.Window.GetWindowRectangle();
                                 var screenCenterX = screenRect.Width / 2;
                                 var screenCenterY = screenRect.Height / 2;
 
-                                // Add random offset of ±100 pixels
+                                // Add random offset of ±35 pixels
                                 var random = new Random();
-                                var randomOffsetX = random.Next(-100, 101); // -100 to +100
-                                var randomOffsetY = random.Next(-100, 101); // -100 to +100
+                                var randomOffsetX = random.Next(-35, 36); // -35 to +35
+                                var randomOffsetY = random.Next(-35, 36); // -35 to +35
 
                                 var targetX = screenCenterX + randomOffsetX;
                                 var targetY = screenCenterY + randomOffsetY;
