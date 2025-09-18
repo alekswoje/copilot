@@ -615,8 +615,10 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                             // Perform click with verification
                                             BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Performing left click on accept button");
 
-                                            // First click attempt
-                                            Mouse.LeftClick();
+                                            // First click attempt - use synchronous mouse events
+                                            Mouse.LeftMouseDown();
+                                            System.Threading.Thread.Sleep(40);
+                                            Mouse.LeftMouseUp();
                                             System.Threading.Thread.Sleep(300); // Longer delay
 
                                             // Check if we successfully joined a party
@@ -633,7 +635,9 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
                                                 // Second click attempt with longer delay
                                                 System.Threading.Thread.Sleep(600);
-                                                Mouse.LeftClick();
+                                                Mouse.LeftMouseDown();
+                                                System.Threading.Thread.Sleep(40);
+                                                Mouse.LeftMouseUp();
                                                 System.Threading.Thread.Sleep(300);
 
                                                 // Check again
