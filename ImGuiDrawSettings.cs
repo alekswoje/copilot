@@ -179,16 +179,37 @@ internal class ImGuiDrawSettings
         try
         {
             // Vaal Skills - depends on Flame Link
-            ImGui.PushStyleColor(ImGuiCol.Header, ((BetterFollowbotLite.Instance.Settings.vaalHasteEnabled || BetterFollowbotLite.Instance.Settings.vaalDisciplineEnabled) && BetterFollowbotLite.Instance.Settings.flameLinkEnabled) ? green : red);
+            bool vaalSkillsEnabled = BetterFollowbotLite.Instance.Settings.vaalHasteEnabled || BetterFollowbotLite.Instance.Settings.vaalDisciplineEnabled;
+            ImGui.PushStyleColor(ImGuiCol.Header, (vaalSkillsEnabled && BetterFollowbotLite.Instance.Settings.flameLinkEnabled) ? green : red);
             ImGui.PushID(30);
             if (ImGui.TreeNodeEx("Vaal Skills", collapsingHeaderFlags))
             {
-                BetterFollowbotLite.Instance.Settings.vaalHasteEnabled.Value = ImGuiExtension.Checkbox("Vaal Haste Enabled",
-                    BetterFollowbotLite.Instance.Settings.vaalHasteEnabled.Value);
-                BetterFollowbotLite.Instance.Settings.vaalDisciplineEnabled.Value = ImGuiExtension.Checkbox("Vaal Discipline Enabled",
-                    BetterFollowbotLite.Instance.Settings.vaalDisciplineEnabled.Value);
-                BetterFollowbotLite.Instance.Settings.vaalDisciplineEsp.Value =
-                    ImGuiExtension.IntSlider("Vaal Discipline ES%", BetterFollowbotLite.Instance.Settings.vaalDisciplineEsp);
+                // Single checkbox that controls both Vaal skills
+                bool combinedVaalEnabled = BetterFollowbotLite.Instance.Settings.vaalHasteEnabled && BetterFollowbotLite.Instance.Settings.vaalDisciplineEnabled;
+                bool newCombinedState = ImGuiExtension.Checkbox("Enable Vaal Skills", combinedVaalEnabled);
+
+                if (newCombinedState != combinedVaalEnabled)
+                {
+                    BetterFollowbotLite.Instance.Settings.vaalHasteEnabled.Value = newCombinedState;
+                    BetterFollowbotLite.Instance.Settings.vaalDisciplineEnabled.Value = newCombinedState;
+                }
+
+                // Individual skill checkboxes (only show if Flame Link is enabled)
+                if (BetterFollowbotLite.Instance.Settings.flameLinkEnabled)
+                {
+                    ImGui.Indent();
+                    BetterFollowbotLite.Instance.Settings.vaalHasteEnabled.Value =
+                        ImGuiExtension.Checkbox("Vaal Haste", BetterFollowbotLite.Instance.Settings.vaalHasteEnabled.Value);
+                    BetterFollowbotLite.Instance.Settings.vaalDisciplineEnabled.Value =
+                        ImGuiExtension.Checkbox("Vaal Discipline", BetterFollowbotLite.Instance.Settings.vaalDisciplineEnabled.Value);
+                    BetterFollowbotLite.Instance.Settings.vaalDisciplineEsp.Value =
+                        ImGuiExtension.IntSlider("Vaal Discipline ES%", BetterFollowbotLite.Instance.Settings.vaalDisciplineEsp);
+                    ImGui.Unindent();
+                }
+                else
+                {
+                    ImGui.TextColored(new Vector4(1.0f, 0.5f, 0.0f, 1.0f), "Requires Flame Link to be enabled");
+                }
             }
         }
         catch (Exception e)
@@ -265,16 +286,8 @@ internal class ImGuiDrawSettings
             ImGui.PushID(34);
             if (ImGui.TreeNodeEx("Auto Level Gems", collapsingHeaderFlags))
             {
-                // Use a button that looks like a checkbox but works reliably
-                bool isEnabled = BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value;
-
-                // Create a button that looks like a checkbox
-                string buttonText = isEnabled ? "[X] Auto Level Gems" : "[ ] Auto Level Gems";
-                if (ImGui.Button(buttonText))
-                {
-                    BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value = !isEnabled;
-                    BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Checkbox button clicked - new value: {!isEnabled}");
-                }
+                BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value =
+                    ImGuiExtension.Checkbox("Auto Level Gems", BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value);
 
                 // Debug: Show current value
                 ImGui.Text($"Current: {BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value}");
@@ -299,16 +312,8 @@ internal class ImGuiDrawSettings
             ImGui.PushID(35);
             if (ImGui.TreeNodeEx("Auto Join Party", collapsingHeaderFlags))
             {
-                // Use a button that looks like a checkbox but works reliably
-                bool isEnabled = BetterFollowbotLite.Instance.Settings.autoJoinPartyEnabled.Value;
-
-                // Create a button that looks like a checkbox
-                string buttonText = isEnabled ? "[X] Auto Join Party Invites" : "[ ] Auto Join Party Invites";
-                if (ImGui.Button(buttonText))
-                {
-                    BetterFollowbotLite.Instance.Settings.autoJoinPartyEnabled.Value = !isEnabled;
-                    BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Checkbox button clicked - new value: {!isEnabled}");
-                }
+                BetterFollowbotLite.Instance.Settings.autoJoinPartyEnabled.Value =
+                    ImGuiExtension.Checkbox("Auto Join Party Invites", BetterFollowbotLite.Instance.Settings.autoJoinPartyEnabled.Value);
 
                 // Debug: Show current value
                 ImGui.Text($"Current: {BetterFollowbotLite.Instance.Settings.autoJoinPartyEnabled.Value}");
