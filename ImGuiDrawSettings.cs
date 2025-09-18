@@ -193,6 +193,31 @@ internal class ImGuiDrawSettings
             // Error handling without logging
         }
 
+        try
+        {
+            // Mines
+            ImGui.PushStyleColor(ImGuiCol.Header, BetterFollowbotLite.Instance.Settings.minesEnabled ? green : red);
+            ImGui.PushID(31);
+            if (ImGui.TreeNodeEx("Mines", collapsingHeaderFlags))
+            {
+                BetterFollowbotLite.Instance.Settings.minesEnabled.Value = ImGuiExtension.Checkbox("Enabled",
+                    BetterFollowbotLite.Instance.Settings.minesEnabled.Value);
+                BetterFollowbotLite.Instance.Settings.minesRange = ImGuiExtension.InputText("Enemy Detection Range",
+                    BetterFollowbotLite.Instance.Settings.minesRange, 60, ImGuiInputTextFlags.None);
+                BetterFollowbotLite.Instance.Settings.minesLeaderDistance = ImGuiExtension.InputText("Leader Distance Threshold",
+                    BetterFollowbotLite.Instance.Settings.minesLeaderDistance, 60, ImGuiInputTextFlags.None);
+                BetterFollowbotLite.Instance.Settings.minesStormblastEnabled.Value = ImGuiExtension.Checkbox("Stormblast Mine",
+                    BetterFollowbotLite.Instance.Settings.minesStormblastEnabled.Value);
+                BetterFollowbotLite.Instance.Settings.minesPyroclastEnabled.Value = ImGuiExtension.Checkbox("Pyroclast Mine",
+                    BetterFollowbotLite.Instance.Settings.minesPyroclastEnabled.Value);
+                ImGui.TextWrapped("Logic:\n• Throw mines when near rare/unique enemies AND close to party leader\n• Mouse-over targeting for precise placement\n• Only works with Stormblast Mine and Pyroclast Mine");
+            }
+        }
+        catch (Exception e)
+        {
+            // Error handling without logging
+        }
+
         //ImGui.End();
     }
 }
