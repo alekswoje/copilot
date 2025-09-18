@@ -265,16 +265,15 @@ internal class ImGuiDrawSettings
             ImGui.PushID(34);
             if (ImGui.TreeNodeEx("Auto Level Gems", collapsingHeaderFlags))
             {
-                BetterFollowbotLite.Instance.LogMessage("AUTO LEVEL GEMS: UI section rendering");
+                // Use a button that looks like a checkbox but works reliably
+                bool isEnabled = BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value;
 
-                // Try using direct ImGui.Checkbox instead of ImGuiExtension.Checkbox
-                bool currentValue = BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value;
-                BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Before direct checkbox - currentValue: {currentValue}");
-
-                if (ImGui.Checkbox("Auto Level Gems", ref currentValue))
+                // Create a button that looks like a checkbox
+                string buttonText = isEnabled ? "[X] Auto Level Gems" : "[ ] Auto Level Gems";
+                if (ImGui.Button(buttonText))
                 {
-                    BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Direct checkbox clicked - new value: {currentValue}");
-                    BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value = currentValue;
+                    BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value = !isEnabled;
+                    BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Checkbox button clicked - new value: {!isEnabled}");
                 }
 
                 // Debug: Show current value
@@ -300,16 +299,15 @@ internal class ImGuiDrawSettings
             ImGui.PushID(35);
             if (ImGui.TreeNodeEx("Auto Join Party", collapsingHeaderFlags))
             {
-                BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: UI section rendering");
+                // Use a button that looks like a checkbox but works reliably
+                bool isEnabled = BetterFollowbotLite.Instance.Settings.autoJoinPartyEnabled.Value;
 
-                // Try using direct ImGui.Checkbox instead of ImGuiExtension.Checkbox
-                bool currentValue = BetterFollowbotLite.Instance.Settings.autoJoinPartyEnabled.Value;
-                BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Before direct checkbox - currentValue: {currentValue}");
-
-                if (ImGui.Checkbox("Auto Join Party Invites", ref currentValue))
+                // Create a button that looks like a checkbox
+                string buttonText = isEnabled ? "[X] Auto Join Party Invites" : "[ ] Auto Join Party Invites";
+                if (ImGui.Button(buttonText))
                 {
-                    BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Direct checkbox clicked - new value: {currentValue}");
-                    BetterFollowbotLite.Instance.Settings.autoJoinPartyEnabled.Value = currentValue;
+                    BetterFollowbotLite.Instance.Settings.autoJoinPartyEnabled.Value = !isEnabled;
+                    BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Checkbox button clicked - new value: {!isEnabled}");
                 }
 
                 // Debug: Show current value
