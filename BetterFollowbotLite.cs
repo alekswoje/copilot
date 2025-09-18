@@ -346,7 +346,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                         if (distanceFromCenter <= 100.0)
                         {
                             // Check if move key is being pressed
-                            if (Keyboard.IsKeyDown((int)Settings.autoPilotMoveKey.Key))
+                            if (Keyboard.IsKeyDown((int)Settings.autoPilotMoveKey.Value))
                             {
                                 // Check cooldown to prevent spam
                                 var timeSinceLastAction = (DateTime.Now - lastTimeAny).TotalSeconds;
