@@ -67,9 +67,9 @@ namespace BetterFollowbotLite;
             {
                 var distanceMoved = Vector3.Distance(lastTargetPosition, newPosition);
 
-                // If the target moved more than 2000 units, it's likely a portal transition within the same zone
-                // (reduced from 5000 to catch more portal transitions while avoiding false positives)
-                if (distanceMoved > 2000)
+                // If the target moved more than 1000 units, it's likely a portal transition within the same zone
+                // (reduced from 2000 to catch more portal transitions)
+                if (distanceMoved > 1000)
                 {
                     BetterFollowbotLite.Instance.LogMessage($"AUTOPILOT: Follow target moved {distanceMoved:F0} units (portal transition detected) from {lastTargetPosition} to {newPosition}");
 
@@ -98,7 +98,7 @@ namespace BetterFollowbotLite;
                     // Record this portal transition
                     lastPortalTransitionTime = DateTime.Now;
                 }
-                // If the target moved more than 500 units but less than 2000, it's likely a zone transition
+                // If the target moved more than 500 units but less than 1000, it's likely a zone transition
                 else if (distanceMoved > 500)
                 {
                     BetterFollowbotLite.Instance.LogMessage($"AUTOPILOT: Follow target moved {distanceMoved:F0} units (possible zone transition) from {lastTargetPosition} to {newPosition}");
@@ -131,10 +131,7 @@ namespace BetterFollowbotLite;
     {
         try
         {
-            // Add a small delay to let the portal load
-            System.Threading.Thread.Sleep(500);
-
-            // Look for portal entities near the leader's position
+            // Look for portal entities near the leader's position immediately
             var allEntities = BetterFollowbotLite.Instance.GameController.Entities
                 .Where(e => e.IsValid && e.GetComponent<Positioned>() != null)
                 .ToList();
@@ -167,6 +164,7 @@ namespace BetterFollowbotLite;
 
             BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Found {possiblePortals.Count} portal entities");
 
+            // First, try with a much larger search radius (2000 units)
             var portals = possiblePortals
                 .Select(e => new
                 {
@@ -176,11 +174,43 @@ namespace BetterFollowbotLite;
                     Type = e.Type.ToString(),
                     Name = "Portal" // Simplified name
                 })
-                .Where(p => p.Distance < 500) // Within 500 units of leader (increased range)
+                .Where(p => p.Distance < 2000) // Within 2000 units of leader (much larger range)
                 .OrderBy(p => p.Distance)
                 .ToList();
 
-            BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Found {portals.Count} portals within 500 units of leader");
+            BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Found {portals.Count} portals within 2000 units of leader");
+
+            // If no portals found within 2000 units, search ALL entities for portal-like objects
+            if (!portals.Any())
+            {
+                BetterFollowbotLite.Instance.LogMessage("PORTAL FOLLOW: No portals within 2000 units, searching ALL entities for portal-like objects");
+
+                var allPortalLike = allEntities.Where(e =>
+                    e.GetComponent<Positioned>() != null &&
+                    (e.Type.ToString().ToLower().Contains("portal") ||
+                     e.Type.ToString().ToLower().Contains("transition") ||
+                     e.Type.ToString().ToLower().Contains("door") ||
+                     e.Type.ToString().ToLower().Contains("gate") ||
+                     e.Type.ToString().ToLower().Contains("teleport")))
+                    .ToList();
+
+                BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Found {allPortalLike.Count} portal-like entities in entire zone");
+
+                portals = allPortalLike
+                    .Select(e => new
+                    {
+                        Entity = e,
+                        Position = e.GetComponent<Positioned>().GridPosition,
+                        Distance = Vector3.Distance(new Vector3(e.GetComponent<Positioned>().GridPosition.X, e.GetComponent<Positioned>().GridPosition.Y, 0), leaderPosition),
+                        Type = e.Type.ToString(),
+                        Name = "Portal-Like"
+                    })
+                    .OrderBy(p => p.Distance)
+                    .Take(5) // Take closest 5
+                    .ToList();
+
+                BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Taking {portals.Count} closest portal-like entities");
+            }
 
             // Log details of found portals
             foreach (var portal in portals)
@@ -336,24 +366,25 @@ namespace BetterFollowbotLite;
             // Portals are usually interactive objects, so try clicking near the leader
             var screenPos = BetterFollowbotLite.Instance.GameController.IngameState.Camera.WorldToScreen(leaderPosition);
 
-            // Try clicking in a wider pattern around the leader's position
-            // Portals can be at various distances and positions
+            // Try clicking in a focused pattern around the leader's position
+            // Focus on areas where portals are most likely to be
             var offsets = new[]
             {
-                // Close range (portals right next to leader)
-                new Vector2(30, 0), new Vector2(-30, 0), new Vector2(0, 30), new Vector2(0, -30),
+                // Very close range (portals right next to leader)
+                new Vector2(20, 0), new Vector2(-20, 0), new Vector2(0, 20), new Vector2(0, -20),
+                new Vector2(15, 15), new Vector2(-15, 15), new Vector2(15, -15), new Vector2(-15, -15),
 
-                // Medium range
-                new Vector2(50, 0), new Vector2(-50, 0), new Vector2(0, 50), new Vector2(0, -50),
-                new Vector2(35, 35), new Vector2(-35, 35), new Vector2(35, -35), new Vector2(-35, -35),
+                // Medium close range
+                new Vector2(40, 0), new Vector2(-40, 0), new Vector2(0, 40), new Vector2(0, -40),
+                new Vector2(30, 30), new Vector2(-30, 30), new Vector2(30, -30), new Vector2(-30, -30),
 
-                // Far range (portals further away)
+                // Slightly further
+                new Vector2(60, 0), new Vector2(-60, 0), new Vector2(0, 60), new Vector2(0, -60),
+                new Vector2(45, 45), new Vector2(-45, 45), new Vector2(45, -45), new Vector2(-45, -45),
+
+                // Extended range for stubborn portals
                 new Vector2(80, 0), new Vector2(-80, 0), new Vector2(0, 80), new Vector2(0, -80),
-                new Vector2(60, 60), new Vector2(-60, 60), new Vector2(60, -60), new Vector2(-60, -60),
-
-                // Very far range
-                new Vector2(100, 0), new Vector2(-100, 0), new Vector2(0, 100), new Vector2(0, -100),
-                new Vector2(70, 70), new Vector2(-70, 70), new Vector2(70, -70), new Vector2(-70, -70)
+                new Vector2(60, 60), new Vector2(-60, 60), new Vector2(60, -60), new Vector2(-60, -60)
             };
 
             // Randomize the order to make it less predictable
