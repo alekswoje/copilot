@@ -100,6 +100,12 @@ public class BetterFollowbotLiteSettings : ISettings
 
     #endregion
 
+    #region Auto Join Party
+
+    public ToggleNode autoJoinPartyEnabled = new ToggleNode(false);
+
+    #endregion
+
     #region Input Keys
 
     public HotkeyNode inputKey1 = new HotkeyNode(Keys.Z);

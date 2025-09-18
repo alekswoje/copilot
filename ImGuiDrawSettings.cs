@@ -276,6 +276,23 @@ internal class ImGuiDrawSettings
             // Error handling without logging
         }
 
+        try
+        {
+            // Auto Join Party
+            ImGui.PushStyleColor(ImGuiCol.Header, BetterFollowbotLite.Instance.Settings.autoJoinPartyEnabled ? green : red);
+            ImGui.PushID(35);
+            if (ImGui.TreeNodeEx("Auto Join Party", collapsingHeaderFlags))
+            {
+                BetterFollowbotLite.Instance.Settings.autoJoinPartyEnabled.Value = ImGuiExtension.Checkbox("Auto Join Party Invites",
+                    BetterFollowbotLite.Instance.Settings.autoJoinPartyEnabled.Value);
+                ImGui.TextWrapped("Logic:\n• Automatically accepts party join invites when they appear\n• Navigates the UI hierarchy to find and click the accept button\n• Useful for automated party management during farming runs");
+            }
+        }
+        catch (Exception e)
+        {
+            // Error handling without logging
+        }
+
         //ImGui.End();
     }
 }

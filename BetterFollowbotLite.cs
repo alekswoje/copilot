@@ -491,6 +491,80 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
             #endregion
 
+            #region Auto Join Party
+
+            if (Settings.autoJoinPartyEnabled && Gcd())
+            {
+                try
+                {
+                    // Check if the invites panel is visible
+                    var invitesPanel = GameController.IngameState.IngameUi.InvitesPanel;
+                    if (invitesPanel != null && invitesPanel.IsVisible)
+                    {
+                        BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Invites panel detected, attempting to accept party invite");
+
+                        // Navigate the UI hierarchy as described: InvitesPanel -> Children[0] -> Children[2] -> Children[0]
+                        var children = invitesPanel.Children;
+                        if (children != null && children.Count > 0)
+                        {
+                            var firstChild = children[0];
+                            if (firstChild != null && firstChild.Children != null && firstChild.Children.Count > 2)
+                            {
+                                var secondChild = firstChild.Children[2];
+                                if (secondChild != null && secondChild.Children != null && secondChild.Children.Count > 0)
+                                {
+                                    var acceptButton = secondChild.Children[0];
+                                    if (acceptButton != null && acceptButton.IsVisible)
+                                    {
+                                        // Get the center position of the accept button
+                                        var buttonRect = acceptButton.GetClientRectCache;
+                                        var buttonCenter = buttonRect.Center;
+
+                                        BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Accept button position - X: {buttonCenter.X:F1}, Y: {buttonCenter.Y:F1}");
+
+                                        // Move mouse to the accept button
+                                        Mouse.SetCursorPos(buttonCenter);
+
+                                        // Wait a bit for mouse to settle
+                                        System.Threading.Thread.Sleep(100);
+
+                                        // Click the accept button
+                                        Mouse.LeftClick();
+
+                                        // Update global cooldown
+                                        lastTimeAny = DateTime.Now;
+
+                                        BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Party invite accepted successfully");
+                                    }
+                                    else
+                                    {
+                                        BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Accept button not found or not visible");
+                                    }
+                                }
+                                else
+                                {
+                                    BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: UI hierarchy navigation failed at second child");
+                                }
+                            }
+                            else
+                            {
+                                BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: UI hierarchy navigation failed at first child");
+                            }
+                        }
+                        else
+                        {
+                            BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Invites panel has no children");
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Exception occurred - {e.Message}");
+                }
+            }
+
+            #endregion
+
             #region Auto Map Tabber
 
             try
