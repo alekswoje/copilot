@@ -513,6 +513,10 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                     }
                 }
 
+                // CRITICAL: Update follow target position BEFORE AutoPilot logic
+                // This prevents stale position data from causing incorrect movement
+                autoPilot.UpdateFollowTargetPosition();
+
                 // CRITICAL: Update AutoPilot logic BEFORE grace period check
                 // AutoPilot should be able to create tasks even when grace period is active
                 autoPilot.UpdateAutoPilotLogic();

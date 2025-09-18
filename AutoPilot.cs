@@ -29,6 +29,11 @@ namespace BetterFollowbotLite;
     public Entity FollowTarget => followTarget;
 
     /// <summary>
+    /// Gets the current position of the follow target, using updated position data
+    /// </summary>
+    public Vector3 FollowTargetPosition => lastTargetPosition;
+
+    /// <summary>
     /// Sets the follow target entity
     /// </summary>
     /// <param name="target">The entity to follow</param>
@@ -38,6 +43,48 @@ namespace BetterFollowbotLite;
         if (target != null)
         {
             lastTargetPosition = target.Pos;
+            BetterFollowbotLite.Instance.LogMessage($"AUTOPILOT: Set follow target '{target.GetComponent<Player>()?.PlayerName ?? "Unknown"}' at position: {target.Pos}");
+        }
+        else
+        {
+            BetterFollowbotLite.Instance.LogMessage("AUTOPILOT: Cleared follow target");
+        }
+    }
+
+    /// <summary>
+    /// Updates the follow target's position if it exists
+    /// This is crucial for zone transitions where the entity's position changes
+    /// </summary>
+    public void UpdateFollowTargetPosition()
+    {
+        if (followTarget != null && followTarget.IsValid)
+        {
+            var newPosition = followTarget.Pos;
+
+            // Check if position has changed significantly (zone transition or major movement)
+            if (lastTargetPosition != Vector3.Zero)
+            {
+                var distanceMoved = Vector3.Distance(lastTargetPosition, newPosition);
+
+                // If the target moved more than 500 units, it's likely a zone transition
+                if (distanceMoved > 500)
+                {
+                    BetterFollowbotLite.Instance.LogMessage($"AUTOPILOT: Follow target moved {distanceMoved:F0} units (possible zone transition) from {lastTargetPosition} to {newPosition}");
+                }
+                else if (newPosition != lastTargetPosition)
+                {
+                    BetterFollowbotLite.Instance.LogMessage($"AUTOPILOT: Updated follow target position from {lastTargetPosition} to {newPosition}");
+                }
+            }
+
+            lastTargetPosition = newPosition;
+        }
+        else if (followTarget != null && !followTarget.IsValid)
+        {
+            // Follow target became invalid, clear it
+            BetterFollowbotLite.Instance.LogMessage("AUTOPILOT: Follow target became invalid, clearing");
+            followTarget = null;
+            lastTargetPosition = Vector3.Zero;
         }
     }
 
@@ -222,7 +269,7 @@ namespace BetterFollowbotLite;
             }
 
             // Also check if we're following an old position that's now far from current player position
-            var distanceToCurrentPlayer = Vector3.Distance(BetterFollowbotLite.Instance.localPlayer?.Pos ?? BetterFollowbotLite.Instance.playerPosition, followTarget.Pos);
+            var distanceToCurrentPlayer = Vector3.Distance(BetterFollowbotLite.Instance.localPlayer?.Pos ?? BetterFollowbotLite.Instance.playerPosition, lastTargetPosition);
             if (distanceToCurrentPlayer > 150f) // Less aggressive - increased from 80f to reduce constant path clearing
             {
                 lastPathClearTime = DateTime.Now;
@@ -843,7 +890,7 @@ namespace BetterFollowbotLite;
                     // FORCE IMMEDIATE PATH CREATION - Don't wait for UpdateAutoPilotLogic
                     if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
                     {
-                        var instantDistanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, followTarget.Pos);
+                        var instantDistanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, FollowTargetPosition);
 
                         if (instantDistanceToLeader > 1000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 700 to 1000
                         {
@@ -851,7 +898,7 @@ namespace BetterFollowbotLite;
                             var hasConflictingTasks = tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
                             if (!hasConflictingTasks)
                             {
-                                tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
+                                tasks.Add(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
                                 BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Added dash task for distance {instantDistanceToLeader:F1}");
                             }
                             else
@@ -861,7 +908,7 @@ namespace BetterFollowbotLite;
                         }
                         else
                         {
-                            tasks.Add(new TaskNode(followTarget.Pos, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
+                            tasks.Add(new TaskNode(FollowTargetPosition, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
                         }
                     }
                     
@@ -878,7 +925,7 @@ namespace BetterFollowbotLite;
                     // FORCE IMMEDIATE PATH CREATION - Don't wait for UpdateAutoPilotLogic
                     if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
                     {
-                        var instantDistanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, followTarget.Pos);
+                        var instantDistanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, FollowTargetPosition);
 
                         if (instantDistanceToLeader > 1000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 700 to 1000
                         {
@@ -886,7 +933,7 @@ namespace BetterFollowbotLite;
                             var hasConflictingTasks = tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
                             if (!hasConflictingTasks)
                             {
-                                tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
+                                tasks.Add(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
                                 BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Added dash task for distance {instantDistanceToLeader:F1}");
                             }
                             else
@@ -896,7 +943,7 @@ namespace BetterFollowbotLite;
                         }
                         else
                         {
-                            tasks.Add(new TaskNode(followTarget.Pos, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
+                            tasks.Add(new TaskNode(FollowTargetPosition, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
                         }
                     }
                     
@@ -1005,7 +1052,7 @@ namespace BetterFollowbotLite;
                             {
                                 try
                                 {
-                                    var distanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, followTarget.Pos);
+                                    var distanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, FollowTargetPosition);
                                     if (distanceToLeader > 700 && IsCursorPointingTowardsTarget(followTarget.Pos)) // Dash if more than 700 units away and cursor is pointing towards leader
                                     {
                                         shouldDashToLeader = true;
@@ -1330,7 +1377,7 @@ namespace BetterFollowbotLite;
                 {
                     if (shouldDashToLeader)
                     {
-                        yield return Mouse.SetCursorPosHuman(Helper.WorldToValidScreenPosition(followTarget.Pos));
+                        yield return Mouse.SetCursorPosHuman(Helper.WorldToValidScreenPosition(FollowTargetPosition));
                         BetterFollowbotLite.Instance.LogMessage("Movement task: Dash mouse positioned, pressing key");
                         if (instantPathOptimization)
                         {
@@ -1775,7 +1822,7 @@ namespace BetterFollowbotLite;
                     // ADDITIONAL NULL CHECK: Ensure followTarget is still valid during responsiveness check
                     if (followTarget != null && followTarget.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
                     {
-                        var instantDistanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, followTarget.Pos);
+                        var instantDistanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, FollowTargetPosition);
                         BetterFollowbotLite.Instance.LogMessage($"RESPONSIVENESS: Creating direct path to leader - Distance: {instantDistanceToLeader:F1}");
 
                         if (instantDistanceToLeader > 1500 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 1000 to 1500 to reduce dash spam
@@ -1784,7 +1831,7 @@ namespace BetterFollowbotLite;
                             var hasConflictingTasks = tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
                             if (!hasConflictingTasks)
                             {
-                                tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
+                                tasks.Add(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
                                 BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Added dash task for distance {instantDistanceToLeader:F1}");
                             }
                             else
@@ -1794,7 +1841,7 @@ namespace BetterFollowbotLite;
                         }
                         else
                         {
-                            tasks.Add(new TaskNode(followTarget.Pos, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
+                            tasks.Add(new TaskNode(FollowTargetPosition, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
                         }
                     }
                     else
@@ -1815,7 +1862,7 @@ namespace BetterFollowbotLite;
                     // ADDITIONAL NULL CHECK: Ensure followTarget is still valid during efficiency check
                     if (followTarget != null && followTarget.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
                     {
-                        var instantDistanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, followTarget.Pos);
+                        var instantDistanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, FollowTargetPosition);
                         // Reduced logging frequency to prevent lag
                         if (instantDistanceToLeader > 200f) // Only log for significant distances
                             BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Creating direct path to leader - Distance: {instantDistanceToLeader:F1}");
@@ -1826,7 +1873,7 @@ namespace BetterFollowbotLite;
                             var hasConflictingTasks = tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
                             if (!hasConflictingTasks)
                             {
-                                tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
+                                tasks.Add(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
                                 BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Added dash task for distance {instantDistanceToLeader:F1}");
                             }
                             else
@@ -1836,7 +1883,7 @@ namespace BetterFollowbotLite;
                         }
                         else
                         {
-                            tasks.Add(new TaskNode(followTarget.Pos, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
+                            tasks.Add(new TaskNode(FollowTargetPosition, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
                         }
                     }
                     else
@@ -2034,13 +2081,13 @@ namespace BetterFollowbotLite;
                             else
                             {
                                 BetterFollowbotLite.Instance.LogMessage($"Adding Dash task - Distance: {distanceToLeader:F1}, Dash enabled: {BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled}");
-                                tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
+                                tasks.Add(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
                             }
                             }
                             else
                             {
                                 BetterFollowbotLite.Instance.LogMessage($"Adding Movement task - Distance: {distanceToLeader:F1}, Dash enabled: {BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled}, Dash threshold: 700");
-                                tasks.Add(new TaskNode(followTarget.Pos, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
+                                tasks.Add(new TaskNode(FollowTargetPosition, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
                             }
                         }
                         else
@@ -2060,8 +2107,8 @@ namespace BetterFollowbotLite;
                             if (distanceFromLastTask >= responsiveThreshold)
                             {
                         BetterFollowbotLite.Instance.LogMessage($"RESPONSIVENESS: Adding new path node - Distance: {distanceFromLastTask:F1}, Threshold: {responsiveThreshold:F1}");
-                        BetterFollowbotLite.Instance.LogMessage($"DEBUG: Creating task to position: {followTarget.Pos} (Player at: {BetterFollowbotLite.Instance.playerPosition})");
-                        tasks.Add(new TaskNode(followTarget.Pos, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
+                        BetterFollowbotLite.Instance.LogMessage($"DEBUG: Creating task to position: {FollowTargetPosition} (Player at: {BetterFollowbotLite.Instance.playerPosition})");
+                        tasks.Add(new TaskNode(FollowTargetPosition, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
                             }
                         }
                         else
@@ -2083,7 +2130,7 @@ namespace BetterFollowbotLite;
                     {
                         //Close follow logic. We have no current tasks. Check if we should move towards leader
                         if (distanceToLeader >= BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value)
-                            tasks.Add(new TaskNode(followTarget.Pos, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
+                            tasks.Add(new TaskNode(FollowTargetPosition, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
                     }
 
                     //Check if we should add quest loot logic. We're close to leader already
