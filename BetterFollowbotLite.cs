@@ -251,39 +251,73 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                 
             try
             {
-                // Grace period removal - simplified for reliability
+                // Grace period removal with movement safeguards
                 if (Settings.autoPilotEnabled && Settings.autoPilotGrace && buffs != null && buffs.Exists(x => x.Name == "grace_period"))
                 {
-                    // Allow grace period removal immediately after zone change (within 2 seconds)
-                    // This ensures grace period is removed quickly but prevents interference during transition
                     var timeSinceAreaChange = (DateTime.Now - lastAreaChangeTime).TotalSeconds;
 
-                    if (timeSinceAreaChange > 2.0) // Reduced from 5.0 to 2.0 seconds
+                    if (timeSinceAreaChange > 3.0) // Wait longer to ensure zone is stable
                     {
-                        // Check if we've recently pressed a key to avoid spam
-                        var timeSinceLastAction = (DateTime.Now - lastTimeAny).TotalSeconds;
-                        if (timeSinceLastAction > 0.5) // 500ms cooldown between actions
-                        {
-                            // Log grace period removal (but not too frequently)
-                            var timeSinceLastGraceLog = (DateTime.Now - lastGraceLogTime).TotalSeconds;
-                            if (timeSinceLastGraceLog > 5.0) // Log every 5 seconds instead of 30
-                            {
-                                LogMessage("GRACE PERIOD: Removing grace period buff");
-                                lastGraceLogTime = DateTime.Now;
-                            }
+                        // Check player position to ensure they're not moving
+                        var shouldRemoveGrace = true;
 
-                            // Remove grace period by pressing move key
-                            Keyboard.KeyPress(Settings.autoPilotMoveKey);
-                            lastTimeAny = DateTime.Now;
+                        if (localPlayer != null)
+                        {
+                            var positionComponent = localPlayer.GetComponent<Positioned>();
+                            if (positionComponent != null)
+                            {
+                                var currentPos2D = positionComponent.GridPosition;
+                                var currentPos3D = new Vector3(currentPos2D.X, currentPos2D.Y, 0);
+
+                                // Check if we've moved significantly since last check
+                                var distanceMoved = Vector3.Distance(currentPos3D, playerPosition);
+
+                                // If moved more than 5 units, player is likely moving - don't remove grace yet
+                                if (distanceMoved > 5.0f)
+                                {
+                                    shouldRemoveGrace = false;
+
+                                    // Log movement detection occasionally
+                                    var timeSinceLastGraceLog = (DateTime.Now - lastGraceLogTime).TotalSeconds;
+                                    if (timeSinceLastGraceLog > 10.0)
+                                    {
+                                        LogMessage($"GRACE PERIOD: Player moving ({distanceMoved:F1} units) - waiting to remove grace");
+                                        lastGraceLogTime = DateTime.Now;
+                                    }
+                                }
+
+                                // Update stored position for next check
+                                playerPosition = currentPos3D;
+                            }
+                        }
+
+                        if (shouldRemoveGrace)
+                        {
+                            // Check if we've recently pressed a key to avoid spam
+                            var timeSinceLastAction = (DateTime.Now - lastTimeAny).TotalSeconds;
+                            if (timeSinceLastAction > 1.0) // Increased cooldown to 1 second
+                            {
+                                // Log grace period removal
+                                var timeSinceLastGraceLog = (DateTime.Now - lastGraceLogTime).TotalSeconds;
+                                if (timeSinceLastGraceLog > 5.0)
+                                {
+                                    LogMessage("GRACE PERIOD: Removing grace period buff (player stationary)");
+                                    lastGraceLogTime = DateTime.Now;
+                                }
+
+                                // Remove grace period by pressing move key once
+                                Keyboard.KeyPress(Settings.autoPilotMoveKey);
+                                lastTimeAny = DateTime.Now;
+                            }
                         }
                     }
                     else
                     {
-                        // Log zone transition status (reduced frequency)
+                        // Log zone transition status
                         var timeSinceLastGraceLog = (DateTime.Now - lastGraceLogTime).TotalSeconds;
-                        if (timeSinceLastGraceLog > 3.0) // Log every 3 seconds during transition
+                        if (timeSinceLastGraceLog > 5.0) // Log less frequently
                         {
-                            LogMessage($"GRACE PERIOD: Waiting for zone stabilization ({timeSinceAreaChange:F1}s since area change)");
+                            LogMessage($"GRACE PERIOD: Stabilizing after zone change ({timeSinceAreaChange:F1}s)");
                             lastGraceLogTime = DateTime.Now;
                         }
                     }
