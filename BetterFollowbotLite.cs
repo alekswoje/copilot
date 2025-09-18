@@ -812,6 +812,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                 {
                                     // Find the Summon Raging Spirits skill
                                     var summonRagingSpiritsSkill = skills.FirstOrDefault(s =>
+                                        s.Name.Contains("SummonRagingSpirit") ||
                                         s.Name.Contains("Summon Raging Spirit") ||
                                         (s.Name.Contains("summon") && s.Name.Contains("spirit") && s.Name.Contains("rag")));
 
@@ -828,11 +829,11 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                     }
                                     else if (summonRagingSpiritsSkill == null)
                                     {
-                                        BetterFollowbotLite.Instance.LogMessage("SRS: Summon Raging Spirit skill not found in skill bar");
+                                        BetterFollowbotLite.Instance.LogMessage("SRS: SummonRagingSpirit skill not found in skill bar");
                                     }
                                     else if (!summonRagingSpiritsSkill.CanBeUsed)
                                     {
-                                        BetterFollowbotLite.Instance.LogMessage("SRS: Summon Raging Spirit skill is on cooldown or unavailable");
+                                        BetterFollowbotLite.Instance.LogMessage("SRS: SummonRagingSpirit skill is on cooldown or unavailable");
                                     }
                                 }
                             }
