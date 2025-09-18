@@ -209,13 +209,13 @@ namespace BetterFollowbotLite;
     {
         try
         {
-            // For override checks (after click), be more aggressive with timing
-            int rateLimitMs = isOverrideCheck ? 100 : 500; // More aggressive responsiveness
+            // For override checks (after click), be much less aggressive with timing
+            int rateLimitMs = isOverrideCheck ? 2000 : 5000; // Much less aggressive - increased from 100/500 to 2000/5000ms
             if ((DateTime.Now - lastPathClearTime).TotalMilliseconds < rateLimitMs)
                 return false;
 
             // Additional cooldown for responsiveness checks to prevent excessive path clearing
-            if ((DateTime.Now - lastResponsivenessCheck).TotalMilliseconds < 200) // Faster responsiveness checks
+            if ((DateTime.Now - lastResponsivenessCheck).TotalMilliseconds < 1000) // Much slower - increased from 200 to 1000ms
                 return false;
 
             // Need a follow target to check responsiveness
@@ -229,8 +229,8 @@ namespace BetterFollowbotLite;
             // Calculate how much the player has moved since last update
             var playerMovement = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, lastPlayerPosition);
             
-            // Less aggressive: Only clear path if player moved significantly (increased from 30 to 100 units)
-            if (playerMovement > 100f)
+            // Much less aggressive: Only clear path if player moved significantly more
+            if (playerMovement > 300f) // Increased from 100f to 300f to be much less aggressive
             {
                 // Reduced logging frequency to prevent lag
                 lastPathClearTime = DateTime.Now;
@@ -258,8 +258,8 @@ namespace BetterFollowbotLite;
                     // Calculate dot product - if negative, player is behind the current task direction
                     float dotProduct = Vector3.Dot(botToTask, botToPlayer);
                     
-                    // Less aggressive: Only clear path for major direction changes (increased from 60 to 120 degrees)
-                    if (dotProduct < 0.0f) // 90 degrees - much less aggressive
+                    // Much less aggressive: Only clear path for extreme direction changes
+                    if (dotProduct < -0.5f) // 120 degrees - very conservative
                     {
                         lastPathClearTime = DateTime.Now;
                         lastResponsivenessCheck = DateTime.Now;
@@ -270,7 +270,7 @@ namespace BetterFollowbotLite;
 
             // Also check if we're following an old position that's now far from current player position
             var distanceToCurrentPlayer = Vector3.Distance(BetterFollowbotLite.Instance.localPlayer?.Pos ?? BetterFollowbotLite.Instance.playerPosition, lastTargetPosition);
-            if (distanceToCurrentPlayer > 150f) // Less aggressive - increased from 80f to reduce constant path clearing
+            if (distanceToCurrentPlayer > 400f) // Much less aggressive - increased from 150f to reduce constant path clearing
             {
                 lastPathClearTime = DateTime.Now;
                 lastResponsivenessCheck = DateTime.Now;
@@ -892,7 +892,7 @@ namespace BetterFollowbotLite;
                     {
                         var instantDistanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, FollowTargetPosition);
 
-                        if (instantDistanceToLeader > 1000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 700 to 1000
+                        if (instantDistanceToLeader > 3000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 700 to 1000
                         {
                             // CRITICAL: Don't add dash tasks if we have an active transition task OR another dash task
                             var hasConflictingTasks = tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
@@ -927,7 +927,7 @@ namespace BetterFollowbotLite;
                     {
                         var instantDistanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, FollowTargetPosition);
 
-                        if (instantDistanceToLeader > 1000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 700 to 1000
+                        if (instantDistanceToLeader > 3000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 700 to 1000
                         {
                             // CRITICAL: Don't add dash tasks if we have an active transition task OR another dash task
                             var hasConflictingTasks = tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
@@ -1825,7 +1825,7 @@ namespace BetterFollowbotLite;
                         var instantDistanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, FollowTargetPosition);
                         BetterFollowbotLite.Instance.LogMessage($"RESPONSIVENESS: Creating direct path to leader - Distance: {instantDistanceToLeader:F1}");
 
-                        if (instantDistanceToLeader > 1500 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 1000 to 1500 to reduce dash spam
+                        if (instantDistanceToLeader > 3000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 1000 to 1500 to reduce dash spam
                         {
                             // CRITICAL: Don't add dash tasks if we have an active transition task OR another dash task
                             var hasConflictingTasks = tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
@@ -1867,7 +1867,7 @@ namespace BetterFollowbotLite;
                         if (instantDistanceToLeader > 200f) // Only log for significant distances
                             BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Creating direct path to leader - Distance: {instantDistanceToLeader:F1}");
 
-                        if (instantDistanceToLeader > 1500 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 1000 to 1500 to reduce dash spam
+                        if (instantDistanceToLeader > 3000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 1000 to 1500 to reduce dash spam
                         {
                             // CRITICAL: Don't add dash tasks if we have an active transition task OR another dash task
                             var hasConflictingTasks = tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
@@ -2065,7 +2065,7 @@ namespace BetterFollowbotLite;
                         if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
                         {
                             // If very far away, add dash task instead of movement task
-                            if (distanceToLeader > 1500 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 1000 to 1500 to reduce dash spam
+                            if (distanceToLeader > 3000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 1500 to 3000 to reduce dash spam significantly
                             {
                             // CRITICAL: Don't add dash tasks if we have any active transition-related task OR another dash task OR teleport in progress
                             var shouldSkipDashTasks = tasks.Any(t =>
