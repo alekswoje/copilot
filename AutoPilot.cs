@@ -22,6 +22,7 @@ namespace BetterFollowbotLite;
         private Vector3 lastTargetPosition;
         private Vector3 lastPlayerPosition;
         private Entity followTarget;
+        private DateTime lastPortalTransitionTime = DateTime.MinValue;
 
         // GLOBAL FLAG: Prevents SMITE and other skills from interfering during teleport
         public static bool IsTeleportInProgress { get; private set; } = false;
@@ -66,8 +67,22 @@ namespace BetterFollowbotLite;
             {
                 var distanceMoved = Vector3.Distance(lastTargetPosition, newPosition);
 
-                // If the target moved more than 500 units, it's likely a zone transition
-                if (distanceMoved > 500)
+                // If the target moved more than 5000 units, it's definitely a portal transition within the same zone
+                if (distanceMoved > 5000)
+                {
+                    BetterFollowbotLite.Instance.LogMessage($"AUTOPILOT: Follow target moved {distanceMoved:F0} units (portal transition detected) from {lastTargetPosition} to {newPosition}");
+
+                    // PORTAL TRANSITION HANDLING: Clear all tasks and wait for leader to settle
+                    var tasksCleared = tasks.Count;
+                    tasks.Clear();
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Cleared {tasksCleared} tasks to prevent following to old position");
+
+                    // Set a brief cooldown to let the leader settle at the new position
+                    lastPortalTransitionTime = DateTime.Now;
+                    BetterFollowbotLite.Instance.LogMessage("PORTAL TRANSITION: Waiting for leader to settle at new position");
+                }
+                // If the target moved more than 500 units but less than 5000, it's likely a zone transition
+                else if (distanceMoved > 500)
                 {
                     BetterFollowbotLite.Instance.LogMessage($"AUTOPILOT: Follow target moved {distanceMoved:F0} units (possible zone transition) from {lastTargetPosition} to {newPosition}");
                 }
@@ -1619,6 +1634,14 @@ namespace BetterFollowbotLite;
             {
                 BetterFollowbotLite.Instance.LogMessage($"TELEPORT: Blocking all task creation - teleport in progress ({tasks.Count} tasks)");
                 return; // Exit immediately to prevent any interference
+            }
+
+            // PORTAL TRANSITION PROTECTION: Block task creation immediately after portal transition to let leader settle
+            var timeSincePortalTransition = DateTime.Now - lastPortalTransitionTime;
+            if (timeSincePortalTransition.TotalSeconds < 2.0) // Wait 2 seconds after portal transition
+            {
+                BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Blocking task creation for {2.0 - timeSincePortalTransition.TotalSeconds:F1} more seconds - waiting for leader to settle");
+                return; // Exit to prevent creating tasks to old position
             }
 
             if (!BetterFollowbotLite.Instance.Settings.Enable.Value || !BetterFollowbotLite.Instance.Settings.autoPilotEnabled.Value || BetterFollowbotLite.Instance.localPlayer == null || !BetterFollowbotLite.Instance.localPlayer.IsAlive ||

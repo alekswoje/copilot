@@ -626,9 +626,11 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                             {
                                 BetterFollowbotLite.Instance.LogMessage($"AUTO RESPAWN: Mouse positioned correctly (distance: {distanceFromTarget:F1}), performing click");
 
-                                // Perform the click with proper timing
-                                Mouse.LeftClick();
-                                System.Threading.Thread.Sleep(150); // Wait after click
+                                // Perform the click with proper timing (use synchronous mouse events like auto join party fix)
+                                Mouse.LeftMouseDown();
+                                System.Threading.Thread.Sleep(40);
+                                Mouse.LeftMouseUp();
+                                System.Threading.Thread.Sleep(200); // Wait after click
 
                                 // Verify click was successful by checking if panel is still visible
                                 System.Threading.Thread.Sleep(500); // Give time for respawn to process
@@ -646,7 +648,11 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                     System.Threading.Thread.Sleep(300);
                                     Mouse.SetCursorPos(checkpointCenter);
                                     System.Threading.Thread.Sleep(300);
-                                    Mouse.LeftClick();
+
+                                    // Use synchronous mouse events for retry click
+                                    Mouse.LeftMouseDown();
+                                    System.Threading.Thread.Sleep(40);
+                                    Mouse.LeftMouseUp();
                                     System.Threading.Thread.Sleep(200);
                                 }
 
