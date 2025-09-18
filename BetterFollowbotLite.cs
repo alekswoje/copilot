@@ -30,6 +30,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
     private bool isMoving;
     internal DateTime lastTimeAny;
     private DateTime lastAutoJoinPartyAttempt;
+    private DateTime lastAreaChangeTime = DateTime.MinValue;
     internal Entity localPlayer;
     internal Life player;
     internal Vector3 playerPosition;
@@ -175,6 +176,9 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
     {
         base.AreaChange(area);
 
+        // Track area change time to prevent random movement during transitions
+        lastAreaChangeTime = DateTime.Now;
+
         // Log area change details
         var newAreaName = area?.DisplayName ?? "Unknown";
         var isHideout = area?.IsHideout ?? false;
@@ -227,9 +231,32 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                 
             try
             {
+                // Grace period removal with safeguards to prevent random movement during zone transitions
                 if (Settings.autoPilotEnabled && Settings.autoPilotGrace && buffs != null && buffs.Exists(x => x.Name == "grace_period") && Gcd())
                 {
-                    Keyboard.KeyPress(Settings.autoPilotMoveKey);
+                    // Prevent random movement during zone transitions (first 3 seconds after area change)
+                    var timeSinceAreaChange = (DateTime.Now - lastAreaChangeTime).TotalSeconds;
+                    if (timeSinceAreaChange > 3.0)
+                    {
+                        // Only press move key if we're not already moving significantly
+                        var currentVelocity = localPlayer?.GetComponent<Actor>()?.Animatable?.Velocity ?? Vector3.Zero;
+                        var speed = currentVelocity.Length();
+
+                        // Only press move key if moving very slowly (to prevent random direction changes)
+                        if (speed < 50.0f) // Low threshold to detect if we're actually stopped or moving slowly
+                        {
+                            LogMessage($"GRACE PERIOD: Removing grace period buff (speed: {speed:F1})");
+                            Keyboard.KeyPress(Settings.autoPilotMoveKey);
+                        }
+                        else
+                        {
+                            LogMessage($"GRACE PERIOD: Skipping grace removal - already moving (speed: {speed:F1})");
+                        }
+                    }
+                    else
+                    {
+                        LogMessage($"GRACE PERIOD: Skipping grace removal during zone transition ({timeSinceAreaChange:F1}s since area change)");
+                    }
                 }
                 autoPilot.UpdateAutoPilotLogic();
                 autoPilot.Render();
