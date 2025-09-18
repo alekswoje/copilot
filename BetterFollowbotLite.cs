@@ -335,7 +335,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                         var screenCenterY = screenHeight / 2;
 
                         // Get current mouse position
-                        var mousePos = Mouse.GetCursorPosition();
+                        var mousePos = new Vector2(GameController.IngameState.MousePosX, GameController.IngameState.MousePosY);
 
                         // Check if mouse is within 100 pixels of screen center
                         var distanceFromCenter = Math.Sqrt(
@@ -346,7 +346,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                         if (distanceFromCenter <= 100.0)
                         {
                             // Check if move key is being pressed
-                            if (Keyboard.IsKeyDown(Settings.autoPilotMoveKey))
+                            if (Keyboard.IsKeyDown((int)Settings.autoPilotMoveKey.Key))
                             {
                                 // Check cooldown to prevent spam
                                 var timeSinceLastAction = (DateTime.Now - lastTimeAny).TotalSeconds;
