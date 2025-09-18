@@ -1578,6 +1578,10 @@ namespace BetterFollowbotLite;
                         yield return Mouse.SetCursorPosHuman(new Vector2(currentTask.WorldPosition.X, currentTask.WorldPosition.Y));
                         yield return new WaitTime(200);
                         yield return Mouse.LeftClick();
+                        yield return new WaitTime(200);
+                        // CRITICAL: Move mouse to center of screen after teleport confirm to prevent unwanted movement
+                        var screenCenter = new Vector2(GameController.Window.GetWindowRectangle().Width / 2, GameController.Window.GetWindowRectangle().Height / 2);
+                        Mouse.SetCursorPos(screenCenter);
                         yield return new WaitTime(1000);
                         yield return null;
                         continue;
@@ -1588,6 +1592,10 @@ namespace BetterFollowbotLite;
                         yield return Mouse.SetCursorPosHuman(new Vector2(currentTask.WorldPosition.X, currentTask.WorldPosition.Y), false);
                         yield return new WaitTime(200);
                         yield return Mouse.LeftClick();
+                        yield return new WaitTime(200);
+                        // CRITICAL: Move mouse to center of screen after teleport button to prevent unwanted movement
+                        var screenCenter = new Vector2(GameController.Window.GetWindowRectangle().Width / 2, GameController.Window.GetWindowRectangle().Height / 2);
+                        Mouse.SetCursorPos(screenCenter);
                         yield return new WaitTime(200);
                         yield return null;
                         continue;
