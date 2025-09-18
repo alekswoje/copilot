@@ -266,14 +266,31 @@ internal class ImGuiDrawSettings
             ImGui.PushID(34);
             if (ImGui.TreeNodeEx("Auto Level Gems", collapsingHeaderFlags))
             {
-                BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value = ImGuiExtension.Checkbox("Auto Level Gems",
-                    BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value);
+                var currentValue = BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value;
+                var newValue = ImGuiExtension.Checkbox("Auto Level Gems", currentValue);
+
+                if (newValue != currentValue)
+                {
+                    BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Checkbox changed from {currentValue} to {newValue}");
+                    BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value = newValue;
+                }
+
+                // Debug: Show current value
+                ImGui.Text($"Current Value: {BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value}");
+
+                if (ImGui.Button("Test Toggle"))
+                {
+                    var oldValue = BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value;
+                    BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value = !oldValue;
+                    BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Test button toggled from {oldValue} to {BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value}");
+                }
+
                 ImGui.TextWrapped("Logic:\n• Automatically levels up gems when the gem level up panel appears\n• Clicks the level up button for each available gem\n• Only levels up one gem per frame to avoid spam\n• Useful for automated gem leveling during farming runs");
             }
         }
         catch (Exception e)
         {
-            // Error handling without logging
+            BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS UI ERROR: {e.Message}");
         }
 
         try
@@ -283,14 +300,24 @@ internal class ImGuiDrawSettings
             ImGui.PushID(35);
             if (ImGui.TreeNodeEx("Auto Join Party", collapsingHeaderFlags))
             {
-                BetterFollowbotLite.Instance.Settings.autoJoinPartyEnabled.Value = ImGuiExtension.Checkbox("Auto Join Party Invites",
-                    BetterFollowbotLite.Instance.Settings.autoJoinPartyEnabled.Value);
+                var currentValue = BetterFollowbotLite.Instance.Settings.autoJoinPartyEnabled.Value;
+                var newValue = ImGuiExtension.Checkbox("Auto Join Party Invites", currentValue);
+
+                if (newValue != currentValue)
+                {
+                    BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Checkbox changed from {currentValue} to {newValue}");
+                    BetterFollowbotLite.Instance.Settings.autoJoinPartyEnabled.Value = newValue;
+                }
+
+                // Debug: Show current value
+                ImGui.Text($"Current Value: {BetterFollowbotLite.Instance.Settings.autoJoinPartyEnabled.Value}");
+
                 ImGui.TextWrapped("Logic:\n• Automatically accepts party join invites when they appear\n• Navigates the UI hierarchy to find and click the accept button\n• Useful for automated party management during farming runs");
             }
         }
         catch (Exception e)
         {
-            // Error handling without logging
+            BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY UI ERROR: {e.Message}");
         }
 
         //ImGui.End();

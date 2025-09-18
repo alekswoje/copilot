@@ -405,10 +405,18 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
             #region Auto Level Gems
 
+            // Debug: Check if auto level gems is enabled
+            if (Settings.autoLevelGemsEnabled.Value)
+            {
+                BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Setting value is true, checking GCD...");
+            }
+
             if (Settings.autoLevelGemsEnabled && Gcd())
             {
                 try
                 {
+                    BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Feature enabled, checking for gem level up panel...");
+
                     // Check if the gem level up panel is visible
                     var gemLvlUpPanel = GameController.IngameState.IngameUi.GemLvlUpPanel;
                     if (gemLvlUpPanel != null && gemLvlUpPanel.IsVisible)
@@ -503,8 +511,39 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                     {
                         BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Invites panel detected, attempting to accept party invite");
 
-                        // Navigate the UI hierarchy as described: InvitesPanel -> Children[0] -> Children[2] -> Children[0]
+                        // DEBUG: Log detailed UI structure
                         var children = invitesPanel.Children;
+                        BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: InvitesPanel.Children is null: {children == null}");
+                        if (children != null)
+                        {
+                            BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: InvitesPanel.Children.Count: {children.Count}");
+                            for (int i = 0; i < Math.Min(children.Count, 5); i++) // Log first 5 children
+                            {
+                                var child = children[i];
+                                BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Child[{i}] - Type: {child?.GetType()?.Name}, IsVisible: {child?.IsVisible}, HasChildren: {child?.Children?.Count ?? 0}");
+                            }
+                        }
+
+                        // Try alternative navigation paths
+                        if (children != null && children.Count > 0)
+                        {
+                            var firstChild = children[0];
+                            if (firstChild != null)
+                            {
+                                BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: FirstChild.Children is null: {firstChild.Children == null}");
+                                if (firstChild.Children != null)
+                                {
+                                    BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: FirstChild.Children.Count: {firstChild.Children.Count}");
+                                    for (int i = 0; i < Math.Min(firstChild.Children.Count, 5); i++)
+                                    {
+                                        var grandchild = firstChild.Children[i];
+                                        BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: FirstChild.Child[{i}] - Type: {grandchild?.GetType()?.Name}, IsVisible: {grandchild?.IsVisible}");
+                                    }
+                                }
+                            }
+                        }
+
+                        // Navigate the UI hierarchy as described: InvitesPanel -> Children[0] -> Children[2] -> Children[0]
                         if (children != null && children.Count > 0)
                         {
                             var firstChild = children[0];
@@ -555,6 +594,10 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                         {
                             BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Invites panel has no children");
                         }
+                    }
+                    else
+                    {
+                        BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Invites panel not found or not visible");
                     }
                 }
                 catch (Exception e)
