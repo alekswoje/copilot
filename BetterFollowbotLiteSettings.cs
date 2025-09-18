@@ -70,6 +70,16 @@ public class BetterFollowbotLiteSettings : ISettings
 
     #endregion
 
+    #region Mines
+
+    public ToggleNode minesEnabled = new ToggleNode(false);
+    public TextNode minesRange = new TextNode("35");
+    public TextNode minesLeaderDistance = new TextNode("50");
+    public ToggleNode minesStormblastEnabled = new ToggleNode(true);
+    public ToggleNode minesPyroclastEnabled = new ToggleNode(true);
+
+    #endregion
+
     #region Input Keys
 
     public HotkeyNode inputKey1 = new HotkeyNode(Keys.Z);

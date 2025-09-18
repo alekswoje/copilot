@@ -504,11 +504,14 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                 {
                                     BetterFollowbotLite.Instance.LogMessage("SMITE: Cooldown check passed");
 
-                                    // Check if we don't have the smite buff
-                                var hasSmiteBuff = buffs.Exists(x => x.Name == "smite_buff");
-                                BetterFollowbotLite.Instance.LogMessage($"SMITE: Has smite buff: {hasSmiteBuff}");
+                                    // Check if we don't have the smite buff or it's about to expire
+                                var smiteBuff = buffs.FirstOrDefault(x => x.Name == "smite_buff");
+                                var hasSmiteBuff = smiteBuff != null;
+                                var buffTimeLeft = smiteBuff?.Timer ?? 0;
+                                BetterFollowbotLite.Instance.LogMessage($"SMITE: Has smite buff: {hasSmiteBuff}, Time left: {buffTimeLeft:F1}s");
 
-                                if (!hasSmiteBuff)
+                                // Refresh if no buff or buff has less than 2 seconds left
+                                if (!hasSmiteBuff || buffTimeLeft < 2.0f)
                                 {
                                     BetterFollowbotLite.Instance.LogMessage("SMITE: No smite buff found, looking for targets");
 
@@ -518,8 +521,11 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                         {
                                             // Check if monster is within 250 units of player
                                             var distanceToPlayer = Vector3.Distance(playerPosition, monster.Pos);
-                                            BetterFollowbotLite.Instance.LogMessage($"SMITE: Monster at distance {distanceToPlayer:F1} from player");
-                                            return distanceToPlayer <= 250;
+                                            // Check if monster is on screen (can be targeted)
+                                            var screenPos = GameController.IngameState.Camera.WorldToScreen(monster.Pos);
+                                            var isOnScreen = GameController.Window.GetWindowRectangleTimeCache.Contains(screenPos);
+                                            BetterFollowbotLite.Instance.LogMessage($"SMITE: Monster at distance {distanceToPlayer:F1} from player, on screen: {isOnScreen}");
+                                            return distanceToPlayer <= 250 && isOnScreen;
                                         })
                                         .OrderBy(monster => Vector3.Distance(playerPosition, monster.Pos)) // Closest first
                                         .FirstOrDefault();
@@ -535,11 +541,21 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                         // Small delay to ensure mouse movement is registered
                                         System.Threading.Thread.Sleep(50);
 
-                                        // Activate the skill
-                                        Keyboard.KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
-                                        SkillInfo.smite.Cooldown = 100;
-
-                                        BetterFollowbotLite.Instance.LogMessage("SMITE: Smite activated successfully");
+                                        // Double-check mouse position is still valid
+                                        var currentMousePos = GetMousePosition();
+                                        var distanceFromTarget = Vector2.Distance(currentMousePos, monsterScreenPos);
+                                        if (distanceFromTarget < 50) // Within reasonable tolerance
+                                        {
+                                            // Activate the skill
+                                            Keyboard.KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
+                                            SkillInfo.smite.Cooldown = 100;
+                                            lastTimeAny = DateTime.Now; // Update global cooldown
+                                            BetterFollowbotLite.Instance.LogMessage("SMITE: Smite activated successfully");
+                                        }
+                                        else
+                                        {
+                                            BetterFollowbotLite.Instance.LogMessage($"SMITE: Mouse positioning failed, distance: {distanceFromTarget:F1}");
+                                        }
                                     }
                                     else
                                     {
@@ -709,6 +725,142 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                             else
                             {
                                 BetterFollowbotLite.Instance.LogMessage("VAAL DISCIPLINE: Cooldown check failed");
+                            }
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        // Error handling without logging
+                    }
+
+                #endregion
+
+                #region Mines
+
+                if (Settings.minesEnabled)
+                    try
+                    {
+                        // Check if we have either stormblast or pyroclast mine skills enabled
+                        var hasStormblastMine = Settings.minesStormblastEnabled && skill.Id == SkillInfo.stormblastMine.Id;
+                        var hasPyroclastMine = Settings.minesPyroclastEnabled && skill.Id == SkillInfo.pyroclastMine.Id;
+
+                        if (hasStormblastMine || hasPyroclastMine)
+                        {
+                            // Check cooldown
+                            var mineSkill = hasStormblastMine ? SkillInfo.stormblastMine : SkillInfo.pyroclastMine;
+                            if (SkillInfo.ManageCooldown(mineSkill, skill))
+                            {
+                                // Find nearby rare/unique enemies within range
+                                var nearbyRareUniqueEnemies = enemys
+                                    .Where(monster =>
+                                    {
+                                        // Check if monster is rare or unique
+                                        if (monster.Rarity != MonsterRarity.Rare && monster.Rarity != MonsterRarity.Unique)
+                                            return false;
+
+                                        // Check distance from player to monster
+                                        var distanceToMonster = Vector2.Distance(
+                                            new Vector2(monster.PosNum.X, monster.PosNum.Y),
+                                            new Vector2(playerPosition.X, playerPosition.Y));
+
+                                        // Parse mines range from text input, default to 35 if invalid
+                                        if (!int.TryParse(Settings.minesRange.Value, out var minesRange))
+                                            minesRange = 35;
+
+                                        return distanceToMonster <= minesRange;
+                                    })
+                                    .ToList();
+
+                                if (nearbyRareUniqueEnemies.Any())
+                                {
+                                    // Check if we're close to the party leader
+                                    var shouldThrowMine = false;
+                                    var leaderPos = Vector2.Zero;
+
+                                    if (!string.IsNullOrEmpty(Settings.autoPilotLeader.Value))
+                                    {
+                                        // Get party elements
+                                        var partyElements = PartyElements.GetPlayerInfoElementList();
+                                        var leaderPartyElement = partyElements
+                                            .FirstOrDefault(x => string.Equals(x?.PlayerName?.ToLower(),
+                                                Settings.autoPilotLeader.Value.ToLower(), StringComparison.CurrentCultureIgnoreCase));
+
+                                        if (leaderPartyElement != null)
+                                        {
+                                            // Find the actual player entity by name
+                                            var playerEntities = GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Player]
+                                                .Where(x => x != null && x.IsValid && !x.IsHostile);
+
+                                            var leaderEntity = playerEntities
+                                                .FirstOrDefault(x => string.Equals(x.GetComponent<Player>()?.PlayerName?.ToLower(),
+                                                    Settings.autoPilotLeader.Value.ToLower(), StringComparison.CurrentCultureIgnoreCase));
+
+                                            if (leaderEntity != null)
+                                            {
+                                                // Check distance to leader
+                                                var distanceToLeader = Vector2.Distance(
+                                                    new Vector2(playerPosition.X, playerPosition.Y),
+                                                    new Vector2(leaderEntity.Pos.X, leaderEntity.Pos.Y));
+
+                                                // Parse leader distance from text input, default to 50 if invalid
+                                                if (!int.TryParse(Settings.minesLeaderDistance.Value, out var leaderDistance))
+                                                    leaderDistance = 50;
+
+                                                if (distanceToLeader <= leaderDistance)
+                                                {
+                                                    shouldThrowMine = true;
+                                                    leaderPos = new Vector2(leaderEntity.Pos.X, leaderEntity.Pos.Y);
+                                                }
+                                            }
+                                        }
+                                    }
+                                    else
+                                    {
+                                        // If no leader set, always throw mines when enemies are nearby
+                                        shouldThrowMine = true;
+                                    }
+
+                                    if (shouldThrowMine)
+                                    {
+                                        // Find the best position to throw the mine (near enemies but not too close to leader if we have one)
+                                        var bestTarget = nearbyRareUniqueEnemies
+                                            .OrderBy(monster =>
+                                            {
+                                                var monsterPos = new Vector2(monster.PosNum.X, monster.PosNum.Y);
+                                                var distanceToMonster = Vector2.Distance(new Vector2(playerPosition.X, playerPosition.Y), monsterPos);
+
+                                                // If we have a leader, prefer targets that are closer to the leader
+                                                if (leaderPos != Vector2.Zero)
+                                                {
+                                                    var distanceToLeader = Vector2.Distance(monsterPos, leaderPos);
+                                                    return distanceToLeader + distanceToMonster * 0.5f; // Weight both distances
+                                                }
+
+                                                return distanceToMonster;
+                                            })
+                                            .FirstOrDefault();
+
+                                        if (bestTarget != null)
+                                        {
+                                            // Move mouse to target position
+                                            var targetScreenPos = GameController.IngameState.Camera.WorldToScreen(bestTarget.Pos);
+                                            Mouse.SetCursorPos(targetScreenPos);
+
+                                            // Small delay to ensure mouse movement is registered
+                                            System.Threading.Thread.Sleep(50);
+
+                                            // Activate the mine skill
+                                            Keyboard.KeyPress(GetSkillInputKey(skill.SkillSlotIndex));
+                                            mineSkill.Cooldown = 100; // Set cooldown to prevent spam
+                                            lastTimeAny = DateTime.Now;
+
+                                            if (Settings.debugMode)
+                                            {
+                                                LogMessage($"MINES: Threw {(hasStormblastMine ? "Stormblast" : "Pyroclast")} mine at {bestTarget.Path} (Rarity: {bestTarget.Rarity})");
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }

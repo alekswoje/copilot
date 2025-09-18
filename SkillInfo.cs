@@ -87,6 +87,10 @@ internal static class SkillInfo
     internal static Skill vaalHaste = new Skill();
     internal static Skill vaalDiscipline = new Skill();
 
+    // Mine Skills
+    internal static Skill stormblastMine = new Skill();
+    internal static Skill pyroclastMine = new Skill();
+
     internal static void ResetSkills()
     {
         enduringCry = new Skill();
@@ -150,6 +154,8 @@ internal static class SkillInfo
         smite = new Skill();
         vaalHaste = new Skill();
         vaalDiscipline = new Skill();
+        stormblastMine = new Skill();
+        pyroclastMine = new Skill();
     }
 
     public static void GetDeltaTime()
@@ -497,6 +503,18 @@ internal static class SkillInfo
                     vaalDiscipline.BuffName = "vaal_discipline";
                     BetterFollowbotLite.Instance?.LogMessage($"SKILL DETECTED: Vaal Discipline - ID: {skill.Id}, InternalName: {skill.InternalName}");
                     break;
+                case "stormblast_mine":
+                case "stormblastmine":
+                case "StormblastMine":
+                    stormblastMine.Id = skill.Id;
+                    BetterFollowbotLite.Instance?.LogMessage($"SKILL DETECTED: Stormblast Mine - ID: {skill.Id}, InternalName: {skill.InternalName}");
+                    break;
+                case "pyroclast_mine":
+                case "pyroclastmine":
+                case "PyroclastMine":
+                    pyroclastMine.Id = skill.Id;
+                    BetterFollowbotLite.Instance?.LogMessage($"SKILL DETECTED: Pyroclast Mine - ID: {skill.Id}, InternalName: {skill.InternalName}");
+                    break;
                 default:
                     // Log Vaal skills that might have different names
                     if (skill.InternalName.ToLower().Contains("vaal") ||
@@ -504,6 +522,13 @@ internal static class SkillInfo
                         skill.InternalName.ToLower().Contains("discipline"))
                     {
                         BetterFollowbotLite.Instance?.LogMessage($"POTENTIAL VAAL SKILL: {skill.InternalName} - ID: {skill.Id}");
+                    }
+                    // Log mine skills that might have different names
+                    else if (skill.InternalName.ToLower().Contains("mine") ||
+                             skill.InternalName.ToLower().Contains("stormblast") ||
+                             skill.InternalName.ToLower().Contains("pyroclast"))
+                    {
+                        BetterFollowbotLite.Instance?.LogMessage($"POTENTIAL MINE SKILL: {skill.InternalName} - ID: {skill.Id}");
                     }
                     break;
             }
