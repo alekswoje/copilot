@@ -265,8 +265,13 @@ internal class ImGuiDrawSettings
             ImGui.PushID(34);
             if (ImGui.TreeNodeEx("Auto Level Gems", collapsingHeaderFlags))
             {
+                BetterFollowbotLite.Instance.LogMessage("AUTO LEVEL GEMS: UI section rendering");
+
                 bool oldValue = BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value;
+                BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Before checkbox - oldValue: {oldValue}");
+
                 bool newValue = ImGuiExtension.Checkbox("Auto Level Gems", oldValue);
+                BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: After checkbox - newValue: {newValue}");
 
                 if (newValue != oldValue)
                 {
@@ -297,8 +302,13 @@ internal class ImGuiDrawSettings
             ImGui.PushID(35);
             if (ImGui.TreeNodeEx("Auto Join Party", collapsingHeaderFlags))
             {
+                BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: UI section rendering");
+
                 bool oldValue = BetterFollowbotLite.Instance.Settings.autoJoinPartyEnabled.Value;
+                BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Before checkbox - oldValue: {oldValue}");
+
                 bool newValue = ImGuiExtension.Checkbox("Auto Join Party Invites", oldValue);
+                BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: After checkbox - newValue: {newValue}");
 
                 if (newValue != oldValue)
                 {
