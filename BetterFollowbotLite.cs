@@ -755,6 +755,84 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                 {
                     BetterFollowbotLite.Instance.LogMessage($"SUMMON SKELETONS: Exception occurred - {e.Message}");
                 }
+
+                // SRS (Summon Raging Spirits) logic
+                try
+                {
+                    if (Settings.summonRagingSpiritsEnabled.Value && autoPilot != null && autoPilot.FollowTarget != null)
+                    {
+                        var distanceToLeader = Vector3.Distance(playerPosition, autoPilot.FollowTargetPosition);
+
+                        // Check if we're close to the leader (within 500 units)
+                        if (distanceToLeader <= 500)
+                        {
+                            // Count current summoned minions
+                            var totalMinionCount = Summons.GetSkeletonCount();
+
+                            // Only cast SRS if we have less than the minimum required count
+                            if (totalMinionCount < Settings.summonRagingSpiritsMinCount.Value)
+                            {
+                                // Check for rare/unique enemies within 1000 units
+                                bool rareOrUniqueNearby = false;
+                                var entities = GameController.Entities.Where(x => x.Type == EntityType.Monster);
+
+                                foreach (var entity in entities)
+                                {
+                                    if (entity.IsValid && entity.IsAlive)
+                                    {
+                                        var distanceToEntity = Vector3.Distance(playerPosition, entity.Pos);
+
+                                        // Check if entity is within range and is rare or unique
+                                        if (distanceToEntity <= 1000)
+                                        {
+                                            var rarityComponent = entity.GetComponent<ObjectMagicProperties>();
+                                            if (rarityComponent != null)
+                                            {
+                                                var rarity = rarityComponent.Rarity;
+                                                if (rarity == MonsterRarity.Unique || rarity == MonsterRarity.Rare)
+                                                {
+                                                    rareOrUniqueNearby = true;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (rareOrUniqueNearby)
+                                {
+                                    // Find the Summon Raging Spirits skill
+                                    var summonRagingSpiritsSkill = skills.FirstOrDefault(s =>
+                                        s.Name.Contains("Summon Raging Spirit") ||
+                                        (s.Name.Contains("summon") && s.Name.Contains("spirit") && s.Name.Contains("rag")));
+
+                                    if (summonRagingSpiritsSkill != null && summonRagingSpiritsSkill.IsOnSkillBar && summonRagingSpiritsSkill.CanBeUsed)
+                                    {
+                                        BetterFollowbotLite.Instance.LogMessage($"SRS: Current minions: {totalMinionCount}, Required: {Settings.summonRagingSpiritsMinCount.Value}, Distance to leader: {distanceToLeader:F1}, Rare/Unique enemy detected");
+
+                                        // Use the Summon Raging Spirits skill
+                                        Keyboard.KeyPress(GetSkillInputKey(summonRagingSpiritsSkill.SkillSlotIndex));
+                                        lastTimeAny = DateTime.Now; // Update global cooldown
+
+                                        BetterFollowbotLite.Instance.LogMessage("SRS: Summoned Raging Spirit successfully");
+                                    }
+                                    else if (summonRagingSpiritsSkill == null)
+                                    {
+                                        BetterFollowbotLite.Instance.LogMessage("SRS: Summon Raging Spirit skill not found in skill bar");
+                                    }
+                                    else if (!summonRagingSpiritsSkill.CanBeUsed)
+                                    {
+                                        BetterFollowbotLite.Instance.LogMessage("SRS: Summon Raging Spirit skill is on cooldown or unavailable");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    BetterFollowbotLite.Instance.LogMessage($"SRS: Exception occurred - {e.Message}");
+                }
             }
 
             #endregion

@@ -247,10 +247,10 @@ internal class ImGuiDrawSettings
 
         try
         {
-            // Summon Skeletons
+            // Summon Minions
             ImGui.PushStyleColor(ImGuiCol.Header, BetterFollowbotLite.Instance.Settings.summonSkeletonsEnabled ? green : red);
             ImGui.PushID(33);
-            if (ImGui.TreeNodeEx("Summon Skeletons", collapsingHeaderFlags))
+            if (ImGui.TreeNodeEx("Summon Minions", collapsingHeaderFlags))
             {
                 BetterFollowbotLite.Instance.Settings.summonSkeletonsEnabled.Value = ImGuiExtension.Checkbox("Auto Summon Skeletons",
                     BetterFollowbotLite.Instance.Settings.summonSkeletonsEnabled.Value);
@@ -260,6 +260,17 @@ internal class ImGuiDrawSettings
 
                 BetterFollowbotLite.Instance.Settings.summonSkeletonsMinCount.Value =
                     ImGuiExtension.IntSlider("Min Count", BetterFollowbotLite.Instance.Settings.summonSkeletonsMinCount);
+
+                ImGui.Spacing();
+                ImGui.Separator();
+                ImGui.Spacing();
+
+                // SRS (Summon Raging Spirits) toggle
+                BetterFollowbotLite.Instance.Settings.summonRagingSpiritsEnabled.Value = ImGuiExtension.Checkbox("Enable SRS (Summon Raging Spirits)",
+                    BetterFollowbotLite.Instance.Settings.summonRagingSpiritsEnabled.Value);
+
+                BetterFollowbotLite.Instance.Settings.summonRagingSpiritsMinCount.Value =
+                    ImGuiExtension.IntSlider("SRS Min Count", BetterFollowbotLite.Instance.Settings.summonRagingSpiritsMinCount);
             }
         }
         catch (Exception e)

@@ -86,6 +86,10 @@ public class BetterFollowbotLiteSettings : ISettings
     public RangeNode<int> summonSkeletonsRange = new RangeNode<int>(500, 100, 2000);
     public RangeNode<int> summonSkeletonsMinCount = new RangeNode<int>(5, 1, 20);
 
+    // SRS (Summon Raging Spirits) settings
+    public ToggleNode summonRagingSpiritsEnabled = new ToggleNode(false);
+    public RangeNode<int> summonRagingSpiritsMinCount = new RangeNode<int>(10, 1, 15);
+
     #endregion
 
     #region Auto Respawn
