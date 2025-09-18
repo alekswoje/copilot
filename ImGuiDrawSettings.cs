@@ -265,11 +265,13 @@ internal class ImGuiDrawSettings
             ImGui.PushID(34);
             if (ImGui.TreeNodeEx("Auto Level Gems", collapsingHeaderFlags))
             {
-                var autoLevelGemsSetting = BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled;
-                bool currentValue = autoLevelGemsSetting.Value;
-                if (ImGui.Checkbox("Auto Level Gems", ref currentValue))
+                bool oldValue = BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value;
+                bool newValue = ImGuiExtension.Checkbox("Auto Level Gems", oldValue);
+
+                if (newValue != oldValue)
                 {
-                    autoLevelGemsSetting.Value = currentValue;
+                    BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Checkbox changed from {oldValue} to {newValue}");
+                    BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value = newValue;
                 }
 
                 // Debug: Show current value
@@ -295,11 +297,13 @@ internal class ImGuiDrawSettings
             ImGui.PushID(35);
             if (ImGui.TreeNodeEx("Auto Join Party", collapsingHeaderFlags))
             {
-                var autoJoinPartySetting = BetterFollowbotLite.Instance.Settings.autoJoinPartyEnabled;
-                bool currentValue = autoJoinPartySetting.Value;
-                if (ImGui.Checkbox("Auto Join Party Invites", ref currentValue))
+                bool oldValue = BetterFollowbotLite.Instance.Settings.autoJoinPartyEnabled.Value;
+                bool newValue = ImGuiExtension.Checkbox("Auto Join Party Invites", oldValue);
+
+                if (newValue != oldValue)
                 {
-                    autoJoinPartySetting.Value = currentValue;
+                    BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Checkbox changed from {oldValue} to {newValue}");
+                    BetterFollowbotLite.Instance.Settings.autoJoinPartyEnabled.Value = newValue;
                 }
 
                 // Debug: Show current value
