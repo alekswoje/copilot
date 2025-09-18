@@ -252,15 +252,8 @@ internal class ImGuiDrawSettings
             ImGui.PushID(32);
             if (ImGui.TreeNodeEx("Auto Respawn", collapsingHeaderFlags))
             {
-                // Use button-based checkbox since ImGuiExtension.Checkbox doesn't work
-                bool isEnabled = BetterFollowbotLite.Instance.Settings.autoRespawnEnabled.Value;
-                string checkboxText = isEnabled ? "☑ Auto Respawn" : "☐ Auto Respawn";
-
-                if (ImGui.Button(checkboxText))
-                {
-                    BetterFollowbotLite.Instance.Settings.autoRespawnEnabled.Value = !isEnabled;
-                    BetterFollowbotLite.Instance.LogMessage($"AUTO RESPAWN: Checkbox button toggled from {isEnabled} to {!isEnabled}");
-                }
+                BetterFollowbotLite.Instance.Settings.autoRespawnEnabled.Value =
+                    ImGuiExtension.Checkbox("Auto Respawn", BetterFollowbotLite.Instance.Settings.autoRespawnEnabled.Value);
 
                 // Debug: Show current value
                 ImGui.Text($"Current: {BetterFollowbotLite.Instance.Settings.autoRespawnEnabled.Value}");
@@ -300,15 +293,8 @@ internal class ImGuiDrawSettings
             ImGui.PushID(34);
             if (ImGui.TreeNodeEx("Auto Level Gems", collapsingHeaderFlags))
             {
-                // Use button-based checkbox since ImGuiExtension.Checkbox doesn't work
-                bool isEnabled = BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value;
-                string checkboxText = isEnabled ? "☑ Auto Level Gems" : "☐ Auto Level Gems";
-
-                if (ImGui.Button(checkboxText))
-                {
-                    BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value = !isEnabled;
-                    BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Checkbox button toggled from {isEnabled} to {!isEnabled}");
-                }
+                BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value =
+                    ImGuiExtension.Checkbox("Auto Level Gems", BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value);
 
                 // Debug: Show current value
                 ImGui.Text($"Current: {BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value}");
