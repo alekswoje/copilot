@@ -763,8 +763,8 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                     {
                         var distanceToLeader = Vector3.Distance(playerPosition, autoPilot.FollowTargetPosition);
 
-                        // Check if we're close to the leader (within 500 units)
-                        if (distanceToLeader <= 500)
+                        // Check if we're close to the leader (within AutoPilot follow distance)
+                        if (distanceToLeader <= Settings.autoPilotClearPathDistance.Value)
                         {
                             // Count current summoned minions
                             var totalMinionCount = Summons.GetSkeletonCount();
@@ -783,7 +783,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                         var distanceToEntity = Vector3.Distance(playerPosition, entity.Pos);
 
                                         // Check if entity is within range and is rare or unique
-                                        if (distanceToEntity <= 1000)
+                                        if (distanceToEntity <= 500)
                                         {
                                             var rarityComponent = entity.GetComponent<ObjectMagicProperties>();
                                             if (rarityComponent != null)
@@ -819,7 +819,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                     if (summonRagingSpiritsSkill != null && summonRagingSpiritsSkill.IsOnSkillBar && summonRagingSpiritsSkill.CanBeUsed)
                                     {
                                         var enemyType = Settings.summonRagingSpiritsMagicNormal.Value ? "Rare/Unique/Magic/White" : "Rare/Unique";
-                                        BetterFollowbotLite.Instance.LogMessage($"SRS: Current minions: {totalMinionCount}, Required: {Settings.summonRagingSpiritsMinCount.Value}, Distance to leader: {distanceToLeader:F1}, {enemyType} enemy detected");
+                                        BetterFollowbotLite.Instance.LogMessage($"SRS: Current minions: {totalMinionCount}, Required: {Settings.summonRagingSpiritsMinCount.Value}, Distance to leader: {distanceToLeader:F1} (max: {Settings.autoPilotClearPathDistance.Value}), {enemyType} enemy within 500 units detected");
 
                                         // Use the Summon Raging Spirits skill
                                         Keyboard.KeyPress(GetSkillInputKey(summonRagingSpiritsSkill.SkillSlotIndex));
