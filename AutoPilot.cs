@@ -144,8 +144,8 @@ namespace BetterFollowbotLite;
                 var screenPos = BetterFollowbotLite.Instance.GameController.IngameState.Camera.WorldToScreen(portalPos);
 
                 // Add a task to click on the portal
-                tasks.Add(new TaskNode(screenPos, 0, TaskNodeType.Movement));
-                BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Added portal click task at screen position {screenPos}");
+                tasks.Add(new TaskNode(portalPos, 0, TaskNodeType.Movement));
+                BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Added portal click task at world position {portalPos}, screen position {screenPos}");
 
                 // Also try direct mouse movement and click as backup
                 Mouse.SetCursorPos(screenPos);
