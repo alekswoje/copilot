@@ -318,11 +318,26 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                         lastGraceLogTime = DateTime.Now;
                     }
 
-                    if (timeSinceAreaChange > 1.5) // Reduced stabilization time for faster response
+                    // Check if leader is available and AutoPilot can work - if so, reduce stabilization time
+                    var leaderAvailable = false;
+                    try
                     {
-                        // Add a small additional delay (0.5s) after zone change to allow entities to load
-                        if (timeSinceAreaChange > 2.0)
-                        {
+                        var partyMembers = PartyElements.GetPlayerInfoElementList();
+                        var leaderElement = partyMembers?.FirstOrDefault(x => x?.PlayerName?.Equals(Settings.autoPilotLeader.Value, StringComparison.OrdinalIgnoreCase) == true);
+                        leaderAvailable = leaderElement != null;
+                    }
+                    catch { /* Ignore errors in leader check */ }
+
+                    var stabilizationThreshold = leaderAvailable ? 0.3 : 1.0; // Very fast if leader is available
+
+                    // Additional check: If AutoPilot already has a follow target, be extremely aggressive
+                    if (autoPilot != null && autoPilot.FollowTarget != null)
+                    {
+                        stabilizationThreshold = 0.1; // Ultra fast if AutoPilot is already working
+                    }
+
+                    if (timeSinceAreaChange > stabilizationThreshold)
+                    {
                         // Only log stabilization completion once
                         if (timeSinceLastGraceLog > 2.0)
                         {
@@ -368,7 +383,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                             // Check if we've recently pressed a key to avoid spam
                             var timeSinceLastAction = (DateTime.Now - lastTimeAny).TotalSeconds;
 
-                            if (timeSinceLastAction > 0.5) // Reduced cooldown for faster grace removal
+                            if (timeSinceLastAction > 0.2) // Very fast cooldown for immediate grace removal
                             {
                                 // Only log grace removal every 2 seconds to reduce spam
                                 if (timeSinceLastGraceLog > 2.0)
@@ -387,7 +402,13 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                     }
                     else
                     {
-                        LogMessage($"GRACE PERIOD: Still stabilizing after zone change ({timeSinceAreaChange:F1}s remaining)");
+                        var timeRemaining = Math.Max(0, stabilizationThreshold - timeSinceAreaChange);
+                        // Only log stabilization progress every 2 seconds to reduce spam
+                        if (timeSinceLastGraceLog > 2.0)
+                        {
+                            var hasFollowTarget = autoPilot != null && autoPilot.FollowTarget != null;
+                            LogMessage($"GRACE PERIOD: Still stabilizing after zone change ({timeRemaining:F1}s remaining, leader available: {leaderAvailable}, has follow target: {hasFollowTarget})");
+                        }
                     }
                 }
                 else

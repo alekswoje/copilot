@@ -163,12 +163,12 @@ namespace BetterFollowbotLite;
         try
         {
             // For override checks (after click), be more aggressive with timing
-            int rateLimitMs = isOverrideCheck ? 200 : 1000; // Increased from 500 to 1000ms to reduce spam significantly
+            int rateLimitMs = isOverrideCheck ? 100 : 500; // More aggressive responsiveness
             if ((DateTime.Now - lastPathClearTime).TotalMilliseconds < rateLimitMs)
                 return false;
 
             // Additional cooldown for responsiveness checks to prevent excessive path clearing
-            if ((DateTime.Now - lastResponsivenessCheck).TotalMilliseconds < 500) // Increased from 200 to 500ms cooldown between checks
+            if ((DateTime.Now - lastResponsivenessCheck).TotalMilliseconds < 200) // Faster responsiveness checks
                 return false;
 
             // Need a follow target to check responsiveness
