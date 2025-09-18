@@ -187,6 +187,13 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
         LogMessage($"AREA CHANGE: Transitioned to '{newAreaName}' - Hideout: {isHideout}, Level: {realLevel}");
 
+        // Reset player position to prevent large distance calculations in grace period logic
+        if (GameController?.Game?.IngameState?.Data?.LocalPlayer != null)
+        {
+            playerPosition = GameController.Game.IngameState.Data.LocalPlayer.Pos;
+            LogMessage($"AREA CHANGE: Reset player position to ({playerPosition.X:F1}, {playerPosition.Y:F1})");
+        }
+
         SkillInfo.ResetSkills();
         skills = null;
 
