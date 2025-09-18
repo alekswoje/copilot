@@ -1417,6 +1417,16 @@ namespace BetterFollowbotLite;
                 return;
             }
 
+            // ZONE LOADING PROTECTION: Prevent random movement during zone transitions
+            // When loading into a new zone, entity lists might not be fully populated yet
+            if (BetterFollowbotLite.Instance.GameController.IsLoading ||
+                BetterFollowbotLite.Instance.GameController.Area.CurrentArea == null ||
+                string.IsNullOrEmpty(BetterFollowbotLite.Instance.GameController.Area.CurrentArea.DisplayName))
+            {
+                BetterFollowbotLite.Instance.LogMessage("ZONE LOADING: Blocking task creation during zone loading to prevent random movement");
+                return;
+            }
+
             // PRIORITY: Check for any open teleport confirmation dialogs and handle them immediately
             bool hasTransitionTasks = tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.TeleportConfirm || t.Type == TaskNodeType.TeleportButton);
             if (!hasTransitionTasks)
@@ -1578,11 +1588,12 @@ namespace BetterFollowbotLite;
                     ClearPathForEfficiency();
                     
                     // FORCE IMMEDIATE PATH RECALCULATION - Skip normal logic and create direct path
-                    if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
+                    // ADDITIONAL NULL CHECK: Ensure followTarget is still valid during responsiveness check
+                    if (followTarget != null && followTarget.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
                     {
                         var instantDistanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, followTarget.Pos);
                         BetterFollowbotLite.Instance.LogMessage($"RESPONSIVENESS: Creating direct path to leader - Distance: {instantDistanceToLeader:F1}");
-                        
+
                         if (instantDistanceToLeader > 1000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 700 to 1000
                         {
                             // CRITICAL: Don't add dash tasks if we have an active transition task
@@ -1600,6 +1611,10 @@ namespace BetterFollowbotLite;
                             tasks.Add(new TaskNode(followTarget.Pos, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
                         }
                     }
+                    else
+                    {
+                        BetterFollowbotLite.Instance.LogMessage("RESPONSIVENESS: followTarget became null during responsiveness check, skipping path creation");
+                    }
                     return; // Skip the rest of the path creation logic
                 }
 
@@ -1611,13 +1626,14 @@ namespace BetterFollowbotLite;
                     ClearPathForEfficiency();
                     
                     // FORCE IMMEDIATE PATH RECALCULATION - Skip normal logic and create direct path
-                    if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
+                    // ADDITIONAL NULL CHECK: Ensure followTarget is still valid during efficiency check
+                    if (followTarget != null && followTarget.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
                     {
                         var instantDistanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, followTarget.Pos);
                         // Reduced logging frequency to prevent lag
                         if (instantDistanceToLeader > 200f) // Only log for significant distances
                             BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Creating direct path to leader - Distance: {instantDistanceToLeader:F1}");
-                        
+
                         if (instantDistanceToLeader > 1000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 700 to 1000
                         {
                             // CRITICAL: Don't add dash tasks if we have an active transition task
@@ -1634,6 +1650,10 @@ namespace BetterFollowbotLite;
                         {
                             tasks.Add(new TaskNode(followTarget.Pos, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
                         }
+                    }
+                    else
+                    {
+                        BetterFollowbotLite.Instance.LogMessage("INSTANT PATH OPTIMIZATION: followTarget became null during efficiency check, skipping path creation");
                     }
                     return; // Skip the rest of the path creation logic
                 }
@@ -1842,7 +1862,8 @@ namespace BetterFollowbotLite;
                     //We have a path. Check if the last task is far enough away from current one to add a new task node.
                     else if (tasks.Count > 0)
                     {
-                        if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
+                        // ADDITIONAL NULL CHECK: Ensure followTarget is still valid before extending path
+                        if (followTarget != null && followTarget.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
                         {
                             var distanceFromLastTask = Vector3.Distance(tasks.Last().WorldPosition, followTarget.Pos);
                             // More responsive: reduce threshold by half for more frequent path updates
@@ -1853,6 +1874,10 @@ namespace BetterFollowbotLite;
                         BetterFollowbotLite.Instance.LogMessage($"DEBUG: Creating task to position: {followTarget.Pos} (Player at: {BetterFollowbotLite.Instance.playerPosition})");
                         tasks.Add(new TaskNode(followTarget.Pos, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
                             }
+                        }
+                        else
+                        {
+                            BetterFollowbotLite.Instance.LogMessage("PATH EXTENSION: followTarget became null during path extension, skipping task creation");
                         }
                     }
                 }
@@ -1958,12 +1983,48 @@ namespace BetterFollowbotLite;
     {
         try
         {
-            string leaderName = BetterFollowbotLite.Instance.Settings.autoPilotLeader.Value.ToLower();
-            return BetterFollowbotLite.Instance.GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Player].FirstOrDefault(x => string.Equals(x.GetComponent<Player>()?.PlayerName.ToLower(), leaderName, StringComparison.OrdinalIgnoreCase));
+            // ZONE LOADING PROTECTION: If we're loading or don't have a valid game state, don't try to find leader
+            if (BetterFollowbotLite.Instance.GameController.IsLoading ||
+                BetterFollowbotLite.Instance.GameController.Area.CurrentArea == null ||
+                string.IsNullOrEmpty(BetterFollowbotLite.Instance.GameController.Area.CurrentArea.DisplayName))
+            {
+                return null;
+            }
+
+            string leaderName = BetterFollowbotLite.Instance.Settings.autoPilotLeader.Value?.ToLower();
+            if (string.IsNullOrEmpty(leaderName))
+            {
+                return null;
+            }
+
+            var players = BetterFollowbotLite.Instance.GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Player];
+            if (players == null)
+            {
+                return null;
+            }
+
+            var leader = players.FirstOrDefault(x =>
+            {
+                if (x == null || !x.IsValid)
+                    return false;
+
+                var playerComponent = x.GetComponent<Player>();
+                if (playerComponent == null)
+                    return false;
+
+                var playerName = playerComponent.PlayerName;
+                if (string.IsNullOrEmpty(playerName))
+                    return false;
+
+                return string.Equals(playerName.ToLower(), leaderName, StringComparison.OrdinalIgnoreCase);
+            });
+
+            return leader;
         }
         // Sometimes we can get "Collection was modified; enumeration operation may not execute" exception
-        catch
+        catch (Exception ex)
         {
+            BetterFollowbotLite.Instance.LogMessage($"GetFollowingTarget exception: {ex.Message}");
             return null;
         }
     }

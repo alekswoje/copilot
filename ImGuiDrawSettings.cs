@@ -218,6 +218,23 @@ internal class ImGuiDrawSettings
             // Error handling without logging
         }
 
+        try
+        {
+            // Auto Respawn
+            ImGui.PushStyleColor(ImGuiCol.Header, BetterFollowbotLite.Instance.Settings.autoRespawnEnabled ? green : red);
+            ImGui.PushID(32);
+            if (ImGui.TreeNodeEx("Auto Respawn", collapsingHeaderFlags))
+            {
+                BetterFollowbotLite.Instance.Settings.autoRespawnEnabled.Value = ImGuiExtension.Checkbox("Auto Respawn at Checkpoint",
+                    BetterFollowbotLite.Instance.Settings.autoRespawnEnabled.Value);
+                ImGui.TextWrapped("Logic:\n• Automatically clicks the checkpoint respawn button when the death screen appears\n• Only works when the respawn panel is visible\n• Useful for automated farming runs");
+            }
+        }
+        catch (Exception e)
+        {
+            // Error handling without logging
+        }
+
         //ImGui.End();
     }
 }

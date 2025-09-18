@@ -250,7 +250,51 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
             skills = localPlayer.GetComponent<Actor>().ActorSkills;
             vaalSkills = localPlayer.GetComponent<Actor>().ActorVaalSkills;
             playerPosition = localPlayer.Pos;
-                
+
+            #region Auto Respawn
+
+            try
+            {
+                if (Settings.autoRespawnEnabled && Gcd())
+                {
+                    // Check if the resurrect panel is visible
+                    var resurrectPanel = GameController.IngameState.IngameUi.ResurrectPanel;
+                    if (resurrectPanel != null && resurrectPanel.IsVisible)
+                    {
+                        // Check if the resurrect at checkpoint button is available
+                        var resurrectAtCheckpoint = resurrectPanel.ResurrectAtCheckpoint;
+                        if (resurrectAtCheckpoint != null && resurrectAtCheckpoint.IsVisible)
+                        {
+                            BetterFollowbotLite.Instance.LogMessage("AUTO RESPAWN: Respawn panel detected, clicking checkpoint respawn");
+
+                            // Get the center position of the checkpoint respawn button
+                            var checkpointRect = resurrectAtCheckpoint.GetClientRectCache;
+                            var checkpointCenter = checkpointRect.Center;
+
+                            BetterFollowbotLite.Instance.LogMessage($"AUTO RESPAWN: Checkpoint button position - X: {checkpointCenter.X:F1}, Y: {checkpointCenter.Y:F1}");
+
+                            // Move mouse to the checkpoint respawn button and click
+                            Mouse.SetCursorPos(checkpointCenter);
+                            System.Threading.Thread.Sleep(100); // Small delay to ensure mouse movement is registered
+                            Mouse.LeftClick();
+
+                            BetterFollowbotLite.Instance.LogMessage("AUTO RESPAWN: Checkpoint respawn clicked successfully");
+                            lastTimeAny = DateTime.Now; // Update global cooldown
+                        }
+                        else
+                        {
+                            BetterFollowbotLite.Instance.LogMessage("AUTO RESPAWN: Checkpoint respawn button not available or not visible");
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                BetterFollowbotLite.Instance.LogMessage($"AUTO RESPAWN: Exception occurred - {e.Message}");
+            }
+
+            #endregion
+
             #region Auto Map Tabber
 
             try
