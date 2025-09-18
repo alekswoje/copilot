@@ -31,6 +31,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
     internal DateTime lastTimeAny;
     private DateTime lastAutoJoinPartyAttempt;
     private DateTime lastAreaChangeTime = DateTime.MinValue;
+    private DateTime lastGraceLogTime = DateTime.MinValue;
     internal Entity localPlayer;
     internal Life player;
     internal Vector3 playerPosition;
@@ -195,6 +196,25 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         autoPilot.AreaChange();
 
         LogMessage("AREA CHANGE: Area change processing completed");
+
+        // Enhanced leader detection after area change
+        LogMessage($"AREA CHANGE: Enhanced leader detection - Leader: '{Settings.autoPilotLeader}'");
+
+        var playerEntities = GameController.Entities.Where(x => x.Type == EntityType.Player).ToList();
+        LogMessage($"AREA CHANGE: Found {playerEntities.Count} player entities total");
+
+        var leaderEntity = playerEntities.FirstOrDefault(x =>
+            x.GetComponent<Player>()?.PlayerName?.Equals(Settings.autoPilotLeader, StringComparison.OrdinalIgnoreCase) == true);
+
+        if (leaderEntity != null)
+        {
+            LogMessage($"AREA CHANGE: Leader entity found immediately - Name: '{leaderEntity.GetComponent<Player>()?.PlayerName}', Distance: {Vector3.Distance(playerPosition, leaderEntity.Pos):F1}");
+            autoPilot.FollowTarget = leaderEntity;
+        }
+        else
+        {
+            LogMessage($"AREA CHANGE: Leader entity NOT found immediately - will rely on AutoPilot's built-in detection");
+        }
     }
         
     public override void DrawSettings()
@@ -234,9 +254,9 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                 // Grace period removal with safeguards to prevent random movement during zone transitions
                 if (Settings.autoPilotEnabled && Settings.autoPilotGrace && buffs != null && buffs.Exists(x => x.Name == "grace_period") && Gcd())
                 {
-                    // Prevent random movement during zone transitions (first 3 seconds after area change)
+                    // Prevent random movement during zone transitions (first 5 seconds after area change)
                     var timeSinceAreaChange = (DateTime.Now - lastAreaChangeTime).TotalSeconds;
-                    if (timeSinceAreaChange > 3.0)
+                    if (timeSinceAreaChange > 5.0)
                     {
                         // Simple check: only press move key if player appears to be stationary
                         // This prevents interfering with existing movement during zone transitions
@@ -261,17 +281,35 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
                         if (!isMoving)
                         {
-                            LogMessage("GRACE PERIOD: Removing grace period buff (player appears stationary)");
+                            // Only log successful grace removal occasionally to avoid spam
+                            var timeSinceLastGraceLog = (DateTime.Now - lastGraceLogTime).TotalSeconds;
+                            if (timeSinceLastGraceLog > 30.0) // Log once every 30 seconds
+                            {
+                                LogMessage("GRACE PERIOD: Removing grace period buff (player appears stationary)");
+                                lastGraceLogTime = DateTime.Now;
+                            }
                             Keyboard.KeyPress(Settings.autoPilotMoveKey);
                         }
                         else
                         {
-                            LogMessage("GRACE PERIOD: Skipping grace removal - player appears to be moving");
+                            // Only log movement detection occasionally
+                            var timeSinceLastGraceLog = (DateTime.Now - lastGraceLogTime).TotalSeconds;
+                            if (timeSinceLastGraceLog > 30.0) // Log once every 30 seconds
+                            {
+                                LogMessage("GRACE PERIOD: Skipping grace removal - player appears to be moving");
+                                lastGraceLogTime = DateTime.Now;
+                            }
                         }
                     }
                     else
                     {
-                        LogMessage($"GRACE PERIOD: Skipping grace removal during zone transition ({timeSinceAreaChange:F1}s since area change)");
+                        // Only log zone transition status occasionally
+                        var timeSinceLastGraceLog = (DateTime.Now - lastGraceLogTime).TotalSeconds;
+                        if (timeSinceLastGraceLog > 10.0) // Log once every 10 seconds during transition
+                        {
+                            LogMessage($"GRACE PERIOD: Skipping grace removal during zone transition ({timeSinceAreaChange:F1}s since area change)");
+                            lastGraceLogTime = DateTime.Now;
+                        }
                     }
                 }
                 autoPilot.UpdateAutoPilotLogic();
