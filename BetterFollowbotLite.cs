@@ -322,6 +322,57 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                         }
                     }
                 }
+
+                // Manual grace period breaking by pressing move key near screen center
+                if (Settings.autoPilotEnabled && Settings.autoPilotGrace && buffs != null && buffs.Exists(x => x.Name == "grace_period"))
+                {
+                    try
+                    {
+                        // Get screen dimensions and center
+                        var screenWidth = GameController.Game.IngameState.Camera.Width;
+                        var screenHeight = GameController.Game.IngameState.Camera.Height;
+                        var screenCenterX = screenWidth / 2;
+                        var screenCenterY = screenHeight / 2;
+
+                        // Get current mouse position
+                        var mousePos = Mouse.GetCursorPosition();
+
+                        // Check if mouse is within 100 pixels of screen center
+                        var distanceFromCenter = Math.Sqrt(
+                            Math.Pow(mousePos.X - screenCenterX, 2) +
+                            Math.Pow(mousePos.Y - screenCenterY, 2)
+                        );
+
+                        if (distanceFromCenter <= 100.0)
+                        {
+                            // Check if move key is being pressed
+                            if (Keyboard.IsKeyDown(Settings.autoPilotMoveKey))
+                            {
+                                // Check cooldown to prevent spam
+                                var timeSinceLastAction = (DateTime.Now - lastTimeAny).TotalSeconds;
+                                if (timeSinceLastAction > 0.5) // 500ms cooldown
+                                {
+                                    // Log manual grace breaking
+                                    var timeSinceLastGraceLog = (DateTime.Now - lastGraceLogTime).TotalSeconds;
+                                    if (timeSinceLastGraceLog > 2.0) // Log every 2 seconds
+                                    {
+                                        LogMessage($"GRACE PERIOD: Manual break - mouse at center ({distanceFromCenter:F1}px from center)");
+                                        lastGraceLogTime = DateTime.Now;
+                                    }
+
+                                    // Press move key to break grace period
+                                    Keyboard.KeyPress(Settings.autoPilotMoveKey);
+                                    lastTimeAny = DateTime.Now;
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        // Silent error handling for mouse/screen detection
+                    }
+                }
+
                 autoPilot.UpdateAutoPilotLogic();
                 autoPilot.Render();
             }
