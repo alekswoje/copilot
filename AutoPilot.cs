@@ -67,10 +67,20 @@ namespace BetterFollowbotLite;
             {
                 var distanceMoved = Vector3.Distance(lastTargetPosition, newPosition);
 
-                // If the target moved more than 5000 units, it's definitely a portal transition within the same zone
-                if (distanceMoved > 5000)
+                // If the target moved more than 2000 units, it's likely a portal transition within the same zone
+                // (reduced from 5000 to catch more portal transitions while avoiding false positives)
+                if (distanceMoved > 2000)
                 {
                     BetterFollowbotLite.Instance.LogMessage($"AUTOPILOT: Follow target moved {distanceMoved:F0} units (portal transition detected) from {lastTargetPosition} to {newPosition}");
+
+                    // Check if this is a recent portal transition to prevent immediate backtracking
+                    var timeSinceLastPortalTransition = DateTime.Now - lastPortalTransitionTime;
+                    if (timeSinceLastPortalTransition.TotalSeconds < 5.0)
+                    {
+                        BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Ignoring transition - too soon after previous transition ({timeSinceLastPortalTransition.TotalSeconds:F1}s ago)");
+                        lastTargetPosition = newPosition; // Update position to avoid repeated detection
+                        return;
+                    }
 
                     // PORTAL TRANSITION HANDLING: Clear all tasks and handle portal following
                     var tasksCleared = tasks.Count;
@@ -84,8 +94,11 @@ namespace BetterFollowbotLite;
 
                     // Try to find and click portal near the leader's new position
                     TryFollowThroughPortal(newPosition);
+
+                    // Record this portal transition
+                    lastPortalTransitionTime = DateTime.Now;
                 }
-                // If the target moved more than 500 units but less than 5000, it's likely a zone transition
+                // If the target moved more than 500 units but less than 2000, it's likely a zone transition
                 else if (distanceMoved > 500)
                 {
                     BetterFollowbotLite.Instance.LogMessage($"AUTOPILOT: Follow target moved {distanceMoved:F0} units (possible zone transition) from {lastTargetPosition} to {newPosition}");
@@ -128,22 +141,32 @@ namespace BetterFollowbotLite;
 
             BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Total entities in zone: {allEntities.Count}");
 
-            // Debug: Log all portal-type entities
+            // Debug: Log all portal-type entities and other potential portal entities
             var portalEntities = allEntities.Where(e => e.Type == ExileCore.Shared.Enums.EntityType.Portal).ToList();
-            BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Found {portalEntities.Count} portal entities total in zone");
+            var allPotentialPortals = allEntities.Where(e =>
+                e.GetComponent<Positioned>() != null &&
+                (e.Type.ToString().Contains("Portal") ||
+                 e.Type.ToString().Contains("Transition") ||
+                 e.Type.ToString().Contains("Door") ||
+                 e.Type.ToString().Contains("Gate"))).ToList();
 
-            foreach (var portal in portalEntities)
+            BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Found {portalEntities.Count} Portal entities and {allPotentialPortals.Count} potential portal entities");
+
+            // Log all entity types to help identify portal types
+            var entityTypes = allEntities.GroupBy(e => e.Type.ToString())
+                                        .Select(g => $"{g.Key}: {g.Count}")
+                                        .Take(10); // Limit to first 10 types
+            BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Entity types found: {string.Join(", ", entityTypes)}");
+
+            foreach (var portal in portalEntities.Concat(allPotentialPortals).Distinct())
             {
                 var pos = portal.GetComponent<Positioned>().GridPosition;
                 var distance = Vector3.Distance(new Vector3(pos.X, pos.Y, 0), leaderPosition);
-                BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Portal at ({pos.X:F0}, {pos.Y:F0}) - Distance: {distance:F0}");
+                BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: {portal.Type} at ({pos.X:F0}, {pos.Y:F0}) - Distance: {distance:F0}");
             }
 
-            // Also check for other entity types that might be portals - expanded search
-            var possiblePortals = allEntities.Where(e =>
-                (e.Type == ExileCore.Shared.Enums.EntityType.Portal) &&
-                e.GetComponent<Positioned>() != null)
-                .ToList();
+            // Expanded search for portals - include all potential portal-like entities
+            var possiblePortals = allPotentialPortals.Where(e => e.GetComponent<Positioned>() != null).ToList();
 
             BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Found {possiblePortals.Count} portal entities");
 
@@ -316,21 +339,36 @@ namespace BetterFollowbotLite;
             // Portals are usually interactive objects, so try clicking near the leader
             var screenPos = BetterFollowbotLite.Instance.GameController.IngameState.Camera.WorldToScreen(leaderPosition);
 
-            // Try clicking slightly offset from the leader's position (portals are usually nearby)
+            // Try clicking in a wider pattern around the leader's position
+            // Portals can be at various distances and positions
             var offsets = new[]
             {
-                new Vector2(50, 0),   // Right
-                new Vector2(-50, 0),  // Left
-                new Vector2(0, 50),   // Down
-                new Vector2(0, -50),  // Up
-                new Vector2(35, 35),  // Diagonal
-                new Vector2(-35, 35), // Diagonal
-                new Vector2(35, -35), // Diagonal
-                new Vector2(-35, -35) // Diagonal
+                // Close range (portals right next to leader)
+                new Vector2(30, 0), new Vector2(-30, 0), new Vector2(0, 30), new Vector2(0, -30),
+
+                // Medium range
+                new Vector2(50, 0), new Vector2(-50, 0), new Vector2(0, 50), new Vector2(0, -50),
+                new Vector2(35, 35), new Vector2(-35, 35), new Vector2(35, -35), new Vector2(-35, -35),
+
+                // Far range (portals further away)
+                new Vector2(80, 0), new Vector2(-80, 0), new Vector2(0, 80), new Vector2(0, -80),
+                new Vector2(60, 60), new Vector2(-60, 60), new Vector2(60, -60), new Vector2(-60, -60),
+
+                // Very far range
+                new Vector2(100, 0), new Vector2(-100, 0), new Vector2(0, 100), new Vector2(0, -100),
+                new Vector2(70, 70), new Vector2(-70, 70), new Vector2(70, -70), new Vector2(-70, -70)
             };
 
-            foreach (var offset in offsets)
+            // Randomize the order to make it less predictable
+            var randomizedOffsets = offsets.OrderBy(x => random.Next()).ToArray();
+            var clicksTried = 0;
+            const int maxClicks = 12; // Limit clicks to prevent taking too long
+
+            foreach (var offset in randomizedOffsets)
             {
+                if (clicksTried >= maxClicks) break;
+                clicksTried++;
+
                 var testPos = screenPos + offset;
 
                 // Make sure the position is on screen
@@ -338,22 +376,22 @@ namespace BetterFollowbotLite;
                 if (testPos.X >= 0 && testPos.X < windowRect.Width &&
                     testPos.Y >= 0 && testPos.Y < windowRect.Height)
                 {
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Trying direct click at offset ({offset.X}, {offset.Y})");
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Trying direct click {clicksTried}/{maxClicks} at offset ({offset.X:F0}, {offset.Y:F0})");
 
                     Mouse.SetCursorPos(testPos);
                     System.Threading.Thread.Sleep(100);
 
-                    // Try both left and right click
+                    // Try both left and right click for better portal detection
                     Mouse.LeftMouseDown();
                     System.Threading.Thread.Sleep(50);
                     Mouse.LeftMouseUp();
-                    System.Threading.Thread.Sleep(200);
+                    System.Threading.Thread.Sleep(150);
 
                     // Check if we moved (indicating portal interaction)
                     var currentPos = BetterFollowbotLite.Instance.playerPosition;
                     var distanceFromLeader = Vector3.Distance(currentPos, leaderPosition);
 
-                    if (distanceFromLeader > 100) // We moved significantly, likely through portal
+                    if (distanceFromLeader > 50) // We moved significantly, likely through portal
                     {
                         BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Direct click successful! Moved {distanceFromLeader:F0} units from leader");
                         return;
