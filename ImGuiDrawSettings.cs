@@ -252,22 +252,14 @@ internal class ImGuiDrawSettings
             ImGui.PushID(32);
             if (ImGui.TreeNodeEx("Auto Respawn", collapsingHeaderFlags))
             {
-                BetterFollowbotLite.Instance.LogMessage("AUTO RESPAWN: UI section rendering");
+                // Use button-based checkbox since ImGuiExtension.Checkbox doesn't work
+                bool isEnabled = BetterFollowbotLite.Instance.Settings.autoRespawnEnabled.Value;
+                string checkboxText = isEnabled ? "☑ Auto Respawn" : "☐ Auto Respawn";
 
-                bool currentValue = BetterFollowbotLite.Instance.Settings.autoRespawnEnabled.Value;
-                BetterFollowbotLite.Instance.LogMessage($"AUTO RESPAWN: Before checkbox - currentValue: {currentValue}");
-
-                bool checkboxResult = ImGuiExtension.Checkbox("Auto Respawn", currentValue);
-                BetterFollowbotLite.Instance.LogMessage($"AUTO RESPAWN: Checkbox returned: {checkboxResult}");
-
-                if (checkboxResult != currentValue)
+                if (ImGui.Button(checkboxText))
                 {
-                    BetterFollowbotLite.Instance.LogMessage($"AUTO RESPAWN: Checkbox changed from {currentValue} to {checkboxResult} - updating setting");
-                    BetterFollowbotLite.Instance.Settings.autoRespawnEnabled.Value = checkboxResult;
-                }
-                else
-                {
-                    BetterFollowbotLite.Instance.LogMessage($"AUTO RESPAWN: Checkbox returned same value {checkboxResult} - no change");
+                    BetterFollowbotLite.Instance.Settings.autoRespawnEnabled.Value = !isEnabled;
+                    BetterFollowbotLite.Instance.LogMessage($"AUTO RESPAWN: Checkbox button toggled from {isEnabled} to {!isEnabled}");
                 }
 
                 // Debug: Show current value
@@ -308,22 +300,14 @@ internal class ImGuiDrawSettings
             ImGui.PushID(34);
             if (ImGui.TreeNodeEx("Auto Level Gems", collapsingHeaderFlags))
             {
-                BetterFollowbotLite.Instance.LogMessage("AUTO LEVEL GEMS: UI section rendering");
+                // Use button-based checkbox since ImGuiExtension.Checkbox doesn't work
+                bool isEnabled = BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value;
+                string checkboxText = isEnabled ? "☑ Auto Level Gems" : "☐ Auto Level Gems";
 
-                bool currentValue = BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value;
-                BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Before checkbox - currentValue: {currentValue}");
-
-                bool checkboxResult = ImGuiExtension.Checkbox("Auto Level Gems", currentValue);
-                BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Checkbox returned: {checkboxResult}");
-
-                if (checkboxResult != currentValue)
+                if (ImGui.Button(checkboxText))
                 {
-                    BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Checkbox changed from {currentValue} to {checkboxResult} - updating setting");
-                    BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value = checkboxResult;
-                }
-                else
-                {
-                    BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Checkbox returned same value {checkboxResult} - no change");
+                    BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value = !isEnabled;
+                    BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Checkbox button toggled from {isEnabled} to {!isEnabled}");
                 }
 
                 // Debug: Show current value
