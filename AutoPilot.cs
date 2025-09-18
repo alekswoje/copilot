@@ -1580,7 +1580,7 @@ namespace BetterFollowbotLite;
                         yield return Mouse.LeftClick();
                         yield return new WaitTime(200);
                         // CRITICAL: Move mouse to center of screen after teleport confirm to prevent unwanted movement
-                        var screenCenter = new Vector2(GameController.Window.GetWindowRectangle().Width / 2, GameController.Window.GetWindowRectangle().Height / 2);
+                        var screenCenter = new Vector2(BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().Width / 2, BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().Height / 2);
                         Mouse.SetCursorPos(screenCenter);
                         yield return new WaitTime(1000);
                         yield return null;
@@ -1594,7 +1594,7 @@ namespace BetterFollowbotLite;
                         yield return Mouse.LeftClick();
                         yield return new WaitTime(200);
                         // CRITICAL: Move mouse to center of screen after teleport button to prevent unwanted movement
-                        var screenCenter = new Vector2(GameController.Window.GetWindowRectangle().Width / 2, GameController.Window.GetWindowRectangle().Height / 2);
+                        var screenCenter = new Vector2(BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().Width / 2, BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().Height / 2);
                         Mouse.SetCursorPos(screenCenter);
                         yield return new WaitTime(200);
                         yield return null;
