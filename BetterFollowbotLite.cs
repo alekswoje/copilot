@@ -469,8 +469,10 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                                     // Perform click with verification
                                                     BetterFollowbotLite.Instance.LogMessage("AUTO LEVEL GEMS: Performing left click on level up button");
 
-                                                    // First click attempt
-                                                    Mouse.LeftClick();
+                                                    // First click attempt - use synchronous mouse events
+                                                    Mouse.LeftMouseDown();
+                                                    System.Threading.Thread.Sleep(40);
+                                                    Mouse.LeftMouseUp();
                                                     System.Threading.Thread.Sleep(200);
 
                                                     // Check if button is still visible (if not, click was successful)
@@ -485,7 +487,9 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
                                                         // Exponential backoff: wait longer before second attempt
                                                         System.Threading.Thread.Sleep(500);
-                                                        Mouse.LeftClick();
+                                                        Mouse.LeftMouseDown();
+                                                        System.Threading.Thread.Sleep(40);
+                                                        Mouse.LeftMouseUp();
                                                         System.Threading.Thread.Sleep(200);
 
                                                         // Final check
