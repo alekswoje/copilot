@@ -205,7 +205,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         LogMessage($"AREA CHANGE: Party members found: {partyMembers.Count}");
         foreach (var member in partyMembers)
         {
-            LogMessage($"AREA CHANGE: Party member - Name: '{member?.PlayerName}', IsLeader: {member?.IsLeader}, Life: {member?.Life?.HP}/{member?.Life?.MaxHP}");
+            LogMessage($"AREA CHANGE: Party member - Name: '{member?.PlayerName}'");
         }
 
         var playerEntities = GameController.Entities.Where(x => x.Type == EntityType.Player).ToList();
@@ -410,14 +410,12 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                 if (autoPilot != null)
                 {
                     var followTarget = autoPilot.FollowTarget;
-                    LogMessage($"AUTOPILOT: Status - Running: {autoPilot.Running}, FollowTarget: {(followTarget != null ? followTarget.GetComponent<Player>()?.PlayerName ?? "Unknown" : "null")}, Distance: {(followTarget != null ? Vector3.Distance(playerPosition, followTarget.Pos).ToString("F1") : "N/A")}");
+                    LogMessage($"AUTOPILOT: FollowTarget: {(followTarget != null ? followTarget.GetComponent<Player>()?.PlayerName ?? "Unknown" : "null")}, Distance: {(followTarget != null ? Vector3.Distance(playerPosition, followTarget.Pos).ToString("F1") : "N/A")}");
 
                     // Debug movement status
                     if (localPlayer != null)
                     {
-                        var actor = localPlayer.GetComponent<Actor>();
-                        var isMoving = actor?.Animatable?.Velocity.Length() > 0.1f;
-                        LogMessage($"MOVEMENT: Player position: ({playerPosition.X:F1}, {playerPosition.Y:F1}), IsMoving: {isMoving}, Velocity: {(actor?.Animatable?.Velocity.Length() ?? 0):F2}");
+                        LogMessage($"MOVEMENT: Player position: ({playerPosition.X:F1}, {playerPosition.Y:F1})");
 
                         // Debug grace period status
                         var hasGrace = buffs != null && buffs.Exists(x => x.Name == "grace_period");
@@ -435,7 +433,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                 // Debug AutoPilot tasks after update
                 if (autoPilot != null)
                 {
-                    LogMessage($"AUTOPILOT: After update - Running: {autoPilot.Running}, Task count: {autoPilot.Tasks.Count}");
+                    LogMessage($"AUTOPILOT: After update - Task count: {autoPilot.Tasks.Count}");
                 }
             }
             catch (Exception e)
@@ -557,7 +555,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
                     if (leaderPartyElement != null)
                     {
-                        LogMessage($"PARTY: Found leader in party - Name: '{leaderPartyElement.PlayerName}', IsLeader: {leaderPartyElement.IsLeader}");
+                        LogMessage($"PARTY: Found leader in party - Name: '{leaderPartyElement.PlayerName}'");
                     }
                     else
                     {
@@ -565,7 +563,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                         // Debug all party members
                         foreach (var member in partyMembers)
                         {
-                            LogMessage($"PARTY: Member - Name: '{member?.PlayerName}', IsLeader: {member?.IsLeader}");
+                            LogMessage($"PARTY: Member - Name: '{member?.PlayerName}'");
                         }
                     }
 
