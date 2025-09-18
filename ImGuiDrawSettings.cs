@@ -26,40 +26,40 @@ internal class ImGuiDrawSettings
             if (ImGui.TreeNodeEx("Input Keys", collapsingHeaderFlags))
             {
                 BetterFollowbotLite.Instance.Settings.inputKey1.Value = ImGuiExtension.HotkeySelector(
-                    "Use bound skill 2 Key: " + BetterFollowbotLite.Instance.Settings.inputKey1.Value,
+                    "Skill 2: " + BetterFollowbotLite.Instance.Settings.inputKey1.Value,
                     BetterFollowbotLite.Instance.Settings.inputKey1.Value);
                 BetterFollowbotLite.Instance.Settings.inputKey3.Value = ImGuiExtension.HotkeySelector(
-                    "Use bound skill 4 Key: " + BetterFollowbotLite.Instance.Settings.inputKey3.Value,
+                    "Skill 4: " + BetterFollowbotLite.Instance.Settings.inputKey3.Value,
                     BetterFollowbotLite.Instance.Settings.inputKey3.Value);
                 BetterFollowbotLite.Instance.Settings.inputKey4.Value = ImGuiExtension.HotkeySelector(
-                    "Use bound skill 5 Key: " + BetterFollowbotLite.Instance.Settings.inputKey4.Value,
+                    "Skill 5: " + BetterFollowbotLite.Instance.Settings.inputKey4.Value,
                     BetterFollowbotLite.Instance.Settings.inputKey4.Value);
                 BetterFollowbotLite.Instance.Settings.inputKey5.Value = ImGuiExtension.HotkeySelector(
-                    "Use bound skill 6 Key: " + BetterFollowbotLite.Instance.Settings.inputKey5.Value,
+                    "Skill 6: " + BetterFollowbotLite.Instance.Settings.inputKey5.Value,
                     BetterFollowbotLite.Instance.Settings.inputKey5.Value);
                 BetterFollowbotLite.Instance.Settings.inputKey6.Value = ImGuiExtension.HotkeySelector(
-                    "Use bound skill 7 Key: " + BetterFollowbotLite.Instance.Settings.inputKey6.Value,
+                    "Skill 7: " + BetterFollowbotLite.Instance.Settings.inputKey6.Value,
                     BetterFollowbotLite.Instance.Settings.inputKey6.Value);
                 BetterFollowbotLite.Instance.Settings.inputKey7.Value = ImGuiExtension.HotkeySelector(
-                    "Use bound skill 8 Key: " + BetterFollowbotLite.Instance.Settings.inputKey7.Value,
+                    "Skill 8: " + BetterFollowbotLite.Instance.Settings.inputKey7.Value,
                     BetterFollowbotLite.Instance.Settings.inputKey7.Value);
                 BetterFollowbotLite.Instance.Settings.inputKey8.Value = ImGuiExtension.HotkeySelector(
-                    "Use bound skill 9 Key: " + BetterFollowbotLite.Instance.Settings.inputKey8.Value,
+                    "Skill 9: " + BetterFollowbotLite.Instance.Settings.inputKey8.Value,
                     BetterFollowbotLite.Instance.Settings.inputKey8.Value);
                 BetterFollowbotLite.Instance.Settings.inputKey9.Value = ImGuiExtension.HotkeySelector(
-                    "Use bound skill 10 Key: " + BetterFollowbotLite.Instance.Settings.inputKey9.Value,
+                    "Skill 10: " + BetterFollowbotLite.Instance.Settings.inputKey9.Value,
                     BetterFollowbotLite.Instance.Settings.inputKey9.Value);
                 BetterFollowbotLite.Instance.Settings.inputKey10.Value = ImGuiExtension.HotkeySelector(
-                    "Use bound skill 11 Key: " + BetterFollowbotLite.Instance.Settings.inputKey10.Value,
+                    "Skill 11: " + BetterFollowbotLite.Instance.Settings.inputKey10.Value,
                     BetterFollowbotLite.Instance.Settings.inputKey10.Value);
                 BetterFollowbotLite.Instance.Settings.inputKey11.Value = ImGuiExtension.HotkeySelector(
-                    "Use bound skill 12 Key: " + BetterFollowbotLite.Instance.Settings.inputKey11.Value,
+                    "Skill 12: " + BetterFollowbotLite.Instance.Settings.inputKey11.Value,
                     BetterFollowbotLite.Instance.Settings.inputKey11.Value);
                 BetterFollowbotLite.Instance.Settings.inputKey12.Value = ImGuiExtension.HotkeySelector(
-                    "Use bound skill 13 Key: " + BetterFollowbotLite.Instance.Settings.inputKey12.Value,
+                    "Skill 13: " + BetterFollowbotLite.Instance.Settings.inputKey12.Value,
                     BetterFollowbotLite.Instance.Settings.inputKey12.Value);
                 BetterFollowbotLite.Instance.Settings.inputKeyPickIt.Value = ImGuiExtension.HotkeySelector(
-                    "PickIt Key: " + BetterFollowbotLite.Instance.Settings.inputKeyPickIt.Value,
+                    "PickIt: " + BetterFollowbotLite.Instance.Settings.inputKeyPickIt.Value,
                     BetterFollowbotLite.Instance.Settings.inputKeyPickIt.Value);
             }
         }
@@ -79,8 +79,8 @@ internal class ImGuiDrawSettings
                 BetterFollowbotLite.Instance.Settings.autoPilotEnabled.Value =
                     ImGuiExtension.Checkbox("Enabled", BetterFollowbotLite.Instance.Settings.autoPilotEnabled.Value);
                 BetterFollowbotLite.Instance.Settings.autoPilotGrace.Value =
-                    ImGuiExtension.Checkbox("Remove Grace Period", BetterFollowbotLite.Instance.Settings.autoPilotGrace.Value);
-                BetterFollowbotLite.Instance.Settings.autoPilotLeader = ImGuiExtension.InputText("Leader Name: ", BetterFollowbotLite.Instance.Settings.autoPilotLeader, 60, ImGuiInputTextFlags.None);
+                    ImGuiExtension.Checkbox("No Grace Period", BetterFollowbotLite.Instance.Settings.autoPilotGrace.Value);
+                BetterFollowbotLite.Instance.Settings.autoPilotLeader = ImGuiExtension.InputText("Leader: ", BetterFollowbotLite.Instance.Settings.autoPilotLeader, 60, ImGuiInputTextFlags.None);
                 if (string.IsNullOrWhiteSpace(BetterFollowbotLite.Instance.Settings.autoPilotLeader.Value))
                 {
                     // Show error message or set a default value
@@ -92,7 +92,7 @@ internal class ImGuiDrawSettings
                     BetterFollowbotLite.Instance.Settings.autoPilotLeader.Value = new string(BetterFollowbotLite.Instance.Settings.autoPilotLeader.Value.Where(c => char.IsLetterOrDigit(c) || c == '_').ToArray());
                 }
                 BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled.Value = ImGuiExtension.Checkbox(
-                    "Dash Enabled", BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled.Value);
+                    "Dash", BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled.Value);
                 BetterFollowbotLite.Instance.Settings.autoPilotCloseFollow.Value = ImGuiExtension.Checkbox(
                     "Close Follow", BetterFollowbotLite.Instance.Settings.autoPilotCloseFollow.Value);
                 BetterFollowbotLite.Instance.Settings.autoPilotDashKey.Value = ImGuiExtension.HotkeySelector(
@@ -100,17 +100,17 @@ internal class ImGuiDrawSettings
                 BetterFollowbotLite.Instance.Settings.autoPilotMoveKey.Value = ImGuiExtension.HotkeySelector(
                     "Move Key: " + BetterFollowbotLite.Instance.Settings.autoPilotMoveKey.Value, BetterFollowbotLite.Instance.Settings.autoPilotMoveKey);
                 BetterFollowbotLite.Instance.Settings.autoPilotToggleKey.Value = ImGuiExtension.HotkeySelector(
-                    "Toggle Key: " + BetterFollowbotLite.Instance.Settings.autoPilotToggleKey.Value, BetterFollowbotLite.Instance.Settings.autoPilotToggleKey);
+                    "Toggle: " + BetterFollowbotLite.Instance.Settings.autoPilotToggleKey.Value, BetterFollowbotLite.Instance.Settings.autoPilotToggleKey);
                 /*
                 BetterFollowbotLite.instance.Settings.autoPilotRandomClickOffset.Value =
                     ImGuiExtension.IntSlider("Random Click Offset", BetterFollowbotLite.instance.Settings.autoPilotRandomClickOffset);
                 */
                 BetterFollowbotLite.Instance.Settings.autoPilotInputFrequency.Value =
-                    ImGuiExtension.IntSlider("Input Freq.", BetterFollowbotLite.Instance.Settings.autoPilotInputFrequency);
+                    ImGuiExtension.IntSlider("Input Freq", BetterFollowbotLite.Instance.Settings.autoPilotInputFrequency);
                 BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value =
-                    ImGuiExtension.IntSlider("Keep within Distance", BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance);
+                    ImGuiExtension.IntSlider("Follow Distance", BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance);
                 BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance.Value =
-                    ImGuiExtension.IntSlider("Transition Distance", BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance);
+                    ImGuiExtension.IntSlider("Transition Dist", BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance);
             }
         }
         catch (Exception e)
@@ -132,8 +132,7 @@ internal class ImGuiDrawSettings
                 BetterFollowbotLite.Instance.Settings.auraBlessingEnabled.Value = ImGuiExtension.Checkbox("Enabled",
                     BetterFollowbotLite.Instance.Settings.auraBlessingEnabled.Value);
                 BetterFollowbotLite.Instance.Settings.holyRelicHealthThreshold.Value =
-                    ImGuiExtension.IntSlider("Holy Relic Health Threshold %", BetterFollowbotLite.Instance.Settings.holyRelicHealthThreshold);
-                ImGui.TextWrapped("Logic:\n• Summon Holy Relic when health < threshold OR missing minion buff\n• Cast Zealotry when Holy Relic exists but missing aura buff");
+                    ImGuiExtension.IntSlider("Holy Relic Health %", BetterFollowbotLite.Instance.Settings.holyRelicHealthThreshold);
             }
         }
         catch (Exception e)
@@ -151,9 +150,9 @@ internal class ImGuiDrawSettings
                 BetterFollowbotLite.Instance.Settings.flameLinkEnabled.Value = ImGuiExtension.Checkbox("Enabled",
                     BetterFollowbotLite.Instance.Settings.flameLinkEnabled.Value);
                 BetterFollowbotLite.Instance.Settings.flameLinkRange.Value =
-                    ImGuiExtension.IntSlider("Max Range to Leader", BetterFollowbotLite.Instance.Settings.flameLinkRange);
+                    ImGuiExtension.IntSlider("Range", BetterFollowbotLite.Instance.Settings.flameLinkRange);
                 BetterFollowbotLite.Instance.Settings.flameLinkTimeThreshold.Value =
-                    ImGuiExtension.IntSlider("Recast when Timer < X seconds", BetterFollowbotLite.Instance.Settings.flameLinkTimeThreshold);
+                    ImGuiExtension.IntSlider("Recast Timer", BetterFollowbotLite.Instance.Settings.flameLinkTimeThreshold);
             }
         }
         catch (Exception e)
@@ -202,15 +201,14 @@ internal class ImGuiDrawSettings
             {
                 BetterFollowbotLite.Instance.Settings.minesEnabled.Value = ImGuiExtension.Checkbox("Enabled",
                     BetterFollowbotLite.Instance.Settings.minesEnabled.Value);
-                BetterFollowbotLite.Instance.Settings.minesRange = ImGuiExtension.InputText("Enemy Detection Range",
+                BetterFollowbotLite.Instance.Settings.minesRange = ImGuiExtension.InputText("Range",
                     BetterFollowbotLite.Instance.Settings.minesRange, 60, ImGuiInputTextFlags.None);
-                BetterFollowbotLite.Instance.Settings.minesLeaderDistance = ImGuiExtension.InputText("Leader Distance Threshold",
+                BetterFollowbotLite.Instance.Settings.minesLeaderDistance = ImGuiExtension.InputText("Leader Distance",
                     BetterFollowbotLite.Instance.Settings.minesLeaderDistance, 60, ImGuiInputTextFlags.None);
-                BetterFollowbotLite.Instance.Settings.minesStormblastEnabled.Value = ImGuiExtension.Checkbox("Stormblast Mine",
+                BetterFollowbotLite.Instance.Settings.minesStormblastEnabled.Value = ImGuiExtension.Checkbox("Stormblast",
                     BetterFollowbotLite.Instance.Settings.minesStormblastEnabled.Value);
-                BetterFollowbotLite.Instance.Settings.minesPyroclastEnabled.Value = ImGuiExtension.Checkbox("Pyroclast Mine",
+                BetterFollowbotLite.Instance.Settings.minesPyroclastEnabled.Value = ImGuiExtension.Checkbox("Pyroclast",
                     BetterFollowbotLite.Instance.Settings.minesPyroclastEnabled.Value);
-                ImGui.TextWrapped("Logic:\n• Throw mines when near rare/unique enemies AND close to party leader\n• Mouse-over targeting for precise placement\n• Only works with Stormblast Mine and Pyroclast Mine");
             }
         }
         catch (Exception e)
@@ -225,9 +223,8 @@ internal class ImGuiDrawSettings
             ImGui.PushID(32);
             if (ImGui.TreeNodeEx("Auto Respawn", collapsingHeaderFlags))
             {
-                BetterFollowbotLite.Instance.Settings.autoRespawnEnabled.Value = ImGuiExtension.Checkbox("Auto Respawn at Checkpoint",
+                BetterFollowbotLite.Instance.Settings.autoRespawnEnabled.Value = ImGuiExtension.Checkbox("Auto Respawn",
                     BetterFollowbotLite.Instance.Settings.autoRespawnEnabled.Value);
-                ImGui.TextWrapped("Logic:\n• Automatically clicks the checkpoint respawn button when the death screen appears\n• Only works when the respawn panel is visible\n• Useful for automated farming runs");
             }
         }
         catch (Exception e)
@@ -246,12 +243,10 @@ internal class ImGuiDrawSettings
                     BetterFollowbotLite.Instance.Settings.summonSkeletonsEnabled.Value);
 
                 BetterFollowbotLite.Instance.Settings.summonSkeletonsRange.Value =
-                    ImGuiExtension.IntSlider("Summon Range", BetterFollowbotLite.Instance.Settings.summonSkeletonsRange);
+                    ImGuiExtension.IntSlider("Range", BetterFollowbotLite.Instance.Settings.summonSkeletonsRange);
 
                 BetterFollowbotLite.Instance.Settings.summonSkeletonsMinCount.Value =
-                    ImGuiExtension.IntSlider("Minimum Skeleton Count", BetterFollowbotLite.Instance.Settings.summonSkeletonsMinCount);
-
-                ImGui.TextWrapped("Logic:\n• Automatically summons skeletons when close to party leader\n• Only works within specified range of the leader\n• Maintains minimum skeleton count\n• Requires 'Summon Skeletons' skill on skill bar");
+                    ImGuiExtension.IntSlider("Min Count", BetterFollowbotLite.Instance.Settings.summonSkeletonsMinCount);
             }
         }
         catch (Exception e)
@@ -276,16 +271,14 @@ internal class ImGuiDrawSettings
                 }
 
                 // Debug: Show current value
-                ImGui.Text($"Current Value: {BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value}");
+                ImGui.Text($"Current: {BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value}");
 
-                if (ImGui.Button("Test Toggle"))
+                if (ImGui.Button("Test"))
                 {
                     var oldValue = BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value;
                     BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value = !oldValue;
-                    BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Test button toggled from {oldValue} to {BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value}");
+                    BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Test toggled from {oldValue} to {BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value}");
                 }
-
-                ImGui.TextWrapped("Logic:\n• Automatically levels up gems when the gem level up panel appears\n• Clicks the level up button for each available gem\n• Only levels up one gem per frame to avoid spam\n• Useful for automated gem leveling during farming runs");
             }
         }
         catch (Exception e)
@@ -310,9 +303,7 @@ internal class ImGuiDrawSettings
                 }
 
                 // Debug: Show current value
-                ImGui.Text($"Current Value: {BetterFollowbotLite.Instance.Settings.autoJoinPartyEnabled.Value}");
-
-                ImGui.TextWrapped("Logic:\n• Automatically accepts party join invites when they appear\n• Navigates the UI hierarchy to find and click the accept button\n• Useful for automated party management during farming runs");
+                ImGui.Text($"Current: {BetterFollowbotLite.Instance.Settings.autoJoinPartyEnabled.Value}");
             }
         }
         catch (Exception e)

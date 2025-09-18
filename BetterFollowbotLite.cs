@@ -29,6 +29,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
     private bool isCasting;
     private bool isMoving;
     internal DateTime lastTimeAny;
+    private DateTime lastAutoJoinPartyAttempt = DateTime.MinValue;
     internal Entity localPlayer;
     internal Life player;
     internal Vector3 playerPosition;
@@ -451,16 +452,59 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                                 // Move mouse to the button and click
                                                 Mouse.SetCursorPos(buttonCenter);
 
-                                                // Wait a bit for mouse to settle
-                                                System.Threading.Thread.Sleep(100);
+                                                // Wait for mouse to settle
+                                                System.Threading.Thread.Sleep(150);
 
-                                                // Click the level up button
-                                                Mouse.LeftClick();
+                                                // Verify mouse position
+                                                var currentMousePos = GetMousePosition();
+                                                var distanceFromTarget = Vector2.Distance(currentMousePos, buttonCenter);
+                                                BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Mouse distance from target: {distanceFromTarget:F1}");
 
-                                                // Add a small delay between gem level ups
-                                                System.Threading.Thread.Sleep(200);
+                                                if (distanceFromTarget < 5) // Close enough to target
+                                                {
+                                                    // Perform click with verification
+                                                    BetterFollowbotLite.Instance.LogMessage("AUTO LEVEL GEMS: Performing left click on level up button");
 
-                                                BetterFollowbotLite.Instance.LogMessage("AUTO LEVEL GEMS: Gem level up clicked successfully");
+                                                    // First click attempt
+                                                    Mouse.LeftClick();
+                                                    System.Threading.Thread.Sleep(200);
+
+                                                    // Check if button is still visible (if not, click was successful)
+                                                    var buttonStillVisible = levelUpButton.IsVisible;
+                                                    if (!buttonStillVisible)
+                                                    {
+                                                        BetterFollowbotLite.Instance.LogMessage("AUTO LEVEL GEMS: Click successful - button disappeared");
+                                                    }
+                                                    else
+                                                    {
+                                                        BetterFollowbotLite.Instance.LogMessage("AUTO LEVEL GEMS: Button still visible, attempting second click");
+
+                                                        // Exponential backoff: wait longer before second attempt
+                                                        System.Threading.Thread.Sleep(500);
+                                                        Mouse.LeftClick();
+                                                        System.Threading.Thread.Sleep(200);
+
+                                                        // Final check
+                                                        buttonStillVisible = levelUpButton.IsVisible;
+                                                        if (!buttonStillVisible)
+                                                        {
+                                                            BetterFollowbotLite.Instance.LogMessage("AUTO LEVEL GEMS: Second click successful");
+                                                        }
+                                                        else
+                                                        {
+                                                            BetterFollowbotLite.Instance.LogMessage("AUTO LEVEL GEMS: Both clicks failed - button still visible");
+                                                        }
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Mouse positioning failed - too far from target ({distanceFromTarget:F1})");
+                                                }
+
+                                                // Add delay between gem level ups
+                                                System.Threading.Thread.Sleep(300);
+
+                                                BetterFollowbotLite.Instance.LogMessage("AUTO LEVEL GEMS: Gem level up attempt completed");
 
                                                 // Update global cooldown after leveling a gem
                                                 lastTimeAny = DateTime.Now;
@@ -501,10 +545,25 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
             #region Auto Join Party
 
-            if (Settings.autoJoinPartyEnabled && Gcd())
+            // Check if auto join party is enabled and enough time has passed since last attempt (3 second cooldown)
+            var timeSinceLastAttempt = (DateTime.Now - lastAutoJoinPartyAttempt).TotalSeconds;
+            if (Settings.autoJoinPartyEnabled && timeSinceLastAttempt >= 3.0 && Gcd())
             {
+                BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Starting attempt (cooldown: {timeSinceLastAttempt:F1}s)");
                 try
                 {
+                    // Check if player is already in a party - if so, don't accept invites
+                    var partyElement = PartyElements.GetPlayerInfoElementList();
+                    var isInParty = partyElement != null && partyElement.Count > 0;
+
+                    if (isInParty)
+                    {
+                        BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Player already in party ({partyElement.Count} members) - skipping invite acceptance");
+                        // Still update the cooldown to prevent spam
+                        lastAutoJoinPartyAttempt = DateTime.Now;
+                        return;
+                    }
+
                     // Check if the invites panel is visible
                     var invitesPanel = GameController.IngameState.IngameUi.InvitesPanel;
                     if (invitesPanel != null && invitesPanel.IsVisible)
@@ -564,16 +623,60 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                         // Move mouse to the accept button
                                         Mouse.SetCursorPos(buttonCenter);
 
-                                        // Wait a bit for mouse to settle
-                                        System.Threading.Thread.Sleep(100);
+                                        // Wait for mouse to settle
+                                        System.Threading.Thread.Sleep(150);
 
-                                        // Click the accept button
-                                        Mouse.LeftClick();
+                                        // Verify mouse position
+                                        var currentMousePos = GetMousePosition();
+                                        var distanceFromTarget = Vector2.Distance(currentMousePos, buttonCenter);
+                                        BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Mouse distance from target: {distanceFromTarget:F1}");
 
-                                        // Update global cooldown
+                                        if (distanceFromTarget < 5) // Close enough to target
+                                        {
+                                            // Perform click with exponential backoff delay
+                                            BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Performing left click on accept button");
+
+                                            // First click attempt
+                                            Mouse.LeftClick();
+                                            System.Threading.Thread.Sleep(200);
+
+                                            // Check if panel is still visible (if not, click was successful)
+                                            var panelStillVisible = invitesPanel.IsVisible;
+                                            if (!panelStillVisible)
+                                            {
+                                                BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Click successful - panel disappeared");
+                                            }
+                                            else
+                                            {
+                                                BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Panel still visible, attempting second click");
+
+                                                // Exponential backoff: wait longer before second attempt
+                                                System.Threading.Thread.Sleep(500);
+                                                Mouse.LeftClick();
+                                                System.Threading.Thread.Sleep(200);
+
+                                                // Final check
+                                                panelStillVisible = invitesPanel.IsVisible;
+                                                if (!panelStillVisible)
+                                                {
+                                                    BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Second click successful");
+                                                }
+                                                else
+                                                {
+                                                    BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Both clicks failed - panel still visible");
+                                                }
+                                            }
+                                        }
+                                        else
+                                        {
+                                            BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Mouse positioning failed - too far from target ({distanceFromTarget:F1})");
+                                        }
+
+                                        // Update cooldowns to prevent spam
                                         lastTimeAny = DateTime.Now;
+                                        lastAutoJoinPartyAttempt = DateTime.Now;
 
-                                        BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Party invite accepted successfully");
+                                        BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Party invite acceptance attempt completed");
                                     }
                                     else
                                     {
