@@ -761,6 +761,16 @@ namespace BetterFollowbotLite;
                 continue;
             }
 
+            // ADDITIONAL SAFEGUARD: Don't execute tasks during zone loading or when game state is unstable
+            if (BetterFollowbotLite.Instance.GameController.IsLoading ||
+                BetterFollowbotLite.Instance.GameController.Area.CurrentArea == null ||
+                string.IsNullOrEmpty(BetterFollowbotLite.Instance.GameController.Area.CurrentArea.DisplayName))
+            {
+                BetterFollowbotLite.Instance.LogMessage("TASK EXECUTION: Blocking task execution during zone loading");
+                yield return new WaitTime(200); // Wait longer during zone loading
+                continue;
+            }
+
             // Only execute input tasks here - decision making moved to Render method
             if (tasks?.Count > 0)
             {
@@ -1549,14 +1559,47 @@ namespace BetterFollowbotLite;
                 return;
             }
 
-            // ZONE LOADING PROTECTION: Prevent random movement during zone transitions
+            // COMPREHENSIVE ZONE LOADING PROTECTION: Prevent random movement during zone transitions
             // When loading into a new zone, entity lists might not be fully populated yet
             if (BetterFollowbotLite.Instance.GameController.IsLoading ||
                 BetterFollowbotLite.Instance.GameController.Area.CurrentArea == null ||
                 string.IsNullOrEmpty(BetterFollowbotLite.Instance.GameController.Area.CurrentArea.DisplayName))
             {
-                BetterFollowbotLite.Instance.LogMessage("ZONE LOADING: Blocking task creation during zone loading to prevent random movement");
+                BetterFollowbotLite.Instance.LogMessage("ZONE LOADING: Blocking all task creation during zone loading to prevent random movement");
+                // Clear any existing tasks to prevent stale movement
+                if (tasks.Count > 0)
+                {
+                    var clearedTasks = tasks.Count;
+                    tasks.Clear();
+                    BetterFollowbotLite.Instance.LogMessage($"ZONE LOADING: Cleared {clearedTasks} tasks during zone loading");
+                }
                 return;
+            }
+
+            // ADDITIONAL SAFEGUARD: If no leader is found and no tasks exist, don't create any movement
+            var leaderPartyElement = GetLeaderPartyElement();
+            var followTarget = GetFollowingTarget();
+
+            if (followTarget == null && tasks.Count == 0)
+            {
+                // No leader found and no tasks - this is likely zone loading or leader not in range
+                if (leaderPartyElement == null)
+                {
+                    BetterFollowbotLite.Instance.LogMessage("NO LEADER: No party leader found and no tasks - waiting for stable game state");
+                    return; // Don't create any tasks when no leader exists
+                }
+
+                // Leader exists in party but not found in current zone - this is normal for zone transitions
+                if (!leaderPartyElement.ZoneName.Equals(BetterFollowbotLite.Instance.GameController?.Area.CurrentArea.DisplayName))
+                {
+                    BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION DETECTED: Leader '{leaderPartyElement.PlayerName}' is in zone '{leaderPartyElement.ZoneName}' but we're in '{BetterFollowbotLite.Instance.GameController?.Area.CurrentArea.DisplayName}'");
+                    // Continue with transition logic below
+                }
+                else
+                {
+                    BetterFollowbotLite.Instance.LogMessage("LEADER WAIT: Party leader exists but entity not found yet - waiting for entity loading");
+                    return; // Wait for entity to become available
+                }
             }
 
             // PRIORITY: Check for any open teleport confirmation dialogs and handle them immediately
@@ -1576,10 +1619,6 @@ namespace BetterFollowbotLite;
 
             // Update player position for responsiveness detection - MORE FREQUENT UPDATES
             lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
-
-            //Cache the current follow target (if present)
-            followTarget = GetFollowingTarget();
-            var leaderPartyElement = GetLeaderPartyElement();
 
             // Update hasTransitionTasks check for the rest of the logic
             hasTransitionTasks = tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.TeleportConfirm || t.Type == TaskNodeType.TeleportButton);
