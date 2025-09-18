@@ -385,11 +385,32 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
                             if (timeSinceLastAction > 0.2) // Very fast cooldown for immediate grace removal
                             {
+                                // Move mouse to random position near center (±100 pixels) before pressing move key
+                                var screenRect = GameController.Window.GetWindowRectangle();
+                                var screenCenterX = screenRect.Width / 2;
+                                var screenCenterY = screenRect.Height / 2;
+
+                                // Add random offset of ±100 pixels
+                                var random = new Random();
+                                var randomOffsetX = random.Next(-100, 101); // -100 to +100
+                                var randomOffsetY = random.Next(-100, 101); // -100 to +100
+
+                                var targetX = screenCenterX + randomOffsetX;
+                                var targetY = screenCenterY + randomOffsetY;
+
+                                // Ensure mouse position stays within screen bounds
+                                targetX = Math.Max(0, Math.Min(screenRect.Width, targetX));
+                                targetY = Math.Max(0, Math.Min(screenRect.Height, targetY));
+
+                                var randomMousePos = new Vector2(targetX, targetY);
+                                Mouse.SetCursorPos(randomMousePos);
+
                                 // Only log grace removal every 2 seconds to reduce spam
                                 if (timeSinceLastGraceLog > 2.0)
                                 {
-                                    LogMessage("GRACE PERIOD: Removing grace period buff by pressing move key");
+                                    LogMessage($"GRACE PERIOD: Moving mouse to ({targetX}, {targetY}) and pressing move key to break grace");
                                 }
+
                                 Keyboard.KeyPress(Settings.autoPilotMoveKey.Value);
                                 lastTimeAny = DateTime.Now;
                             }
