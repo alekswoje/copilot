@@ -162,6 +162,8 @@ internal class ImGuiDrawSettings
 
         try
         {
+            // Smite Buff - depends on Flame Link
+            ImGui.PushStyleColor(ImGuiCol.Header, (BetterFollowbotLite.Instance.Settings.smiteEnabled && BetterFollowbotLite.Instance.Settings.flameLinkEnabled) ? green : red);
             ImGui.PushID(29);
             if (ImGui.TreeNodeEx("Smite Buff", collapsingHeaderFlags))
             {
@@ -176,6 +178,8 @@ internal class ImGuiDrawSettings
 
         try
         {
+            // Vaal Skills - depends on Flame Link
+            ImGui.PushStyleColor(ImGuiCol.Header, ((BetterFollowbotLite.Instance.Settings.vaalHasteEnabled || BetterFollowbotLite.Instance.Settings.vaalDisciplineEnabled) && BetterFollowbotLite.Instance.Settings.flameLinkEnabled) ? green : red);
             ImGui.PushID(30);
             if (ImGui.TreeNodeEx("Vaal Skills", collapsingHeaderFlags))
             {
@@ -261,19 +265,13 @@ internal class ImGuiDrawSettings
             ImGui.PushID(34);
             if (ImGui.TreeNodeEx("Auto Level Gems", collapsingHeaderFlags))
             {
-                var currentValue = BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value;
-                var newValue = ImGuiExtension.Checkbox("Auto Level Gems", currentValue);
-
-                if (newValue != currentValue)
-                {
-                    BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Checkbox changed from {currentValue} to {newValue}");
-                    BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value = newValue;
-                }
+                BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value = ImGuiExtension.Checkbox("Auto Level Gems",
+                    BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value);
 
                 // Debug: Show current value
                 ImGui.Text($"Current: {BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value}");
 
-                if (ImGui.Button("Test"))
+                if (ImGui.Button("Test Toggle"))
                 {
                     var oldValue = BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value;
                     BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value = !oldValue;
@@ -293,14 +291,8 @@ internal class ImGuiDrawSettings
             ImGui.PushID(35);
             if (ImGui.TreeNodeEx("Auto Join Party", collapsingHeaderFlags))
             {
-                var currentValue = BetterFollowbotLite.Instance.Settings.autoJoinPartyEnabled.Value;
-                var newValue = ImGuiExtension.Checkbox("Auto Join Party Invites", currentValue);
-
-                if (newValue != currentValue)
-                {
-                    BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Checkbox changed from {currentValue} to {newValue}");
-                    BetterFollowbotLite.Instance.Settings.autoJoinPartyEnabled.Value = newValue;
-                }
+                BetterFollowbotLite.Instance.Settings.autoJoinPartyEnabled.Value = ImGuiExtension.Checkbox("Auto Join Party Invites",
+                    BetterFollowbotLite.Instance.Settings.autoJoinPartyEnabled.Value);
 
                 // Debug: Show current value
                 ImGui.Text($"Current: {BetterFollowbotLite.Instance.Settings.autoJoinPartyEnabled.Value}");
