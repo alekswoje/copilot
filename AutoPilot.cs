@@ -118,10 +118,15 @@ namespace BetterFollowbotLite;
     {
         try
         {
+            // Add a small delay to let the portal load
+            System.Threading.Thread.Sleep(500);
+
             // Look for portal entities near the leader's position
             var allEntities = BetterFollowbotLite.Instance.GameController.Entities
                 .Where(e => e.IsValid && e.GetComponent<Positioned>() != null)
                 .ToList();
+
+            BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Total entities in zone: {allEntities.Count}");
 
             // Debug: Log all portal-type entities
             var portalEntities = allEntities.Where(e => e.Type == ExileCore.Shared.Enums.EntityType.Portal).ToList();
@@ -134,7 +139,7 @@ namespace BetterFollowbotLite;
                 BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Portal at ({pos.X:F0}, {pos.Y:F0}) - Distance: {distance:F0}");
             }
 
-            // Also check for other entity types that might be portals
+            // Also check for other entity types that might be portals - expanded search
             var possiblePortals = allEntities.Where(e =>
                 (e.Type == ExileCore.Shared.Enums.EntityType.Portal) &&
                 e.GetComponent<Positioned>() != null)
@@ -148,13 +153,20 @@ namespace BetterFollowbotLite;
                     Entity = e,
                     Position = e.GetComponent<Positioned>().GridPosition,
                     Distance = Vector3.Distance(new Vector3(e.GetComponent<Positioned>().GridPosition.X, e.GetComponent<Positioned>().GridPosition.Y, 0), leaderPosition),
-                    Type = e.Type.ToString()
+                    Type = e.Type.ToString(),
+                    Name = "Portal" // Simplified name
                 })
                 .Where(p => p.Distance < 500) // Within 500 units of leader (increased range)
                 .OrderBy(p => p.Distance)
                 .ToList();
 
             BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Found {portals.Count} portals within 500 units of leader");
+
+            // Log details of found portals
+            foreach (var portal in portals)
+            {
+                BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Found {portal.Type} '{portal.Name}' at distance {portal.Distance:F0}");
+            }
 
             if (portals.Any())
             {
@@ -185,6 +197,9 @@ namespace BetterFollowbotLite;
 
                 // Fallback: Try to find portals using the existing portal search logic
                 TryFallbackPortalSearch();
+
+                // Additional fallback: Try direct world interaction near leader
+                TryDirectWorldPortalSearch(leaderPosition);
             }
         }
         catch (Exception ex)
@@ -285,6 +300,72 @@ namespace BetterFollowbotLite;
         catch (Exception ex)
         {
             BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Error in screen portal search - {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Additional fallback: Try direct world interaction near leader position
+    /// </summary>
+    private void TryDirectWorldPortalSearch(Vector3 leaderPosition)
+    {
+        try
+        {
+            BetterFollowbotLite.Instance.LogMessage("PORTAL FOLLOW: Trying direct world portal search");
+
+            // Try clicking in a pattern around the leader's position
+            // Portals are usually interactive objects, so try clicking near the leader
+            var screenPos = BetterFollowbotLite.Instance.GameController.IngameState.Camera.WorldToScreen(leaderPosition);
+
+            // Try clicking slightly offset from the leader's position (portals are usually nearby)
+            var offsets = new[]
+            {
+                new Vector2(50, 0),   // Right
+                new Vector2(-50, 0),  // Left
+                new Vector2(0, 50),   // Down
+                new Vector2(0, -50),  // Up
+                new Vector2(35, 35),  // Diagonal
+                new Vector2(-35, 35), // Diagonal
+                new Vector2(35, -35), // Diagonal
+                new Vector2(-35, -35) // Diagonal
+            };
+
+            foreach (var offset in offsets)
+            {
+                var testPos = screenPos + offset;
+
+                // Make sure the position is on screen
+                var windowRect = BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle();
+                if (testPos.X >= 0 && testPos.X < windowRect.Width &&
+                    testPos.Y >= 0 && testPos.Y < windowRect.Height)
+                {
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Trying direct click at offset ({offset.X}, {offset.Y})");
+
+                    Mouse.SetCursorPos(testPos);
+                    System.Threading.Thread.Sleep(100);
+
+                    // Try both left and right click
+                    Mouse.LeftMouseDown();
+                    System.Threading.Thread.Sleep(50);
+                    Mouse.LeftMouseUp();
+                    System.Threading.Thread.Sleep(200);
+
+                    // Check if we moved (indicating portal interaction)
+                    var currentPos = BetterFollowbotLite.Instance.playerPosition;
+                    var distanceFromLeader = Vector3.Distance(currentPos, leaderPosition);
+
+                    if (distanceFromLeader > 100) // We moved significantly, likely through portal
+                    {
+                        BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Direct click successful! Moved {distanceFromLeader:F0} units from leader");
+                        return;
+                    }
+                }
+            }
+
+            BetterFollowbotLite.Instance.LogMessage("PORTAL FOLLOW: Direct world search completed - no portal interaction detected");
+        }
+        catch (Exception ex)
+        {
+            BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Error in direct world portal search - {ex.Message}");
         }
     }
 
