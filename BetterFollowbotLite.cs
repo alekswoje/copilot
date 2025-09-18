@@ -238,19 +238,34 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                     var timeSinceAreaChange = (DateTime.Now - lastAreaChangeTime).TotalSeconds;
                     if (timeSinceAreaChange > 3.0)
                     {
-                        // Only press move key if we're not already moving significantly
-                        var currentVelocity = localPlayer?.GetComponent<Actor>()?.Animatable?.Velocity ?? Vector3.Zero;
-                        var speed = currentVelocity.Length();
+                        // Simple check: only press move key if player appears to be stationary
+                        // This prevents interfering with existing movement during zone transitions
+                        var isMoving = false;
 
-                        // Only press move key if moving very slowly (to prevent random direction changes)
-                        if (speed < 50.0f) // Low threshold to detect if we're actually stopped or moving slowly
+                        if (localPlayer != null)
                         {
-                            LogMessage($"GRACE PERIOD: Removing grace period buff (speed: {speed:F1})");
+                            var positionComponent = localPlayer.GetComponent<Positioned>();
+                            if (positionComponent != null)
+                            {
+                                var currentPos = positionComponent.GridPosition;
+                                var distanceMoved = Vector3.Distance(currentPos, playerPosition);
+
+                                // If moved more than 10 units since last check, consider player moving
+                                isMoving = distanceMoved > 10.0f;
+
+                                // Update stored position for next check
+                                playerPosition = currentPos;
+                            }
+                        }
+
+                        if (!isMoving)
+                        {
+                            LogMessage("GRACE PERIOD: Removing grace period buff (player appears stationary)");
                             Keyboard.KeyPress(Settings.autoPilotMoveKey);
                         }
                         else
                         {
-                            LogMessage($"GRACE PERIOD: Skipping grace removal - already moving (speed: {speed:F1})");
+                            LogMessage("GRACE PERIOD: Skipping grace removal - player appears to be moving");
                         }
                     }
                     else
