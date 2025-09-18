@@ -493,6 +493,8 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                     }
                 }
 
+                // CRITICAL: Update AutoPilot logic BEFORE grace period check
+                // AutoPilot should be able to create tasks even when grace period is active
                 autoPilot.UpdateAutoPilotLogic();
                 autoPilot.Render();
 
