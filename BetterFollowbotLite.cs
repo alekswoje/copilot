@@ -545,9 +545,9 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
             #region Auto Join Party
 
-            // Check if auto join party is enabled and enough time has passed since last attempt (3 second cooldown)
+            // Check if auto join party is enabled and enough time has passed since last attempt (0.5 second cooldown)
             var timeSinceLastAttempt = (DateTime.Now - lastAutoJoinPartyAttempt).TotalSeconds;
-            if (Settings.autoJoinPartyEnabled && timeSinceLastAttempt >= 3.0 && Gcd())
+            if (Settings.autoJoinPartyEnabled && timeSinceLastAttempt >= 0.5 && Gcd())
             {
                 BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Starting attempt (cooldown: {timeSinceLastAttempt:F1}s)");
                 try
@@ -558,7 +558,11 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
                     if (isInParty)
                     {
-                        BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Player already in party ({partyElement.Count} members) - skipping invite acceptance");
+                        // Only log this occasionally to avoid spam (every 5 seconds)
+                        if (timeSinceLastAttempt >= 5.0)
+                        {
+                            BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Player already in party ({partyElement.Count} members) - skipping invite acceptance");
+                        }
                         // Still update the cooldown to prevent spam
                         lastAutoJoinPartyAttempt = DateTime.Now;
                         return;
@@ -633,37 +637,41 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
                                         if (distanceFromTarget < 5) // Close enough to target
                                         {
-                                            // Perform click with exponential backoff delay
+                                            // Perform click with immediate verification
                                             BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Performing left click on accept button");
 
                                             // First click attempt
                                             Mouse.LeftClick();
-                                            System.Threading.Thread.Sleep(200);
+                                            System.Threading.Thread.Sleep(100); // Short wait for UI response
 
-                                            // Check if panel is still visible (if not, click was successful)
-                                            var panelStillVisible = invitesPanel.IsVisible;
-                                            if (!panelStillVisible)
+                                            // Check if we successfully joined a party by checking party status
+                                            var partyAfterClick = PartyElements.GetPlayerInfoElementList();
+                                            var joinedParty = partyAfterClick != null && partyAfterClick.Count > 0;
+
+                                            if (joinedParty)
                                             {
-                                                BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Click successful - panel disappeared");
+                                                BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Click successful - joined party");
                                             }
                                             else
                                             {
-                                                BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Panel still visible, attempting second click");
+                                                BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: First click didn't work, attempting second click");
 
-                                                // Exponential backoff: wait longer before second attempt
-                                                System.Threading.Thread.Sleep(500);
+                                                // Second click attempt with longer delay
+                                                System.Threading.Thread.Sleep(300);
                                                 Mouse.LeftClick();
-                                                System.Threading.Thread.Sleep(200);
+                                                System.Threading.Thread.Sleep(100);
 
-                                                // Final check
-                                                panelStillVisible = invitesPanel.IsVisible;
-                                                if (!panelStillVisible)
+                                                // Check again
+                                                partyAfterClick = PartyElements.GetPlayerInfoElementList();
+                                                joinedParty = partyAfterClick != null && partyAfterClick.Count > 0;
+
+                                                if (joinedParty)
                                                 {
-                                                    BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Second click successful");
+                                                    BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Second click successful - joined party");
                                                 }
                                                 else
                                                 {
-                                                    BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Both clicks failed - panel still visible");
+                                                    BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Both clicks failed - still not in party");
                                                 }
                                             }
                                         }
