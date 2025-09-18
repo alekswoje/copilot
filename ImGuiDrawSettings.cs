@@ -272,7 +272,7 @@ internal class ImGuiDrawSettings
                 BetterFollowbotLite.Instance.Settings.summonRagingSpiritsMinCount.Value =
                     ImGuiExtension.IntSlider("SRS Min Count", BetterFollowbotLite.Instance.Settings.summonRagingSpiritsMinCount);
 
-                BetterFollowbotLite.Instance.Settings.summonRagingSpiritsMagicNormal.Value = ImGuiExtension.Checkbox("Include Magic/Normal enemies",
+                BetterFollowbotLite.Instance.Settings.summonRagingSpiritsMagicNormal.Value = ImGuiExtension.Checkbox("Include Magic/White enemies",
                     BetterFollowbotLite.Instance.Settings.summonRagingSpiritsMagicNormal.Value);
             }
         }

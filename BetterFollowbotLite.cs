@@ -796,9 +796,9 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                                     rareOrUniqueNearby = true;
                                                     break;
                                                 }
-                                                // Also check for magic/normal if enabled
+                                                // Also check for magic/white if enabled
                                                 else if (Settings.summonRagingSpiritsMagicNormal.Value &&
-                                                        (rarity == MonsterRarity.Magic || rarity == MonsterRarity.Normal))
+                                                        (rarity == MonsterRarity.Magic || rarity == MonsterRarity.White))
                                                 {
                                                     rareOrUniqueNearby = true;
                                                     break;
@@ -817,7 +817,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
                                     if (summonRagingSpiritsSkill != null && summonRagingSpiritsSkill.IsOnSkillBar && summonRagingSpiritsSkill.CanBeUsed)
                                     {
-                                        var enemyType = Settings.summonRagingSpiritsMagicNormal.Value ? "Rare/Unique/Magic/Normal" : "Rare/Unique";
+                                        var enemyType = Settings.summonRagingSpiritsMagicNormal.Value ? "Rare/Unique/Magic/White" : "Rare/Unique";
                                         BetterFollowbotLite.Instance.LogMessage($"SRS: Current minions: {totalMinionCount}, Required: {Settings.summonRagingSpiritsMinCount.Value}, Distance to leader: {distanceToLeader:F1}, {enemyType} enemy detected");
 
                                         // Use the Summon Raging Spirits skill
