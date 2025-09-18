@@ -398,7 +398,6 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                 LogMessage("GRACE PERIOD: Waiting for action cooldown before removing grace");
                             }
                         }
-                        }
                     }
                     else
                     {
