@@ -72,19 +72,26 @@ namespace BetterFollowbotLite;
                 {
                     BetterFollowbotLite.Instance.LogMessage($"AUTOPILOT: Follow target moved {distanceMoved:F0} units (portal transition detected) from {lastTargetPosition} to {newPosition}");
 
-                    // PORTAL TRANSITION HANDLING: Clear all tasks and wait for leader to settle
+                    // PORTAL TRANSITION HANDLING: Clear all tasks and handle portal following
                     var tasksCleared = tasks.Count;
                     tasks.Clear();
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Cleared {tasksCleared} tasks to prevent following to old position");
 
-                    // Set a brief cooldown to let the leader settle at the new position
-                    lastPortalTransitionTime = DateTime.Now;
-                    BetterFollowbotLite.Instance.LogMessage("PORTAL TRANSITION: Waiting for leader to settle at new position");
+                    // For same-zone portal transitions, immediately try to follow through portal
+                    // Don't apply cooldown since we need to follow immediately
+                    var currentZone = BetterFollowbotLite.Instance.GameController?.Area.CurrentArea.DisplayName ?? "Unknown";
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Same-zone transition detected in '{currentZone}' - attempting immediate portal follow");
+
+                    // Try to find and click portal near the leader's new position
+                    TryFollowThroughPortal(newPosition);
                 }
                 // If the target moved more than 500 units but less than 5000, it's likely a zone transition
                 else if (distanceMoved > 500)
                 {
                     BetterFollowbotLite.Instance.LogMessage($"AUTOPILOT: Follow target moved {distanceMoved:F0} units (possible zone transition) from {lastTargetPosition} to {newPosition}");
+
+                    // For zone transitions, apply the cooldown to let the zone load
+                    lastPortalTransitionTime = DateTime.Now;
                 }
                 else if (newPosition != lastTargetPosition)
                 {
@@ -100,6 +107,62 @@ namespace BetterFollowbotLite;
             BetterFollowbotLite.Instance.LogMessage("AUTOPILOT: Follow target became invalid, clearing");
             followTarget = null;
             lastTargetPosition = Vector3.Zero;
+        }
+    }
+
+    /// <summary>
+    /// Attempts to find and click on a portal near the leader's position to follow them through
+    /// </summary>
+    /// <param name="leaderPosition">The leader's new position after portal transition</param>
+    private void TryFollowThroughPortal(Vector3 leaderPosition)
+    {
+        try
+        {
+            // Look for portal entities near the leader's position
+            var portals = BetterFollowbotLite.Instance.GameController.Entities
+                .Where(e => e.Type == ExileCore.Shared.Enums.EntityType.Portal &&
+                           e.IsValid &&
+                           e.GetComponent<Positioned>() != null)
+                .Select(e => new
+                {
+                    Entity = e,
+                    Position = e.GetComponent<Positioned>().GridPosition,
+                    Distance = Vector3.Distance(e.GetComponent<Positioned>().GridPosition, leaderPosition)
+                })
+                .Where(p => p.Distance < 100) // Within 100 units of leader
+                .OrderBy(p => p.Distance)
+                .ToList();
+
+            if (portals.Any())
+            {
+                var closestPortal = portals.First();
+                BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Found portal {closestPortal.Distance:F1} units from leader - attempting to follow through");
+
+                // Get the portal's screen position for clicking
+                var portalPos = closestPortal.Entity.GetComponent<Positioned>().GridPosition;
+                var screenPos = BetterFollowbotLite.Instance.GameController.IngameState.Camera.WorldToScreen(portalPos);
+
+                // Add a task to click on the portal
+                tasks.Add(new TaskNode(screenPos, 0, TaskNodeType.Movement));
+                BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Added portal click task at screen position {screenPos}");
+
+                // Also try direct mouse movement and click as backup
+                Mouse.SetCursorPos(screenPos);
+                System.Threading.Thread.Sleep(100);
+                Mouse.LeftMouseDown();
+                System.Threading.Thread.Sleep(50);
+                Mouse.LeftMouseUp();
+
+                BetterFollowbotLite.Instance.LogMessage("PORTAL FOLLOW: Attempted direct portal click");
+            }
+            else
+            {
+                BetterFollowbotLite.Instance.LogMessage("PORTAL FOLLOW: No portals found near leader position - may need manual intervention");
+            }
+        }
+        catch (Exception ex)
+        {
+            BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Error trying to follow through portal - {ex.Message}");
         }
     }
 
@@ -1637,8 +1700,9 @@ namespace BetterFollowbotLite;
             }
 
             // PORTAL TRANSITION PROTECTION: Block task creation immediately after portal transition to let leader settle
+            // Only apply this for cross-zone transitions, not same-zone portal transitions
             var timeSincePortalTransition = DateTime.Now - lastPortalTransitionTime;
-            if (timeSincePortalTransition.TotalSeconds < 2.0) // Wait 2 seconds after portal transition
+            if (timeSincePortalTransition.TotalSeconds < 2.0 && lastPortalTransitionTime != DateTime.MinValue) // Wait 2 seconds after portal transition
             {
                 BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Blocking task creation for {2.0 - timeSincePortalTransition.TotalSeconds:F1} more seconds - waiting for leader to settle");
                 return; // Exit to prevent creating tasks to old position
