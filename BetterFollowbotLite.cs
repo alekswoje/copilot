@@ -247,14 +247,15 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                             var positionComponent = localPlayer.GetComponent<Positioned>();
                             if (positionComponent != null)
                             {
-                                var currentPos = positionComponent.GridPosition;
-                                var distanceMoved = Vector3.Distance(currentPos, playerPosition);
+                                var currentPos2D = positionComponent.GridPosition;
+                                var currentPos3D = new Vector3(currentPos2D.X, currentPos2D.Y, 0); // Convert 2D to 3D
+                                var distanceMoved = Vector3.Distance(currentPos3D, playerPosition);
 
                                 // If moved more than 10 units since last check, consider player moving
                                 isMoving = distanceMoved > 10.0f;
 
                                 // Update stored position for next check
-                                playerPosition = currentPos;
+                                playerPosition = currentPos3D;
                             }
                         }
 
