@@ -200,8 +200,26 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         // Enhanced leader detection after area change
         LogMessage($"AREA CHANGE: Enhanced leader detection - Leader: '{Settings.autoPilotLeader}'");
 
+        // Debug party information
+        var partyMembers = PartyElements.GetPlayerInfoElementList();
+        LogMessage($"AREA CHANGE: Party members found: {partyMembers.Count}");
+        foreach (var member in partyMembers)
+        {
+            LogMessage($"AREA CHANGE: Party member - Name: '{member?.PlayerName}', IsLeader: {member?.IsLeader}, Life: {member?.Life?.HP}/{member?.Life?.MaxHP}");
+        }
+
         var playerEntities = GameController.Entities.Where(x => x.Type == EntityType.Player).ToList();
         LogMessage($"AREA CHANGE: Found {playerEntities.Count} player entities total");
+
+        // Debug all player entities
+        foreach (var player in playerEntities)
+        {
+            var playerComp = player.GetComponent<Player>();
+            if (playerComp != null)
+            {
+                LogMessage($"AREA CHANGE: Player entity - Name: '{playerComp.PlayerName}', Distance: {Vector3.Distance(playerPosition, player.Pos):F1}");
+            }
+        }
 
         var leaderEntity = playerEntities.FirstOrDefault(x =>
             x.GetComponent<Player>()?.PlayerName?.Equals(Settings.autoPilotLeader, StringComparison.OrdinalIgnoreCase) == true);
@@ -214,6 +232,21 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         else
         {
             LogMessage($"AREA CHANGE: Leader entity NOT found immediately - will rely on AutoPilot's built-in detection");
+
+            // Additional debugging for leader search
+            var exactNameMatch = playerEntities.FirstOrDefault(x =>
+                string.Equals(x.GetComponent<Player>()?.PlayerName, Settings.autoPilotLeader, StringComparison.OrdinalIgnoreCase));
+            if (exactNameMatch != null)
+            {
+                LogMessage($"AREA CHANGE: Found exact name match but case-sensitive search failed - Name: '{exactNameMatch.GetComponent<Player>()?.PlayerName}'");
+            }
+
+            var partialMatch = playerEntities.FirstOrDefault(x =>
+                x.GetComponent<Player>()?.PlayerName?.ToLower().Contains(Settings.autoPilotLeader.Value.ToLower()) == true);
+            if (partialMatch != null)
+            {
+                LogMessage($"AREA CHANGE: Found partial name match - Name: '{partialMatch.GetComponent<Player>()?.PlayerName}'");
+            }
         }
     }
         
@@ -373,8 +406,37 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                     }
                 }
 
+                // Debug AutoPilot status
+                if (autoPilot != null)
+                {
+                    var followTarget = autoPilot.FollowTarget;
+                    LogMessage($"AUTOPILOT: Status - Running: {autoPilot.Running}, FollowTarget: {(followTarget != null ? followTarget.GetComponent<Player>()?.PlayerName ?? "Unknown" : "null")}, Distance: {(followTarget != null ? Vector3.Distance(playerPosition, followTarget.Pos).ToString("F1") : "N/A")}");
+
+                    // Debug movement status
+                    if (localPlayer != null)
+                    {
+                        var actor = localPlayer.GetComponent<Actor>();
+                        var isMoving = actor?.Animatable?.Velocity.Length() > 0.1f;
+                        LogMessage($"MOVEMENT: Player position: ({playerPosition.X:F1}, {playerPosition.Y:F1}), IsMoving: {isMoving}, Velocity: {(actor?.Animatable?.Velocity.Length() ?? 0):F2}");
+
+                        // Debug grace period status
+                        var hasGrace = buffs != null && buffs.Exists(x => x.Name == "grace_period");
+                        LogMessage($"GRACE: Has grace period: {hasGrace}, AutoPilot enabled: {Settings.autoPilotEnabled}, Grace removal enabled: {Settings.autoPilotGrace}");
+                    }
+                }
+                else
+                {
+                    LogMessage("AUTOPILOT: AutoPilot instance is null!");
+                }
+
                 autoPilot.UpdateAutoPilotLogic();
                 autoPilot.Render();
+
+                // Debug AutoPilot tasks after update
+                if (autoPilot != null)
+                {
+                    LogMessage($"AUTOPILOT: After update - Running: {autoPilot.Running}, Task count: {autoPilot.Tasks.Count}");
+                }
             }
             catch (Exception e)
             {
@@ -486,9 +548,26 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                 try
                 {
                     // Check if we have a party leader to follow
-                    var leaderPartyElement = PartyElements.GetPlayerInfoElementList()
+                    var partyMembers = PartyElements.GetPlayerInfoElementList();
+                    LogMessage($"PARTY: Checking for leader '{Settings.autoPilotLeader.Value}', Party members: {partyMembers.Count}");
+
+                    var leaderPartyElement = partyMembers
                         .FirstOrDefault(x => string.Equals(x?.PlayerName?.ToLower(),
                             Settings.autoPilotLeader.Value.ToLower(), StringComparison.CurrentCultureIgnoreCase));
+
+                    if (leaderPartyElement != null)
+                    {
+                        LogMessage($"PARTY: Found leader in party - Name: '{leaderPartyElement.PlayerName}', IsLeader: {leaderPartyElement.IsLeader}");
+                    }
+                    else
+                    {
+                        LogMessage("PARTY: Leader NOT found in party list");
+                        // Debug all party members
+                        foreach (var member in partyMembers)
+                        {
+                            LogMessage($"PARTY: Member - Name: '{member?.PlayerName}', IsLeader: {member?.IsLeader}");
+                        }
+                    }
 
                     if (leaderPartyElement != null)
                     {
