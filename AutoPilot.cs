@@ -119,19 +119,42 @@ namespace BetterFollowbotLite;
         try
         {
             // Look for portal entities near the leader's position
-            var portals = BetterFollowbotLite.Instance.GameController.Entities
-                .Where(e => e.Type == ExileCore.Shared.Enums.EntityType.Portal &&
-                           e.IsValid &&
-                           e.GetComponent<Positioned>() != null)
+            var allEntities = BetterFollowbotLite.Instance.GameController.Entities
+                .Where(e => e.IsValid && e.GetComponent<Positioned>() != null)
+                .ToList();
+
+            // Debug: Log all portal-type entities
+            var portalEntities = allEntities.Where(e => e.Type == ExileCore.Shared.Enums.EntityType.Portal).ToList();
+            BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Found {portalEntities.Count} portal entities total in zone");
+
+            foreach (var portal in portalEntities)
+            {
+                var pos = portal.GetComponent<Positioned>().GridPosition;
+                var distance = Vector3.Distance(new Vector3(pos.X, pos.Y, 0), leaderPosition);
+                BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Portal at ({pos.X:F0}, {pos.Y:F0}) - Distance: {distance:F0}");
+            }
+
+            // Also check for other entity types that might be portals
+            var possiblePortals = allEntities.Where(e =>
+                (e.Type == ExileCore.Shared.Enums.EntityType.Portal) &&
+                e.GetComponent<Positioned>() != null)
+                .ToList();
+
+            BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Found {possiblePortals.Count} portal entities");
+
+            var portals = possiblePortals
                 .Select(e => new
                 {
                     Entity = e,
                     Position = e.GetComponent<Positioned>().GridPosition,
-                    Distance = Vector3.Distance(new Vector3(e.GetComponent<Positioned>().GridPosition.X, e.GetComponent<Positioned>().GridPosition.Y, 0), leaderPosition)
+                    Distance = Vector3.Distance(new Vector3(e.GetComponent<Positioned>().GridPosition.X, e.GetComponent<Positioned>().GridPosition.Y, 0), leaderPosition),
+                    Type = e.Type.ToString()
                 })
-                .Where(p => p.Distance < 100) // Within 100 units of leader
+                .Where(p => p.Distance < 500) // Within 500 units of leader (increased range)
                 .OrderBy(p => p.Distance)
                 .ToList();
+
+            BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Found {portals.Count} portals within 500 units of leader");
 
             if (portals.Any())
             {
@@ -158,12 +181,110 @@ namespace BetterFollowbotLite;
             }
             else
             {
-                BetterFollowbotLite.Instance.LogMessage("PORTAL FOLLOW: No portals found near leader position - may need manual intervention");
+                BetterFollowbotLite.Instance.LogMessage("PORTAL FOLLOW: No portals found near leader position - trying fallback portal search");
+
+                // Fallback: Try to find portals using the existing portal search logic
+                TryFallbackPortalSearch();
             }
         }
         catch (Exception ex)
         {
             BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Error trying to follow through portal - {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Fallback portal search using the existing portal search logic
+    /// </summary>
+    private void TryFallbackPortalSearch()
+    {
+        try
+        {
+            // Use the existing portal search logic from the codebase
+            var portalLabels = BetterFollowbotLite.Instance.GameController.IngameState.IngameUi.Map.LargeMap.GetClientRectCache;
+            var portalElements = BetterFollowbotLite.Instance.GameController.IngameState.IngameUi.Map.LargeMap.Children
+                .Where(x => x != null && x.IsVisible)
+                .ToList();
+
+            BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Fallback search found {portalElements.Count} map elements");
+
+            // Look for portal-like elements
+            foreach (var element in portalElements)
+            {
+                if (element.Text != null && element.Text.Contains("Warden"))
+                {
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Found Warden's portal element: '{element.Text}'");
+
+                    var elementRect = element.GetClientRect();
+                    var clickPos = elementRect.Center;
+
+                    // Click on the portal
+                    Mouse.SetCursorPos(clickPos);
+                    System.Threading.Thread.Sleep(100);
+                    Mouse.LeftMouseDown();
+                    System.Threading.Thread.Sleep(50);
+                    Mouse.LeftMouseUp();
+
+                    BetterFollowbotLite.Instance.LogMessage("PORTAL FOLLOW: Clicked on Warden's portal via fallback method");
+                    return;
+                }
+            }
+
+            BetterFollowbotLite.Instance.LogMessage("PORTAL FOLLOW: No Warden's portal found in fallback search");
+
+            // Additional fallback: Try to find portals by scanning the screen for portal-like elements
+            TryScreenPortalSearch();
+        }
+        catch (Exception ex)
+        {
+            BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Error in fallback portal search - {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Additional fallback: Search for portals by scanning screen elements
+    /// </summary>
+    private void TryScreenPortalSearch()
+    {
+        try
+        {
+            // Look for portal elements in the UI
+            var uiElements = BetterFollowbotLite.Instance.GameController.IngameState.IngameUi.Children
+                .Where(x => x != null && x.IsVisible)
+                .ToList();
+
+            BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Screen search found {uiElements.Count} UI elements");
+
+            // Look for elements that might be portals (containing "Warden" or "Portal" text)
+            foreach (var element in uiElements)
+            {
+                if (element.Text != null &&
+                    (element.Text.Contains("Warden") ||
+                     element.Text.Contains("Portal") ||
+                     element.Text.Contains("Quarters")))
+                {
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Found portal element on screen: '{element.Text}'");
+
+                    var elementRect = element.GetClientRect();
+                    var clickPos = elementRect.Center;
+
+                    // Click on the portal
+                    Mouse.SetCursorPos(clickPos);
+                    System.Threading.Thread.Sleep(100);
+                    Mouse.LeftMouseDown();
+                    System.Threading.Thread.Sleep(50);
+                    Mouse.LeftMouseUp();
+
+                    BetterFollowbotLite.Instance.LogMessage("PORTAL FOLLOW: Clicked on portal via screen search method");
+                    return;
+                }
+            }
+
+            BetterFollowbotLite.Instance.LogMessage("PORTAL FOLLOW: No portals found in screen search - manual intervention may be required");
+        }
+        catch (Exception ex)
+        {
+            BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Error in screen portal search - {ex.Message}");
         }
     }
 
