@@ -127,7 +127,7 @@ namespace BetterFollowbotLite;
                 {
                     Entity = e,
                     Position = e.GetComponent<Positioned>().GridPosition,
-                    Distance = Vector3.Distance(e.GetComponent<Positioned>().GridPosition, leaderPosition)
+                    Distance = Vector3.Distance(new Vector3(e.GetComponent<Positioned>().GridPosition.X, e.GetComponent<Positioned>().GridPosition.Y, 0), leaderPosition)
                 })
                 .Where(p => p.Distance < 100) // Within 100 units of leader
                 .OrderBy(p => p.Distance)
@@ -139,7 +139,8 @@ namespace BetterFollowbotLite;
                 BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Found portal {closestPortal.Distance:F1} units from leader - attempting to follow through");
 
                 // Get the portal's screen position for clicking
-                var portalPos = closestPortal.Entity.GetComponent<Positioned>().GridPosition;
+                var portalGridPos = closestPortal.Entity.GetComponent<Positioned>().GridPosition;
+                var portalPos = new Vector3(portalGridPos.X, portalGridPos.Y, 0);
                 var screenPos = BetterFollowbotLite.Instance.GameController.IngameState.Camera.WorldToScreen(portalPos);
 
                 // Add a task to click on the portal
