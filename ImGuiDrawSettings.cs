@@ -279,9 +279,9 @@ internal class ImGuiDrawSettings
 
                 if (ImGui.Button("Test Toggle"))
                 {
-                    var oldValue = BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value;
-                    BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value = !oldValue;
-                    BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Test toggled from {oldValue} to {BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value}");
+                    var testOldValue = BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value;
+                    BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value = !testOldValue;
+                    BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Test toggled from {testOldValue} to {BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value}");
                 }
             }
         }
