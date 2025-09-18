@@ -46,6 +46,7 @@ namespace BetterFollowbotLite;
 
     /// <summary>
     /// Checks if the cursor is pointing roughly towards the target direction in screen space
+    /// Improved to handle off-screen targets
     /// </summary>
     private bool IsCursorPointingTowardsTarget(Vector3 targetPosition)
     {
@@ -57,9 +58,44 @@ namespace BetterFollowbotLite;
             // Get the player's screen position
             var playerScreenPos = Helper.WorldToValidScreenPosition(BetterFollowbotLite.Instance.playerPosition);
 
-            // Get the target's screen position
+            // Get the target's screen position - handle off-screen targets
             var targetScreenPos = Helper.WorldToValidScreenPosition(targetPosition);
 
+            // If target is off-screen, calculate direction based on world positions
+            if (targetScreenPos.X < 0 || targetScreenPos.Y < 0 ||
+                targetScreenPos.X > BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().Width ||
+                targetScreenPos.Y > BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().Height)
+            {
+                // For off-screen targets, calculate direction from world positions
+                var playerWorldPos = BetterFollowbotLite.Instance.playerPosition;
+                var directionToTarget = targetPosition - playerWorldPos;
+
+                if (directionToTarget.Length() < 10) // Target is very close in world space
+                    return true;
+
+                directionToTarget.Normalize();
+
+                // Convert world direction to screen space approximation
+                // This is a simplified approximation - we assume forward direction is towards positive X in screen space
+                var screenDirection = new Vector2(directionToTarget.X, -directionToTarget.Z); // Z is depth, flip for screen Y
+                screenDirection.Normalize();
+
+                // Calculate direction from player to cursor in screen space
+                var playerToCursor = mouseScreenPos - playerScreenPos;
+                if (playerToCursor.Length() < 30) // Cursor is too close to player in screen space
+                    return false; // Can't determine direction reliably
+
+                playerToCursor.Normalize();
+
+                // Calculate the angle between the two directions
+                var dotProduct = Vector2.Dot(screenDirection, playerToCursor);
+                var angle = Math.Acos(Math.Max(-1, Math.Min(1, dotProduct))) * (180.0 / Math.PI);
+
+                // Allow up to 90 degrees difference for off-screen targets (more lenient)
+                return angle <= 90.0;
+            }
+
+            // Original logic for on-screen targets
             // Calculate the direction from player to target in screen space
             var playerToTarget = targetScreenPos - playerScreenPos;
             if (playerToTarget.Length() < 20) // Target is too close in screen space
@@ -83,6 +119,7 @@ namespace BetterFollowbotLite;
         }
         catch (Exception e)
         {
+            BetterFollowbotLite.Instance.LogMessage($"IsCursorPointingTowardsTarget error: {e.Message}");
             return false; // Default to false if we can't determine direction
         }
     }
@@ -730,13 +767,31 @@ namespace BetterFollowbotLite;
                 TaskNode currentTask = null;
                 bool taskAccessError = false;
 
-                try
+                // PRIORITY: Check if there are any teleport tasks and process them first
+                var teleportTasks = tasks.Where(t => t.Type == TaskNodeType.TeleportConfirm || t.Type == TaskNodeType.TeleportButton);
+                if (teleportTasks.Any())
                 {
-                    currentTask = tasks.First();
+                    try
+                    {
+                        currentTask = teleportTasks.First();
+                        BetterFollowbotLite.Instance.LogMessage($"PRIORITY: Processing teleport task {currentTask.Type} instead of {tasks.First().Type}");
+                    }
+                    catch (Exception e)
+                    {
+                        taskAccessError = true;
+                        BetterFollowbotLite.Instance.LogMessage($"PRIORITY: Error accessing teleport task - {e.Message}");
+                    }
                 }
-                catch (Exception e)
+                else
                 {
-                    taskAccessError = true;
+                    try
+                    {
+                        currentTask = tasks.First();
+                    }
+                    catch (Exception e)
+                    {
+                        taskAccessError = true;
+                    }
                 }
 
                 if (taskAccessError)
@@ -747,7 +802,8 @@ namespace BetterFollowbotLite;
 
                 if (currentTask?.WorldPosition == null)
                 {
-                    tasks.RemoveAt(0);
+                    // Remove the task from its actual position, not just index 0
+                    tasks.Remove(currentTask);
                     yield return new WaitTime(50);
                     continue;
                 }
@@ -768,14 +824,16 @@ namespace BetterFollowbotLite;
 
                         if (instantDistanceToLeader > 1000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 700 to 1000
                         {
-                            // CRITICAL: Don't add dash tasks if we have an active transition task
-                            if (!tasks.Any(t => t.Type == TaskNodeType.Transition))
+                            // CRITICAL: Don't add dash tasks if we have an active transition task OR another dash task
+                            var hasConflictingTasks = tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
+                            if (!hasConflictingTasks)
                             {
                                 tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
+                                BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Added dash task for distance {instantDistanceToLeader:F1}");
                             }
                             else
                             {
-                                BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Skipping instant dash task - transition task active");
+                                BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Skipping dash task - conflicting task active ({tasks.Count(t => t.Type == TaskNodeType.Dash)} dash tasks, {tasks.Count(t => t.Type == TaskNodeType.Transition)} transition tasks)");
                             }
                         }
                         else
@@ -801,14 +859,16 @@ namespace BetterFollowbotLite;
 
                         if (instantDistanceToLeader > 1000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 700 to 1000
                         {
-                            // CRITICAL: Don't add dash tasks if we have an active transition task
-                            if (!tasks.Any(t => t.Type == TaskNodeType.Transition))
+                            // CRITICAL: Don't add dash tasks if we have an active transition task OR another dash task
+                            var hasConflictingTasks = tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
+                            if (!hasConflictingTasks)
                             {
                                 tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
+                                BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Added dash task for distance {instantDistanceToLeader:F1}");
                             }
                             else
                             {
-                                BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Skipping instant dash task - transition task active");
+                                BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Skipping dash task - conflicting task active ({tasks.Count(t => t.Type == TaskNodeType.Dash)} dash tasks, {tasks.Count(t => t.Type == TaskNodeType.Transition)} transition tasks)");
                             }
                         }
                         else
@@ -825,7 +885,7 @@ namespace BetterFollowbotLite;
                 if (currentTask.Type == TaskNodeType.Transition &&
                     playerDistanceMoved >= BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance.Value)
                 {
-                    tasks.RemoveAt(0);
+                    tasks.Remove(currentTask);
                     lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
                     yield return null;
                     continue;
@@ -1002,7 +1062,7 @@ namespace BetterFollowbotLite;
                                     if (taskDistance <= BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value * 1.5)
                                     {
                                         BetterFollowbotLite.Instance.LogMessage($"Movement task completed - Distance: {taskDistance:F1}");
-                                        tasks.RemoveAt(0);
+                                        tasks.Remove(currentTask);
                                         lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
                                     }
                                     else
@@ -1012,7 +1072,7 @@ namespace BetterFollowbotLite;
                                         if (currentTask.AttemptCount > 10) // 10 attempts = ~5 seconds
                                         {
                                             BetterFollowbotLite.Instance.LogMessage($"Movement task timeout - Distance: {taskDistance:F1}, Attempts: {currentTask.AttemptCount}");
-                                            tasks.RemoveAt(0);
+                                            tasks.Remove(currentTask);
                                             lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
                                         }
                                     }
@@ -1029,7 +1089,7 @@ namespace BetterFollowbotLite;
                                 || Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, questLoot.Pos) >=
                                 BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance.Value)
                             {
-                                tasks.RemoveAt(0);
+                                tasks.Remove(currentTask);
                                 shouldLootAndContinue = true;
                             }
                             else
@@ -1066,7 +1126,7 @@ namespace BetterFollowbotLite;
                             if (!isPortalVisible || !isPortalValid)
                             {
                                 BetterFollowbotLite.Instance.LogMessage("TRANSITION: Portal no longer visible or valid, removing task");
-                                tasks.RemoveAt(0);
+                                tasks.Remove(currentTask);
                                 shouldTransitionAndContinue = false; // Don't continue with transition
                                 break; // Exit the switch case
                             }
@@ -1085,7 +1145,7 @@ namespace BetterFollowbotLite;
                             if (currentTask.AttemptCount > 6)
                             {
                                 BetterFollowbotLite.Instance.LogMessage("TRANSITION: Max attempts reached (6), removing transition task");
-                                tasks.RemoveAt(0);
+                                tasks.Remove(currentTask);
                             }
                             else
                             {
@@ -1104,42 +1164,124 @@ namespace BetterFollowbotLite;
                             }
                             currentTask.AttemptCount++;
                             if (currentTask.AttemptCount > 3)
-                                tasks.RemoveAt(0);
+                                tasks.Remove(currentTask);
                             shouldClaimWaypointAndContinue = true;
                             break;
                         }
 
                          case TaskNodeType.Dash:
                          {
-                             BetterFollowbotLite.Instance.LogMessage($"Executing Dash task - Target: {currentTask.WorldPosition}, Distance: {Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, currentTask.WorldPosition):F1}");
-                             if (CanDash() && IsCursorPointingTowardsTarget(currentTask.WorldPosition))
+                             BetterFollowbotLite.Instance.LogMessage($"Executing Dash task - Target: {currentTask.WorldPosition}, Distance: {Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, currentTask.WorldPosition):F1}, Attempts: {currentTask.AttemptCount}");
+
+                             // TIMEOUT MECHANISM: If dash task has been tried too many times, give up
+                             currentTask.AttemptCount++;
+                             if (currentTask.AttemptCount > 15) // Allow more attempts for dash tasks
                              {
-                                 tasks.RemoveAt(0);
-                                 lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
-                                 BetterFollowbotLite.Instance.LogMessage("Dash task completed successfully - Cursor direction valid");
-                                 shouldDashAndContinue = true;
+                                 BetterFollowbotLite.Instance.LogMessage($"Dash task timeout - Too many attempts ({currentTask.AttemptCount}), removing task");
+                                 tasks.Remove(currentTask);
+                                 break;
                              }
-                             else if (!CanDash())
+
+                             if (CanDash())
+                             {
+                                 // Check if cursor is pointing towards target
+                                 if (IsCursorPointingTowardsTarget(currentTask.WorldPosition))
+                                 {
+                                     BetterFollowbotLite.Instance.LogMessage("Dash task: Cursor direction valid, executing dash");
+
+                                     // Position mouse towards target if needed
+                                     var targetScreenPos = Helper.WorldToValidScreenPosition(currentTask.WorldPosition);
+                                     if (targetScreenPos.X >= 0 && targetScreenPos.Y >= 0 &&
+                                         targetScreenPos.X <= BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().Width &&
+                                         targetScreenPos.Y <= BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().Height)
+                                     {
+                                         // Target is on-screen, position mouse
+                                         yield return Mouse.SetCursorPosHuman(targetScreenPos);
+                                     }
+
+                                     // Execute the dash
+                                     Keyboard.KeyPress(BetterFollowbotLite.Instance.Settings.autoPilotDashKey);
+                                     lastDashTime = DateTime.Now; // Record dash time for cooldown
+                                     lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
+
+                                     // Remove the task since dash was executed
+                                     tasks.Remove(currentTask);
+                                     BetterFollowbotLite.Instance.LogMessage("Dash task completed successfully");
+                                     shouldDashAndContinue = true;
+                                 }
+                                 else
+                                 {
+                                     BetterFollowbotLite.Instance.LogMessage("Dash task: Cursor not pointing towards target, positioning cursor");
+
+                                     // Try to position cursor towards the target
+                                     var targetScreenPos = Helper.WorldToValidScreenPosition(currentTask.WorldPosition);
+
+                                     // If target is off-screen, position towards the edge of screen in the target's direction
+                                     if (targetScreenPos.X < 0 || targetScreenPos.Y < 0 ||
+                                         targetScreenPos.X > BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().Width ||
+                                         targetScreenPos.Y > BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().Height)
+                                     {
+                                         // Calculate direction to target and position mouse at screen edge
+                                         var playerPos = BetterFollowbotLite.Instance.playerPosition;
+                                         var directionToTarget = currentTask.WorldPosition - playerPos;
+                                         directionToTarget.Normalize();
+
+                                         // Position mouse at screen center (simplified approach)
+                                         var screenCenter = new Vector2(
+                                             BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().Width / 2,
+                                             BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().Height / 2
+                                         );
+
+                                         yield return Mouse.SetCursorPosHuman(screenCenter);
+                                         BetterFollowbotLite.Instance.LogMessage("Dash task: Positioned cursor at screen center for off-screen target");
+                                     }
+                                     else
+                                     {
+                                         // Target is on-screen but cursor isn't pointing towards it
+                                         yield return Mouse.SetCursorPosHuman(targetScreenPos);
+                                         BetterFollowbotLite.Instance.LogMessage("Dash task: Repositioned cursor towards target");
+                                     }
+
+                                     // Wait a bit for cursor to settle
+                                     yield return new WaitTime(100);
+
+                                     // Check again if cursor is now pointing towards target
+                                     if (IsCursorPointingTowardsTarget(currentTask.WorldPosition))
+                                     {
+                                         BetterFollowbotLite.Instance.LogMessage("Dash task: Cursor now pointing correctly, executing dash");
+                                         Keyboard.KeyPress(BetterFollowbotLite.Instance.Settings.autoPilotDashKey);
+                                         lastDashTime = DateTime.Now;
+                                         lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
+                                         tasks.Remove(currentTask);
+                                         shouldDashAndContinue = true;
+                                     }
+                                     else
+                                     {
+                                         BetterFollowbotLite.Instance.LogMessage("Dash task: Still can't position cursor correctly, will retry");
+                                         // Don't remove the task - let it try again later
+                                         yield return new WaitTime(300); // Longer delay before retry
+                                     }
+                                 }
+                             }
+                             else
                              {
                                  BetterFollowbotLite.Instance.LogMessage("Dash task blocked - Cooldown active");
-                             }
-                             else if (!IsCursorPointingTowardsTarget(currentTask.WorldPosition))
-                             {
-                                 BetterFollowbotLite.Instance.LogMessage("Dash task blocked - Cursor not pointing towards target");
+                                 // Don't remove the task - wait for cooldown to expire
+                                 yield return new WaitTime(600); // Wait before retry during cooldown
                              }
                              break;
                          }
 
                         case TaskNodeType.TeleportConfirm:
                         {
-                            tasks.RemoveAt(0);
+                            tasks.Remove(currentTask);
                             shouldTeleportConfirmAndContinue = true;
                             break;
                         }
 
                         case TaskNodeType.TeleportButton:
                         {
-                            tasks.RemoveAt(0);
+                            tasks.Remove(currentTask);
                             // CLEAR GLOBAL FLAG: Teleport task completed
                             IsTeleportInProgress = false;
                             shouldTeleportButtonAndContinue = true;
@@ -1157,9 +1299,9 @@ namespace BetterFollowbotLite;
                 if (taskExecutionError)
                 {
                     // Remove the problematic task and continue
-                    if (tasks.Count > 0)
+                    if (tasks.Count > 0 && currentTask != null)
                     {
-                        tasks.RemoveAt(0);
+                        tasks.Remove(currentTask);
                     }
                 }
 
@@ -1596,14 +1738,16 @@ namespace BetterFollowbotLite;
 
                         if (instantDistanceToLeader > 1000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 700 to 1000
                         {
-                            // CRITICAL: Don't add dash tasks if we have an active transition task
-                            if (!tasks.Any(t => t.Type == TaskNodeType.Transition))
+                            // CRITICAL: Don't add dash tasks if we have an active transition task OR another dash task
+                            var hasConflictingTasks = tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
+                            if (!hasConflictingTasks)
                             {
                                 tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
+                                BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Added dash task for distance {instantDistanceToLeader:F1}");
                             }
                             else
                             {
-                                BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Skipping instant dash task - transition task active");
+                                BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Skipping dash task - conflicting task active ({tasks.Count(t => t.Type == TaskNodeType.Dash)} dash tasks, {tasks.Count(t => t.Type == TaskNodeType.Transition)} transition tasks)");
                             }
                         }
                         else
@@ -1636,14 +1780,16 @@ namespace BetterFollowbotLite;
 
                         if (instantDistanceToLeader > 1000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 700 to 1000
                         {
-                            // CRITICAL: Don't add dash tasks if we have an active transition task
-                            if (!tasks.Any(t => t.Type == TaskNodeType.Transition))
+                            // CRITICAL: Don't add dash tasks if we have an active transition task OR another dash task
+                            var hasConflictingTasks = tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
+                            if (!hasConflictingTasks)
                             {
                                 tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
+                                BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Added dash task for distance {instantDistanceToLeader:F1}");
                             }
                             else
                             {
-                                BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Skipping instant dash task - transition task active");
+                                BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Skipping dash task - conflicting task active ({tasks.Count(t => t.Type == TaskNodeType.Dash)} dash tasks, {tasks.Count(t => t.Type == TaskNodeType.Transition)} transition tasks)");
                             }
                         }
                         else
@@ -1832,21 +1978,22 @@ namespace BetterFollowbotLite;
                             // If very far away, add dash task instead of movement task
                             if (distanceToLeader > 1000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 700 to 1000
                             {
-                                // CRITICAL: Don't add dash tasks if we have any active transition-related task OR teleport in progress
-                                var shouldSkipDashTasks = tasks.Any(t =>
-                                    t.Type == TaskNodeType.Transition ||
-                                    t.Type == TaskNodeType.TeleportConfirm ||
-                                    t.Type == TaskNodeType.TeleportButton);
+                            // CRITICAL: Don't add dash tasks if we have any active transition-related task OR another dash task OR teleport in progress
+                            var shouldSkipDashTasks = tasks.Any(t =>
+                                t.Type == TaskNodeType.Transition ||
+                                t.Type == TaskNodeType.TeleportConfirm ||
+                                t.Type == TaskNodeType.TeleportButton ||
+                                t.Type == TaskNodeType.Dash);
 
-                                if (shouldSkipDashTasks || IsTeleportInProgress)
-                                {
-                                    BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Skipping dash task creation - transition/teleport active ({tasks.Count} tasks, teleport={IsTeleportInProgress})");
-                                }
-                                else
-                                {
-                                    BetterFollowbotLite.Instance.LogMessage($"Adding Dash task - Distance: {distanceToLeader:F1}, Dash enabled: {BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled}");
-                                    tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
-                                }
+                            if (shouldSkipDashTasks || IsTeleportInProgress)
+                            {
+                                BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Skipping dash task creation - conflicting tasks active ({tasks.Count(t => t.Type == TaskNodeType.Dash)} dash tasks, {tasks.Count(t => t.Type == TaskNodeType.Transition)} transition tasks, teleport={IsTeleportInProgress})");
+                            }
+                            else
+                            {
+                                BetterFollowbotLite.Instance.LogMessage($"Adding Dash task - Distance: {distanceToLeader:F1}, Dash enabled: {BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled}");
+                                tasks.Add(new TaskNode(followTarget.Pos, 0, TaskNodeType.Dash));
+                            }
                             }
                             else
                             {
