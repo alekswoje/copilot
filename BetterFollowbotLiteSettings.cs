@@ -89,6 +89,7 @@ public class BetterFollowbotLiteSettings : ISettings
     // SRS (Summon Raging Spirits) settings
     public ToggleNode summonRagingSpiritsEnabled = new ToggleNode(false);
     public RangeNode<int> summonRagingSpiritsMinCount = new RangeNode<int>(10, 1, 15);
+    public ToggleNode summonRagingSpiritsMagicNormal = new ToggleNode(false);
 
     #endregion
 

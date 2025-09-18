@@ -789,7 +789,16 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                             if (rarityComponent != null)
                                             {
                                                 var rarity = rarityComponent.Rarity;
+
+                                                // Always check for rare/unique
                                                 if (rarity == MonsterRarity.Unique || rarity == MonsterRarity.Rare)
+                                                {
+                                                    rareOrUniqueNearby = true;
+                                                    break;
+                                                }
+                                                // Also check for magic/normal if enabled
+                                                else if (Settings.summonRagingSpiritsMagicNormal.Value &&
+                                                        (rarity == MonsterRarity.Magic || rarity == MonsterRarity.Normal))
                                                 {
                                                     rareOrUniqueNearby = true;
                                                     break;
@@ -808,7 +817,8 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
                                     if (summonRagingSpiritsSkill != null && summonRagingSpiritsSkill.IsOnSkillBar && summonRagingSpiritsSkill.CanBeUsed)
                                     {
-                                        BetterFollowbotLite.Instance.LogMessage($"SRS: Current minions: {totalMinionCount}, Required: {Settings.summonRagingSpiritsMinCount.Value}, Distance to leader: {distanceToLeader:F1}, Rare/Unique enemy detected");
+                                        var enemyType = Settings.summonRagingSpiritsMagicNormal.Value ? "Rare/Unique/Magic/Normal" : "Rare/Unique";
+                                        BetterFollowbotLite.Instance.LogMessage($"SRS: Current minions: {totalMinionCount}, Required: {Settings.summonRagingSpiritsMinCount.Value}, Distance to leader: {distanceToLeader:F1}, {enemyType} enemy detected");
 
                                         // Use the Summon Raging Spirits skill
                                         Keyboard.KeyPress(GetSkillInputKey(summonRagingSpiritsSkill.SkillSlotIndex));
