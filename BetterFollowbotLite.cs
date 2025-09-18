@@ -385,15 +385,28 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
                             if (timeSinceLastAction > 0.2) // Very fast cooldown for immediate grace removal
                             {
-                                // Move mouse to random position near center (±35 pixels) before pressing move key
+                                // Move mouse to random position near center (±35 pixels, excluding -5 to +5 dead zone) before pressing move key
                                 var screenRect = GameController.Window.GetWindowRectangle();
                                 var screenCenterX = screenRect.Width / 2;
                                 var screenCenterY = screenRect.Height / 2;
 
-                                // Add random offset of ±35 pixels
+                                // Add random offset of ±35 pixels (excluding -5 to +5 dead zone)
                                 var random = new Random();
-                                var randomOffsetX = random.Next(-35, 36); // -35 to +35
-                                var randomOffsetY = random.Next(-35, 36); // -35 to +35
+                                int randomOffsetX, randomOffsetY;
+
+                                // Generate X offset excluding -5 to +5 range
+                                do
+                                {
+                                    randomOffsetX = random.Next(-35, 36); // -35 to +35
+                                }
+                                while (randomOffsetX >= -5 && randomOffsetX <= 5); // Exclude -5 to +5
+
+                                // Generate Y offset excluding -5 to +5 range
+                                do
+                                {
+                                    randomOffsetY = random.Next(-35, 36); // -35 to +35
+                                }
+                                while (randomOffsetY >= -5 && randomOffsetY <= 5); // Exclude -5 to +5
 
                                 var targetX = screenCenterX + randomOffsetX;
                                 var targetY = screenCenterY + randomOffsetY;
