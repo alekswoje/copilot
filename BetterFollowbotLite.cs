@@ -557,7 +557,11 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
             var timeSinceLastAttempt = (DateTime.Now - lastAutoJoinPartyAttempt).TotalSeconds;
             if (Settings.autoJoinPartyEnabled && timeSinceLastAttempt >= 0.5 && Gcd())
             {
-                BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Starting attempt (cooldown: {timeSinceLastAttempt:F1}s)");
+                // Only log every 10 seconds to avoid spam
+                if (timeSinceLastAttempt >= 10.0 || lastAutoJoinPartyAttempt == DateTime.MinValue)
+                {
+                    BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Active - checking for party invites");
+                }
                 try
                 {
                     // Check if player is already in a party - if so, don't accept invites
@@ -566,10 +570,10 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
                     if (isInParty)
                     {
-                        // Only log this occasionally to avoid spam (every 5 seconds)
-                        if (timeSinceLastAttempt >= 5.0)
+                        // Only log this occasionally to avoid spam (every 15 seconds)
+                        if (timeSinceLastAttempt >= 15.0)
                         {
-                            BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Player already in party ({partyElement.Count} members) - skipping invite acceptance");
+                            BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Player already in party ({partyElement.Count} members)");
                         }
                         // Still update the cooldown to prevent spam
                         lastAutoJoinPartyAttempt = DateTime.Now;
@@ -580,7 +584,8 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                     var invitesPanel = GameController.IngameState.IngameUi.InvitesPanel;
                     if (invitesPanel != null && invitesPanel.IsVisible)
                     {
-                        BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Invites panel detected, attempting to accept party invite");
+                        // Only log when we actually find an invite (less frequent)
+                        BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Party invite detected - attempting to accept");
 
                         // Get the children for navigation
                         var children = invitesPanel.Children;
@@ -631,12 +636,10 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
                                             if (joinedParty)
                                             {
-                                                BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Click successful - joined party!");
+                                                BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Successfully joined party!");
                                             }
                                             else
                                             {
-                                                BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: First click didn't work, attempting second click");
-
                                                 // Second click attempt with longer delay
                                                 System.Threading.Thread.Sleep(600);
                                                 Mouse.LeftMouseDown();
@@ -650,11 +653,16 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
                                                 if (joinedParty)
                                                 {
-                                                    BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Second click successful - joined party!");
+                                                    BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Successfully joined party on second attempt!");
                                                 }
                                                 else
                                                 {
-                                                    BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Both clicks failed - still not in party");
+                                                    // Only log failures occasionally to avoid spam
+                                                    var timeSinceLastFailure = (DateTime.Now - lastAutoJoinPartyAttempt).TotalSeconds;
+                                                    if (timeSinceLastFailure >= 30.0)
+                                                    {
+                                                        BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Failed to join party - may need manual intervention");
+                                                    }
                                                 }
                                             }
                                         }
@@ -666,32 +674,54 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                         // Update cooldowns
                                         lastTimeAny = DateTime.Now;
                                         lastAutoJoinPartyAttempt = DateTime.Now;
-
-                                        BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Party invite acceptance attempt completed");
                                     }
                                     else
                                     {
-                                        BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Accept button not found or not visible");
+                                        // Only log button not found occasionally to avoid spam
+                                        var timeSinceLastLog = (DateTime.Now - lastAutoJoinPartyAttempt).TotalSeconds;
+                                        if (timeSinceLastLog >= 20.0)
+                                        {
+                                            BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Accept button not found or not visible");
+                                        }
                                     }
                                 }
                                 else
                                 {
-                                    BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: UI hierarchy navigation failed at second child");
+                                    // Only log navigation failures occasionally to avoid spam
+                                    var timeSinceLastLog = (DateTime.Now - lastAutoJoinPartyAttempt).TotalSeconds;
+                                    if (timeSinceLastLog >= 30.0)
+                                    {
+                                        BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: UI hierarchy navigation failed");
+                                    }
                                 }
                             }
                             else
                             {
-                                BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: UI hierarchy navigation failed at first child");
+                                var timeSinceLastLog = (DateTime.Now - lastAutoJoinPartyAttempt).TotalSeconds;
+                                if (timeSinceLastLog >= 30.0)
+                                {
+                                    BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: UI hierarchy navigation failed");
+                                }
                             }
                         }
                         else
                         {
-                            BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Invites panel has no children");
+                            var timeSinceLastLog = (DateTime.Now - lastAutoJoinPartyAttempt).TotalSeconds;
+                            if (timeSinceLastLog >= 30.0)
+                            {
+                                BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Invites panel has no children");
+                            }
                         }
                     }
                     else
                     {
-                        BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Invites panel not found or not visible");
+                        // Don't log when no invites are present - this is normal operation
+                        // Only log occasionally if there might be an issue
+                        var timeSinceLastLog = (DateTime.Now - lastAutoJoinPartyAttempt).TotalSeconds;
+                        if (timeSinceLastLog >= 60.0) // Log once per minute when no invites
+                        {
+                            BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: No party invites detected");
+                        }
                     }
                 }
                 catch (Exception e)
