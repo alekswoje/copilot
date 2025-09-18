@@ -267,16 +267,14 @@ internal class ImGuiDrawSettings
             {
                 BetterFollowbotLite.Instance.LogMessage("AUTO LEVEL GEMS: UI section rendering");
 
-                bool oldValue = BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value;
-                BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Before checkbox - oldValue: {oldValue}");
+                // Try using direct ImGui.Checkbox instead of ImGuiExtension.Checkbox
+                bool currentValue = BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value;
+                BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Before direct checkbox - currentValue: {currentValue}");
 
-                bool newValue = ImGuiExtension.Checkbox("Auto Level Gems", oldValue);
-                BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: After checkbox - newValue: {newValue}");
-
-                if (newValue != oldValue)
+                if (ImGui.Checkbox("Auto Level Gems", ref currentValue))
                 {
-                    BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Checkbox changed from {oldValue} to {newValue}");
-                    BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value = newValue;
+                    BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Direct checkbox clicked - new value: {currentValue}");
+                    BetterFollowbotLite.Instance.Settings.autoLevelGemsEnabled.Value = currentValue;
                 }
 
                 // Debug: Show current value
@@ -304,16 +302,14 @@ internal class ImGuiDrawSettings
             {
                 BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: UI section rendering");
 
-                bool oldValue = BetterFollowbotLite.Instance.Settings.autoJoinPartyEnabled.Value;
-                BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Before checkbox - oldValue: {oldValue}");
+                // Try using direct ImGui.Checkbox instead of ImGuiExtension.Checkbox
+                bool currentValue = BetterFollowbotLite.Instance.Settings.autoJoinPartyEnabled.Value;
+                BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Before direct checkbox - currentValue: {currentValue}");
 
-                bool newValue = ImGuiExtension.Checkbox("Auto Join Party Invites", oldValue);
-                BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: After checkbox - newValue: {newValue}");
-
-                if (newValue != oldValue)
+                if (ImGui.Checkbox("Auto Join Party Invites", ref currentValue))
                 {
-                    BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Checkbox changed from {oldValue} to {newValue}");
-                    BetterFollowbotLite.Instance.Settings.autoJoinPartyEnabled.Value = newValue;
+                    BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Direct checkbox clicked - new value: {currentValue}");
+                    BetterFollowbotLite.Instance.Settings.autoJoinPartyEnabled.Value = currentValue;
                 }
 
                 // Debug: Show current value
