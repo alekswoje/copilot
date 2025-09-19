@@ -2363,14 +2363,14 @@ namespace BetterFollowbotLite;
 
                         try
                         {
-                            // Use the label position for clicking (this matches what the visualization uses)
-                            var labelRect = selectedPortal.Label.GetClientRectCache;
-                            var clickPos = new Vector2(
-                                labelRect.Left + (labelRect.Width / 2),  // Center X of label
-                                labelRect.Top + (labelRect.Height / 2)   // Center Y of label
-                            );
+                            // Use the world position and convert to screen coordinates for clicking
+                            var screenPos = BetterFollowbotLite.Instance.GameController.IngameState.Camera.WorldToScreen(selectedPortal.Position);
+                            BetterFollowbotLite.Instance.LogMessage($"PORTAL: Portal screen position: ({screenPos.X:F0}, {screenPos.Y:F0})");
 
-                            BetterFollowbotLite.Instance.LogMessage($"PORTAL: Clicking at label center position ({clickPos.X:F0}, {clickPos.Y:F0})");
+                            // Add offset to click slightly above the portal (where the label usually is)
+                            var clickPos = new Vector2(screenPos.X, screenPos.Y - 20);
+
+                            BetterFollowbotLite.Instance.LogMessage($"PORTAL: Clicking at adjusted position ({clickPos.X:F0}, {clickPos.Y:F0})");
 
                             if (clickPos.X >= 0 && clickPos.Y >= 0 && clickPos.X <= 1920 && clickPos.Y <= 1080)
                             {
