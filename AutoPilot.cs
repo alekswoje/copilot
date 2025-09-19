@@ -1203,7 +1203,8 @@ namespace BetterFollowbotLite;
 
                 var allPortalLabels =
                     BetterFollowbotLite.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels.Where(x =>
-                            x != null && x.IsVisible && x.Label != null && x.Label.IsValid && x.Label.IsVisible && x.ItemOnGround != null &&
+                            x != null && x.IsVisible && x.Label != null && x.Label.IsValid && x.Label.IsVisible &&
+                            x.ItemOnGround != null && x.ItemOnGround.Metadata != null &&
                             (x.ItemOnGround.Metadata.ToLower().Contains("areatransition") || x.ItemOnGround.Metadata.ToLower().Contains("portal") ))
                         .ToList();
 
@@ -1488,7 +1489,7 @@ namespace BetterFollowbotLite;
     }
     private IEnumerator MouseoverItem(Entity item)
     {
-        var uiLoot = BetterFollowbotLite.Instance.GameController.IngameState.IngameUi.ItemsOnGroundLabels.FirstOrDefault(I => I.IsVisible && I.ItemOnGround.Id == item.Id);
+        var uiLoot = BetterFollowbotLite.Instance.GameController.IngameState.IngameUi.ItemsOnGroundLabels.FirstOrDefault(I => I != null && I.IsVisible && I.ItemOnGround != null && I.ItemOnGround.Id == item.Id);
         if (uiLoot == null) yield return null;
         var clickPos = uiLoot?.Label?.GetClientRect().Center;
         if (clickPos != null)
@@ -2417,12 +2418,13 @@ namespace BetterFollowbotLite;
                     // Find portals using the same method as the visualization (this is proven to work)
                     var portalLabels = BetterFollowbotLite.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels.Where(x =>
                         x != null && x.IsVisible && x.Label != null && x.Label.IsValid && x.Label.IsVisible &&
-                        x.ItemOnGround != null &&
+                        x.ItemOnGround != null && x.ItemOnGround.Metadata != null &&
                         (x.ItemOnGround.Metadata.ToLower().Contains("areatransition") ||
                          x.ItemOnGround.Metadata.ToLower().Contains("portal"))).ToList();
 
                     // Find portals near the leader's pre-portal position (where the portal actually is)
                     var portalsNearLeader = portalLabels?
+                        .Where(label => label != null && label.ItemOnGround != null && label.ItemOnGround.Pos != null)
                         .Select(label => {
                             var distance = Vector3.Distance(portalLocation, label.ItemOnGround.Pos);
                             var portalText = label.Label?.Text ?? "Unknown";
@@ -2431,7 +2433,7 @@ namespace BetterFollowbotLite;
                                 Position = label.ItemOnGround.Pos,
                                 Distance = distance,
                                 Text = portalText,
-                                Metadata = label.ItemOnGround.Metadata
+                                Metadata = label.ItemOnGround.Metadata ?? ""
                             };
                         })
                         .Where(p => p.Distance < 1000) // Within 1000 units of portal location
@@ -2787,7 +2789,7 @@ namespace BetterFollowbotLite;
                                 // Get all portal labels again and find the closest one
                                 var allPortals = BetterFollowbotLite.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels.Where(x =>
                                     x != null && x.IsVisible && x.Label != null && x.Label.IsValid && x.Label.IsVisible &&
-                                    x.ItemOnGround != null &&
+                                    x.ItemOnGround != null && x.ItemOnGround.Metadata != null && x.ItemOnGround.Pos != null &&
                                     (x.ItemOnGround.Metadata.ToLower().Contains("areatransition") || x.ItemOnGround.Metadata.ToLower().Contains("portal")))
                                     .OrderBy(x => Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, x.ItemOnGround.Pos))
                                     .ToList();
