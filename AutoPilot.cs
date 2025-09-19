@@ -2286,7 +2286,35 @@ namespace BetterFollowbotLite;
                 var playerPos = BetterFollowbotLite.Instance.GameController.Player.GetComponent<Positioned>()?.GridPosition ?? Vector2i.Zero;
                 var distanceToTarget = Vector3.Distance(new Vector3(playerPos.X, playerPos.Y, 0), portalTransitionTarget);
 
-                if (distanceToTarget < 150) // Within 150 units of target (portal area) - increased from 100
+                // Early activation attempt - try center clicks even from a distance
+                if (distanceToTarget < 800 && distanceToTarget > 300)
+                {
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL ACTIVATION: Within range of portal ({distanceToTarget:F0} units) - trying early activation");
+                    var centerPos = new Vector2(960, 540);
+                    Mouse.SetCursorPos(centerPos);
+                    System.Threading.Thread.Sleep(100);
+
+                    // Quick activation attempt
+                    for (int i = 0; i < 3; i++)
+                    {
+                        Mouse.LeftMouseDown();
+                        System.Threading.Thread.Sleep(50);
+                        Mouse.LeftMouseUp();
+                        System.Threading.Thread.Sleep(100);
+                    }
+
+                    // Check if early activation worked
+                    var checkPos = BetterFollowbotLite.Instance.GameController.Player.GetComponent<Positioned>()?.GridPosition ?? Vector2i.Zero;
+                    var earlyMovement = Vector3.Distance(new Vector3(playerPos.X, playerPos.Y, 0), new Vector3(checkPos.X, checkPos.Y, 0));
+                    if (earlyMovement > 500)
+                    {
+                        BetterFollowbotLite.Instance.LogMessage($"PORTAL ACTIVATION: EARLY SUCCESS - Player moved {earlyMovement:F0} units!");
+                        portalTransitionActive = false;
+                        return;
+                    }
+                }
+
+                if (distanceToTarget < 300) // Within 300 units of target (portal area) - increased for better detection
                 {
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL ACTIVATION: Close to portal target ({distanceToTarget:F0} units) - trying activation");
 
@@ -2305,6 +2333,15 @@ namespace BetterFollowbotLite;
                         Mouse.LeftMouseDown();
                         System.Threading.Thread.Sleep(100);
                         Mouse.LeftMouseUp();
+
+                        // Method 1.5: Multiple center clicks for stubborn portals
+                        for (int extraClick = 0; extraClick < 2; extraClick++)
+                        {
+                            System.Threading.Thread.Sleep(150);
+                            Mouse.LeftMouseDown();
+                            System.Threading.Thread.Sleep(75);
+                            Mouse.LeftMouseUp();
+                        }
 
                         // Method 2: Try clicking at calculated portal position
                         try
@@ -2325,8 +2362,23 @@ namespace BetterFollowbotLite;
                             BetterFollowbotLite.Instance.LogMessage($"PORTAL ACTIVATION: Error calculating screen position: {ex.Message}");
                         }
 
+                        // Method 3: Try spacebar activation (sometimes works for portals)
+                        Keyboard.KeyPress(Keys.Space);
+                        System.Threading.Thread.Sleep(100);
+                        Keyboard.KeyPress(Keys.Space); // Double tap space just in case
+
+                        // Method 4: Try right-click + left-click (alternative activation)
+                        System.Threading.Thread.Sleep(100);
+                        Mouse.RightMouseDown();
+                        System.Threading.Thread.Sleep(75);
+                        Mouse.RightMouseUp();
+                        System.Threading.Thread.Sleep(100);
+                        Mouse.LeftMouseDown();
+                        System.Threading.Thread.Sleep(75);
+                        Mouse.LeftMouseUp();
+
                         // Wait between attempts
-                        System.Threading.Thread.Sleep(300);
+                        System.Threading.Thread.Sleep(400);
 
                         // Check if we moved significantly (portal might have worked)
                         var currentPos = BetterFollowbotLite.Instance.GameController.Player.GetComponent<Positioned>()?.GridPosition ?? Vector2i.Zero;
