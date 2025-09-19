@@ -189,7 +189,7 @@ namespace BetterFollowbotLite;
                     var timeSinceLastUpdate = DateTime.Now - lastPositionUpdateTime;
 
                     // Update if either significant distance OR enough time has passed (very aggressive)
-                    if (timeSinceLastUpdate.TotalMilliseconds > 300)
+                    if (timeSinceLastUpdate.TotalMilliseconds > 1000)
                     {
                         lastTargetPosition = newPosition;
                         lastPositionUpdateTime = DateTime.Now;
@@ -920,8 +920,10 @@ namespace BetterFollowbotLite;
             var playerMovement = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, lastPlayerPosition);
             
             // Much less aggressive: Only clear path if player moved significantly more
+            BetterFollowbotLite.Instance.LogMessage($"[DEBUG] RESPONSIVENESS: Player movement: {playerMovement:F1}, Threshold: 300, Task count: {tasks.Count}");
             if (playerMovement > 300f) // Increased from 100f to 300f to be much less aggressive
             {
+                BetterFollowbotLite.Instance.LogMessage($"[DEBUG] RESPONSIVENESS: CLEARING PATH - Player moved {playerMovement:F1} units");
                 // Reduced logging frequency to prevent lag
                 lastPathClearTime = DateTime.Now;
                 lastResponsivenessCheck = DateTime.Now;
@@ -1128,6 +1130,7 @@ namespace BetterFollowbotLite;
             t.Type == TaskNodeType.TeleportConfirm ||
             t.Type == TaskNodeType.TeleportButton).ToList();
 
+        BetterFollowbotLite.Instance.LogMessage($"[DEBUG] ClearPathForEfficiency: Clearing {tasks.Count} tasks");
         tasks.Clear();
 
         // Re-add transition tasks to preserve zone transition functionality
@@ -1523,8 +1526,11 @@ namespace BetterFollowbotLite;
             }
 
             // Only execute input tasks here - decision making moved to Render method
+            BetterFollowbotLite.Instance.LogMessage($"[DEBUG] TICK: Task count: {tasks?.Count ?? 0}, Follow target: {(followTarget != null ? "Valid" : "Null")}, Coroutine: {(autoPilotCoroutine?.Running ?? false ? "Running" : "Dead")}");
+
             if (tasks?.Count > 0)
             {
+                BetterFollowbotLite.Instance.LogMessage($"[DEBUG] EXECUTING: Processing {tasks.Count} tasks");
                 TaskNode currentTask = null;
                 bool taskAccessError = false;
 
@@ -1818,10 +1824,14 @@ namespace BetterFollowbotLite;
 
                                     //Within bounding range. Task is complete
                                     //Note: Was getting stuck on close objects... testing hacky fix.
-                                    if (taskDistance <= BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value * 1.5)
+                                    var completionThreshold = BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value * 1.5;
+                                    BetterFollowbotLite.Instance.LogMessage($"[DEBUG] Task check - Distance: {taskDistance:F1}, Threshold: {completionThreshold:F1}, Attempts: {currentTask.AttemptCount}, Task type: {currentTask.Type}");
+
+                                    if (taskDistance <= completionThreshold)
                                     {
-                                        BetterFollowbotLite.Instance.LogMessage($"Movement task completed - Distance: {taskDistance:F1}");
+                                        BetterFollowbotLite.Instance.LogMessage($"[DEBUG] TASK COMPLETE: Completing task - Distance: {taskDistance:F1}, Task count before: {tasks.Count}");
                                         tasks.Remove(currentTask);
+                                        BetterFollowbotLite.Instance.LogMessage($"[DEBUG] TASK COMPLETE: Task removed, Task count after: {tasks.Count}");
                                         lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
                                     }
                                     else
@@ -1830,8 +1840,9 @@ namespace BetterFollowbotLite;
                                         currentTask.AttemptCount++;
                                         if (currentTask.AttemptCount > 10) // 10 attempts = ~5 seconds
                                         {
-                                            BetterFollowbotLite.Instance.LogMessage($"Movement task timeout - Distance: {taskDistance:F1}, Attempts: {currentTask.AttemptCount}");
+                                            BetterFollowbotLite.Instance.LogMessage($"[DEBUG] TASK TIMEOUT: Removing task after {currentTask.AttemptCount} attempts - Distance: {taskDistance:F1}, Task count before: {tasks.Count}");
                                             tasks.Remove(currentTask);
+                                            BetterFollowbotLite.Instance.LogMessage($"[DEBUG] TASK TIMEOUT: Task removed, Task count after: {tasks.Count}");
                                             lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
                                         }
                                     }
@@ -2364,6 +2375,8 @@ namespace BetterFollowbotLite;
     {
         try
         {
+            BetterFollowbotLite.Instance.LogMessage($"[DEBUG] UpdateAutoPilotLogic: START - Task count: {tasks.Count}, Follow target: {(followTarget != null ? "Valid" : "Null")}");
+
             // GLOBAL TELEPORT PROTECTION: Block ALL task creation and responsiveness during teleport
             if (IsTeleportInProgress)
             {
@@ -2926,14 +2939,16 @@ namespace BetterFollowbotLite;
                             }
                             else
                             {
-                                BetterFollowbotLite.Instance.LogMessage($"Adding Dash task - Distance: {distanceToLeader:F1}, Dash enabled: {BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled}");
+                                BetterFollowbotLite.Instance.LogMessage($"[DEBUG] TASK CREATE: Adding Dash task to {FollowTargetPosition} - Distance: {distanceToLeader:F1}, Task count before: {tasks.Count}");
                                 tasks.Add(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
+                                BetterFollowbotLite.Instance.LogMessage($"[DEBUG] TASK CREATE: Dash task added, Task count after: {tasks.Count}");
                             }
                             }
                             else
                             {
-                                BetterFollowbotLite.Instance.LogMessage($"Adding Movement task - Distance: {distanceToLeader:F1}, Dash enabled: {BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled}, Dash threshold: 700");
+                                BetterFollowbotLite.Instance.LogMessage($"[DEBUG] TASK CREATE: Adding Movement task to {FollowTargetPosition} - Distance: {distanceToLeader:F1}, Task count before: {tasks.Count}");
                                 tasks.Add(new TaskNode(FollowTargetPosition, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
+                                BetterFollowbotLite.Instance.LogMessage($"[DEBUG] TASK CREATE: Movement task added, Task count after: {tasks.Count}");
                             }
                         }
                         else
@@ -3005,7 +3020,7 @@ namespace BetterFollowbotLite;
                 var timeSinceLastUpdate = DateTime.Now - lastPositionUpdateTime;
 
                 // Update if either significant distance OR enough time has passed (very aggressive)
-                if (distanceFromLastUpdate > 10.0f || timeSinceLastUpdate.TotalMilliseconds > 300)
+                if (distanceFromLastUpdate > 10.0f || timeSinceLastUpdate.TotalMilliseconds > 1000)
                 {
                     // Significant movement or enough time has passed - update the target position
                     lastTargetPosition = currentTargetPos;
@@ -3015,21 +3030,16 @@ namespace BetterFollowbotLite;
             }
             }
 
-            // FALLBACK SAFETY NET: If we have no tasks but have a valid follow target, force-create a movement task
-            // This prevents the bot from getting stuck at 0 tasks due to aggressive debouncing
+            // DEBUG: Log task state when we have no tasks but have a follow target
             if (tasks.Count == 0 && followTarget != null && followTarget.IsValid && lastTargetPosition != Vector3.Zero)
             {
                 var playerPos = GetPlayerPosition();
                 var distanceToTarget = Vector3.Distance(playerPos, lastTargetPosition);
+                var timeSinceLastUpdate = DateTime.Now - lastPositionUpdateTime;
 
-                // Only create task if we're reasonably far from the target (prevent spam when already close)
-                if (distanceToTarget > 50.0f)
-                {
-                    BetterFollowbotLite.Instance.LogMessage($"FALLBACK: No tasks but have follow target - force-creating movement task (distance: {distanceToTarget:F0})");
-                    tasks.Add(new TaskNode(lastTargetPosition, 0, TaskNodeType.Movement));
-                    lastPositionUpdateTime = DateTime.Now; // Reset timer to prevent immediate re-triggering
-                }
+                BetterFollowbotLite.Instance.LogMessage($"[DEBUG] ZERO TASKS: Bot has follow target but 0 tasks! Distance: {distanceToTarget:F1}, Time since last update: {timeSinceLastUpdate.TotalSeconds:F1}s, Last target pos: {lastTargetPosition}");
             }
+            BetterFollowbotLite.Instance.LogMessage($"[DEBUG] UpdateAutoPilotLogic: END - Task count: {tasks.Count}");
         }
         catch (Exception e)
         {
