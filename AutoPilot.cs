@@ -110,14 +110,22 @@ namespace BetterFollowbotLite;
                 // (reduced from 2000 to catch more portal transitions)
                 if (distanceMoved > 1000)
                 {
-                    BetterFollowbotLite.Instance.LogMessage($"AUTOPILOT: Follow target moved {distanceMoved:F0} units (portal transition detected) from {lastTargetPosition} to {newPosition}");
-
-                    // ===== PORTAL TRANSITION DEBUG =====
+                    // Verify this is actually a zone transition by checking if leader is in different zone
+                    var leaderPartyElement = GetLeaderPartyElement();
                     var currentZone = BetterFollowbotLite.Instance.GameController?.Area.CurrentArea.DisplayName ?? "Unknown";
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: ===== PORTAL TRANSITION DETECTED =====");
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Current Zone: {currentZone}");
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Leader moved from ({lastTargetPosition.X:F0}, {lastTargetPosition.Y:F0}) to ({newPosition.X:F0}, {newPosition.Y:F0})");
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Distance moved: {distanceMoved:F0} units");
+                    var leaderZone = leaderPartyElement?.ZoneName ?? "Unknown";
+                    var zonesAreDifferent = leaderPartyElement != null && !leaderPartyElement.ZoneName.Equals(currentZone);
+
+                    if (zonesAreDifferent)
+                    {
+                        BetterFollowbotLite.Instance.LogMessage($"AUTOPILOT: Follow target moved {distanceMoved:F0} units (portal transition detected) from {lastTargetPosition} to {newPosition}");
+
+                        // ===== PORTAL TRANSITION DEBUG =====
+                        BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: ===== PORTAL TRANSITION DETECTED =====");
+                        BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Current Zone: {currentZone}");
+                        BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Leader Zone: {leaderZone}");
+                        BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Leader moved from ({lastTargetPosition.X:F0}, {lastTargetPosition.Y:F0}) to ({newPosition.X:F0}, {newPosition.Y:F0})");
+                        BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Distance moved: {distanceMoved:F0} units");
                     // Get player position properly - try multiple methods
                     var playerEntity = BetterFollowbotLite.Instance.GameController.Player;
                     Vector2i playerPos = default;
@@ -174,6 +182,11 @@ namespace BetterFollowbotLite;
 
             // Record this portal transition
             lastPortalTransitionTime = DateTime.Now;
+                    }
+                    else
+                    {
+                        BetterFollowbotLite.Instance.LogMessage($"AUTOPILOT: Leader moved {distanceMoved:F0} units but zones are the same (Current: {currentZone}, Leader: {leaderZone}) - not a portal transition");
+                    }
                 }
                 // If the target moved more than 500 units but less than 1000, it's likely a zone transition
                 else if (distanceMoved > 500)
@@ -2516,7 +2529,9 @@ namespace BetterFollowbotLite;
                     // Check if we found any portals
                     if (portalsNearLeader == null || !portalsNearLeader.Any())
                     {
-                        BetterFollowbotLite.Instance.LogMessage("PORTAL: No portals found within range");
+                        BetterFollowbotLite.Instance.LogMessage("PORTAL: No portals found within range - deactivating portal mode");
+                        DeactivatePortalMode();
+                        return;
                     }
 
                     // Special handling for "The Warden's Quarters" portal
@@ -2576,7 +2591,9 @@ namespace BetterFollowbotLite;
                                 }
                                 else
                                 {
-                                    BetterFollowbotLite.Instance.LogMessage("PORTAL: Click registered but no teleport detected");
+                                    BetterFollowbotLite.Instance.LogMessage("PORTAL: Portal click did not result in teleportation - deactivating portal mode");
+                                    DeactivatePortalMode();
+                                    return;
                                 }
                             }
                             else
@@ -2594,6 +2611,12 @@ namespace BetterFollowbotLite;
                                     DeactivatePortalMode();
                                     return;
                                 }
+                                else
+                                {
+                                    BetterFollowbotLite.Instance.LogMessage("PORTAL: Center click did not result in teleportation - deactivating portal mode");
+                                    DeactivatePortalMode();
+                                    return;
+                                }
                             }
                         }
                         catch (Exception ex)
@@ -2603,6 +2626,11 @@ namespace BetterFollowbotLite;
                             // Last resort: Center click
                             var centerPos = new Vector2(960, 540);
                             ClickPortal(centerPos);
+
+                            // Since there was an exception, deactivate portal mode to prevent infinite retries
+                            BetterFollowbotLite.Instance.LogMessage("PORTAL: Exception occurred during activation - deactivating portal mode");
+                            DeactivatePortalMode();
+                            return;
                         }
                     }
                     else
@@ -2611,7 +2639,22 @@ namespace BetterFollowbotLite;
 
                         // Fallback: Click center of screen when no portal found
                         var centerPos = new Vector2(960, 540);
+                        var initialPos = GetPlayerPosition();
                         ClickPortal(centerPos);
+
+                        // Check if center click fallback worked
+                        if (CheckPortalSuccess(initialPos, out float movementDistance))
+                        {
+                            BetterFollowbotLite.Instance.LogMessage($"PORTAL: Fallback center click success - teleported {movementDistance:F0} units");
+                            DeactivatePortalMode();
+                            return;
+                        }
+                        else
+                        {
+                            BetterFollowbotLite.Instance.LogMessage("PORTAL: Fallback center click did not result in teleportation - deactivating portal mode");
+                            DeactivatePortalMode();
+                            return;
+                        }
                     }
                 }
             }
