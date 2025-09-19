@@ -27,6 +27,7 @@ namespace BetterFollowbotLite;
         // Portal transition tracking
         private bool portalTransitionActive = false;
         private Vector3 portalTransitionTarget;
+        private Vector3 portalLocation = Vector3.Zero; // Where the portal actually is (leader's position before transition)
         private Entity followTarget;
         private DateTime lastPortalTransitionTime = DateTime.MinValue;
 
@@ -134,7 +135,8 @@ namespace BetterFollowbotLite;
             // This will be used in the main update loop to try portal activation when close
             portalTransitionActive = true;
             portalTransitionTarget = newPosition;
-            BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Portal transition mode activated, target: {newPosition}");
+            portalLocation = lastTargetPosition; // Save the portal location (where leader was before transition)
+            BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Portal transition mode activated, target: {newPosition}, portal location: {portalLocation}");
 
             // Record this portal transition
             lastPortalTransitionTime = DateTime.Now;
@@ -2266,21 +2268,21 @@ namespace BetterFollowbotLite;
             }
 
             // PORTAL ACTIVATION: Find actual portal entity and click on it when close enough
-            if (portalTransitionActive && portalTransitionTarget != Vector3.Zero)
+            if (portalTransitionActive && portalTransitionTarget != Vector3.Zero && portalLocation != Vector3.Zero)
             {
                 BetterFollowbotLite.Instance.LogMessage("PORTAL: Portal activation code reached - checking conditions");
 
                 var playerPos = BetterFollowbotLite.Instance.GameController.Player.GetComponent<Positioned>()?.GridPosition ?? Vector2i.Zero;
                 var distanceToTarget = Vector3.Distance(new Vector3(playerPos.X, playerPos.Y, 0), portalTransitionTarget);
-                var distanceToPortal = Vector3.Distance(new Vector3(playerPos.X, playerPos.Y, 0), lastTargetPosition);
+                var distanceToPortal = Vector3.Distance(new Vector3(playerPos.X, playerPos.Y, 0), portalLocation);
 
-                BetterFollowbotLite.Instance.LogMessage($"PORTAL: Checking activation - Portal active, distance to portal: {distanceToPortal:F0}, distance to target: {distanceToTarget:F0}");
+                BetterFollowbotLite.Instance.LogMessage($"PORTAL: Checking activation - Portal active, distance to portal: {distanceToPortal:F0}, distance to target: {distanceToTarget:F0}, portal location: ({portalLocation.X:F0}, {portalLocation.Y:F0})");
 
                 if (distanceToPortal < 100) // Within 100 units of where the leader WAS (where the portal is)
                 {
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL: Within activation range of portal location ({distanceToPortal:F0} units) - finding portal");
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL: Current player position: ({playerPos.X:F0}, {playerPos.Y:F0})");
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Portal location (leader was here): ({lastTargetPosition.X:F0}, {lastTargetPosition.Y:F0})");
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Portal location (leader was here): ({portalLocation.X:F0}, {portalLocation.Y:F0})");
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL: Leader moved to: ({portalTransitionTarget.X:F0}, {portalTransitionTarget.Y:F0})");
 
                     // ===== PORTAL DETECTION LOGIC =====
@@ -2396,6 +2398,7 @@ namespace BetterFollowbotLite;
                                 {
                                     BetterFollowbotLite.Instance.LogMessage($"PORTAL: SUCCESS - Player moved {movementDistance:F0} units, portal activated!");
                                     portalTransitionActive = false; // Deactivate portal mode
+                                    portalLocation = Vector3.Zero; // Clear portal location
                                     return; // Exit early
                                 }
                                 else
@@ -2425,6 +2428,7 @@ namespace BetterFollowbotLite;
                                 {
                                     BetterFollowbotLite.Instance.LogMessage($"PORTAL: CENTER CLICK SUCCESS - Player moved {movementDistance:F0} units!");
                                     portalTransitionActive = false;
+                                    portalLocation = Vector3.Zero; // Clear portal location
                                     return;
                                 }
                             }
