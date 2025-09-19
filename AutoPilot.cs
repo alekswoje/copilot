@@ -3086,10 +3086,18 @@ namespace BetterFollowbotLite;
                             var responsiveThreshold = BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value / 2;
                             if (distanceFromLastTask >= responsiveThreshold)
                             {
-                        BetterFollowbotLite.Instance.LogMessage($"RESPONSIVENESS: Adding new path node - Distance: {distanceFromLastTask:F1}, Threshold: {responsiveThreshold:F1}");
-                        BetterFollowbotLite.Instance.LogMessage($"DEBUG: Creating task to position: {FollowTargetPosition} (Player at: {BetterFollowbotLite.Instance.playerPosition})");
-                        tasks.Add(new TaskNode(FollowTargetPosition, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
-                            }
+                        // Check current distance to leader before creating tasks
+                        var currentDistanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, followTarget.Pos);
+                        if (currentDistanceToLeader > BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value)
+                        {
+                            BetterFollowbotLite.Instance.LogMessage($"RESPONSIVENESS: Adding new path node - Distance: {distanceFromLastTask:F1}, Threshold: {responsiveThreshold:F1}, Current distance to leader: {currentDistanceToLeader:F1}");
+                            BetterFollowbotLite.Instance.LogMessage($"DEBUG: Creating task to position: {FollowTargetPosition} (Player at: {BetterFollowbotLite.Instance.playerPosition})");
+                            tasks.Add(new TaskNode(FollowTargetPosition, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
+                        }
+                        else
+                        {
+                            BetterFollowbotLite.Instance.LogMessage($"WITHIN FOLLOW DISTANCE: Not creating tasks - Current distance {currentDistanceToLeader:F1} <= follow distance {BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value:F1}");
+                        }
                         }
                         else
                         {
