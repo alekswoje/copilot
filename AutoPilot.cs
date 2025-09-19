@@ -1744,7 +1744,7 @@ namespace BetterFollowbotLite;
                                     try
                                     {
                                         Input.KeyDown(BetterFollowbotLite.Instance.Settings.autoPilotMoveKey);
-                                        BetterFollowbotLite.Instance.LogMessage("Movement task: Move key down pressed, waiting");
+                                        // Movement key pressed
                                     }
                                     catch (Exception e)
                                     {
@@ -1755,7 +1755,7 @@ namespace BetterFollowbotLite;
                                     try
                                     {
                                         Input.KeyUp(BetterFollowbotLite.Instance.Settings.autoPilotMoveKey);
-                                        BetterFollowbotLite.Instance.LogMessage("Movement task: Move key released");
+                                        // Movement key released
                                     }
                                     catch (Exception e)
                                     {
@@ -2062,10 +2062,8 @@ namespace BetterFollowbotLite;
                         }
 
                         BetterFollowbotLite.Instance.LogMessage("Movement task: Mouse positioned, pressing move key down");
-                        BetterFollowbotLite.Instance.LogMessage($"Movement task: Move key: {BetterFollowbotLite.Instance.Settings.autoPilotMoveKey}");
-                        BetterFollowbotLite.Instance.LogMessage($"DEBUG: About to click at screen position: {movementScreenPos}, World position: {currentTask.WorldPosition}");
-                        BetterFollowbotLite.Instance.LogMessage($"DEBUG: Current player position: {BetterFollowbotLite.Instance.playerPosition}");
-                        BetterFollowbotLite.Instance.LogMessage($"DEBUG: Current followTarget position: {followTarget?.Pos}");
+                        // Movement key set
+                        // Removed excessive debug logging - keeping portal logs only
                         yield return Mouse.SetCursorPosHuman(movementScreenPos);
                         
                         if (instantPathOptimization)
@@ -2275,16 +2273,13 @@ namespace BetterFollowbotLite;
 
                 if (distanceToTarget < 200) // Within 200 units (similar to arena portal logic)
                 {
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Within activation range ({distanceToTarget:F0} units) - attempting to find actual portal");
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Within activation range ({distanceToTarget:F0} units) - finding portal");
 
                     // ===== PORTAL DETECTION LOGIC =====
-                    // Instead of clicking on portalTransitionTarget (where leader moved TO),
-                    // we need to find the actual portal entity near the leader's current position
+                    // Find portals near where the leader WAS before the portal transition
+                    Vector3 leaderPosition = lastTargetPosition; // Leader's position before portal
 
-                    var leaderPosition = new Vector3(portalTransitionTarget.X, portalTransitionTarget.Y, 0);
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Searching for portals near leader position: ({leaderPosition.X:F0}, {leaderPosition.Y:F0})");
-
-                    // Look for portal entities near the leader's position
+                    // Look for portal entities near the leader's pre-portal position
                     var allEntities = BetterFollowbotLite.Instance.GameController.Entities
                         .Where(e => e.IsValid && e.GetComponent<Positioned>() != null)
                         .ToList();
@@ -2297,8 +2292,6 @@ namespace BetterFollowbotLite;
                          e.Type.ToString().Contains("Portal") ||
                          e.Type.ToString().Contains("Warden") ||
                          e.Type.ToString().Contains("Quarters"))).ToList();
-
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Found {portalEntities.Count} Portal entities and {areaTransitions.Count} potential portal entities");
 
                     // Combine all potential portals
                     var allPotentialPortals = portalEntities.Concat(areaTransitions).Distinct().ToList();
@@ -2318,8 +2311,6 @@ namespace BetterFollowbotLite;
                         .Where(p => p.Distance < 1000) // Within 1000 units of leader
                         .OrderBy(p => p.Distance)
                         .ToList();
-
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Found {portalsNearLeader.Count} portals within 1000 units of leader");
 
                     // Special handling for "The Warden's Quarters" portal
                     var currentZone = BetterFollowbotLite.Instance.GameController?.Area.CurrentArea.DisplayName ?? "Unknown";
