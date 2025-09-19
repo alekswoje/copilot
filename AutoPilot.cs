@@ -2270,12 +2270,14 @@ namespace BetterFollowbotLite;
             {
                 var playerPos = BetterFollowbotLite.Instance.GameController.Player.GetComponent<Positioned>()?.GridPosition ?? Vector2i.Zero;
                 var distanceToTarget = Vector3.Distance(new Vector3(playerPos.X, playerPos.Y, 0), portalTransitionTarget);
+                var distanceToPortal = Vector3.Distance(new Vector3(playerPos.X, playerPos.Y, 0), lastTargetPosition);
 
-                if (distanceToTarget < 200) // Within 200 units (similar to arena portal logic)
+                if (distanceToPortal < 200) // Within 200 units of where the leader WAS (where the portal is)
                 {
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Within activation range ({distanceToTarget:F0} units) - finding portal");
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Within activation range of portal location ({distanceToPortal:F0} units) - finding portal");
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL: Current player position: ({playerPos.X:F0}, {playerPos.Y:F0})");
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Target position: ({portalTransitionTarget.X:F0}, {portalTransitionTarget.Y:F0})");
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Portal location (leader was here): ({lastTargetPosition.X:F0}, {lastTargetPosition.Y:F0})");
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Leader moved to: ({portalTransitionTarget.X:F0}, {portalTransitionTarget.Y:F0})");
 
                     // ===== PORTAL DETECTION LOGIC =====
                     // Find portals near where the leader WAS before the portal transition
