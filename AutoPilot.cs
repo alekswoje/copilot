@@ -2270,6 +2270,7 @@ namespace BetterFollowbotLite;
             }
 
             // PORTAL ACTIVATION: Find actual portal entity and click on it when close enough
+            // This takes priority over normal movement during portal transition
             if (portalTransitionActive && portalTransitionTarget != Vector3.Zero && portalLocation != Vector3.Zero)
             {
                 BetterFollowbotLite.Instance.LogMessage("PORTAL: Portal activation code reached - checking conditions");
@@ -2681,9 +2682,10 @@ namespace BetterFollowbotLite;
 
                         if (instantDistanceToLeader > 3000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 1000 to 1500 to reduce dash spam
                         {
-                            // CRITICAL: Don't add dash tasks if we have an active transition task OR another dash task
+                            // CRITICAL: Don't add dash tasks if we have conflicting tasks OR are in portal transition mode
                             var hasConflictingTasks = tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
-                            if (!hasConflictingTasks)
+                            var isPortalTransitionActive = portalTransitionActive && portalTransitionTarget != Vector3.Zero;
+                            if (!hasConflictingTasks && !isPortalTransitionActive)
                             {
                                 tasks.Add(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
                                 BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Added dash task for distance {instantDistanceToLeader:F1}");
@@ -2723,9 +2725,10 @@ namespace BetterFollowbotLite;
 
                         if (instantDistanceToLeader > 3000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 1000 to 1500 to reduce dash spam
                         {
-                            // CRITICAL: Don't add dash tasks if we have an active transition task OR another dash task
+                            // CRITICAL: Don't add dash tasks if we have conflicting tasks OR are in portal transition mode
                             var hasConflictingTasks = tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
-                            if (!hasConflictingTasks)
+                            var isPortalTransitionActive = portalTransitionActive && portalTransitionTarget != Vector3.Zero;
+                            if (!hasConflictingTasks && !isPortalTransitionActive)
                             {
                                 tasks.Add(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
                                 BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Added dash task for distance {instantDistanceToLeader:F1}");
