@@ -99,9 +99,8 @@ namespace BetterFollowbotLite;
             {
                 var distanceMoved = Vector3.Distance(lastTargetPosition, newPosition);
 
-                // If the target moved more than 1000 units, it's likely a portal transition within the same zone
-                // (reduced from 2000 to catch more portal transitions)
-                if (distanceMoved > 1000)
+                // If the target moved more than the clear path distance, it's likely a portal transition within the same zone
+                if (distanceMoved > BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance.Value)
                 {
                     // Verify this is actually a zone transition by checking if leader is in different zone
                     var leaderPartyElement = GetLeaderPartyElement();
@@ -965,12 +964,12 @@ namespace BetterFollowbotLite;
             var playerMovement = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, lastPlayerPosition);
 
             // Much less aggressive: Only clear path if player moved significantly AND we're actually stuck
-            BetterFollowbotLite.Instance.LogMessage($"[DEBUG] RESPONSIVENESS: Player movement: {playerMovement:F1}, Threshold: 500, Task count: {tasks.Count}, Portal state: {portalState}");
+            BetterFollowbotLite.Instance.LogMessage($"[DEBUG] RESPONSIVENESS: Player movement: {playerMovement:F1}, Threshold: 500, Task count: {tasks.Count}, Portal active: {portalTransitionTarget != Vector3.Zero}");
 
             // CRITICAL FIX: Don't clear tasks during portal transitions
-            if (portalState != PortalState.Inactive)
+            if (portalTransitionTarget != Vector3.Zero)
             {
-                BetterFollowbotLite.Instance.LogMessage($"[DEBUG] RESPONSIVENESS: SKIPPING - Portal transition active (state: {portalState})");
+                BetterFollowbotLite.Instance.LogMessage($"[DEBUG] RESPONSIVENESS: SKIPPING - Portal transition active");
                 return false;
             }
 
@@ -2413,7 +2412,7 @@ namespace BetterFollowbotLite;
             if (instantDistanceToLeader > 3000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled)
             {
                 var hasConflictingTasks = tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
-                var isPortalTransitionActive = portalState != PortalState.Inactive && portalTransitionTarget != Vector3.Zero;
+                var isPortalTransitionActive = portalTransitionTarget != Vector3.Zero;
                 if (!hasConflictingTasks && !isPortalTransitionActive)
                 {
                     tasks.Add(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
@@ -2591,7 +2590,6 @@ namespace BetterFollowbotLite;
                                 portalLocation = Vector3.Zero;
                                 portalActivationStartTime = DateTime.MinValue;
                                 return;
-                            }
                             }
                         }
                         catch (Exception ex)
@@ -2895,7 +2893,7 @@ namespace BetterFollowbotLite;
 
                             // Check if leader is in different zone OR moved very far (inter-zone portal)
                             var zonesAreDifferent = leaderPartyElement != null && !leaderPartyElement.ZoneName.Equals(BetterFollowbotLite.Instance.GameController?.Area.CurrentArea.DisplayName);
-                            var isInterZonePortal = distanceMoved > 1000; // Large movement within same zone = inter-zone portal
+                            var isInterZonePortal = distanceMoved > BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance.Value; // Large movement within same zone = inter-zone portal
 
                             if (zonesAreDifferent)
                             {
@@ -3160,12 +3158,12 @@ namespace BetterFollowbotLite;
 
                 // Check for common blocking conditions
                 var debugHasTransitionTasks = tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.TeleportConfirm || t.Type == TaskNodeType.TeleportButton);
-                var isInPortalTransition = portalState != PortalState.Inactive;
+                var isInPortalTransition = portalTransitionTarget != Vector3.Zero;
                 var isCloseToLeader = distanceToTarget < BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value;
                 var isInClearPathRange = distanceToTarget < BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance.Value;
 
                 BetterFollowbotLite.Instance.LogMessage($"[DEBUG] ZERO TASKS: Bot has follow target but 0 tasks! Distance: {distanceToTarget:F1}, Time since last update: {timeSinceLastUpdate.TotalSeconds:F1}s");
-                BetterFollowbotLite.Instance.LogMessage($"[DEBUG] ZERO TASKS: Conditions - Transition tasks: {debugHasTransitionTasks}, Portal state: {portalState}, Close to leader: {isCloseToLeader}, In clear range: {isInClearPathRange}");
+                BetterFollowbotLite.Instance.LogMessage($"[DEBUG] ZERO TASKS: Conditions - Transition tasks: {debugHasTransitionTasks}, Portal active: {isInPortalTransition}, Close to leader: {isCloseToLeader}, In clear range: {isInClearPathRange}");
 
                 // If we're not close to the leader and not blocked by transitions, this is the bug
                 if (!isCloseToLeader && !debugHasTransitionTasks && !isInPortalTransition)
@@ -3174,12 +3172,13 @@ namespace BetterFollowbotLite;
                 }
             }
             BetterFollowbotLite.Instance.LogMessage($"[DEBUG] UpdateAutoPilotLogic: END - Task count: {tasks.Count}");
+            }
         }
         catch (Exception e)
-        {
-            BetterFollowbotLite.Instance.LogError($"UpdateAutoPilotLogic Error: {e}");
+            {
+                BetterFollowbotLite.Instance.LogError($"UpdateAutoPilotLogic Error: {e}");
+            }
         }
-    }
     // ReSharper disable once IteratorNeverReturns
 
     private bool CheckDashTerrain(Vector2 targetPosition)
