@@ -1642,9 +1642,9 @@ namespace BetterFollowbotLite;
             }
 
             // PORTAL LOCATION RESET: Clear portal location when bot successfully reaches leader after portal transition
-            if (portalLocation != Vector3.Zero && followTarget != null)
+            if (portalLocation != Vector3.Zero && this.followTarget != null)
             {
-                var distanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, followTarget.Pos);
+                var distanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, this.followTarget.Pos);
                 // If bot is now close to leader after being far away, portal transition was successful
                 if (distanceToLeader < 300) // Within normal following distance
                 {
