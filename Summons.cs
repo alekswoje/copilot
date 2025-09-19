@@ -45,10 +45,10 @@ internal class Summons
         try
         {
             // Try to get the count from the SummonRagingSpirit skill's DeployedEntities first (most accurate)
-            var srsSkill = BetterFollowbotLite.Instance.GameController.Game.IngameState.IngameUi.SkillBar.Skills
-                .FirstOrDefault(s => s?.Name != null && (s.Name.Contains("SummonRagingSpirit") ||
-                                                        s.Name.Contains("Summon Raging Spirit") ||
-                                                        (s.Name.Contains("summon") && s.Name.Contains("spirit") && s.Name.Contains("rag"))));
+            var srsSkill = BetterFollowbotLite.Instance.skills?.FirstOrDefault(s =>
+                s?.Name != null && (s.Name.Contains("SummonRagingSpirit") ||
+                                    s.Name.Contains("Summon Raging Spirit") ||
+                                    (s.Name.Contains("summon") && s.Name.Contains("spirit") && s.Name.Contains("rag"))));
 
             if (srsSkill != null && srsSkill.DeployedEntities != null)
             {
