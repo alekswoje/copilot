@@ -12,6 +12,7 @@ using ExileCore.Shared;
 using ExileCore.Shared.Enums;
 using SharpDX;
 using BetterFollowbotLite.Skills;
+using BetterFollowbotLite.Automation;
 
 namespace BetterFollowbotLite;
 
@@ -24,6 +25,9 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
     internal AutoPilot autoPilot = new AutoPilot();
     private readonly Summons summons = new Summons();
     private SummonRagingSpirits summonRagingSpirits;
+    private RespawnHandler respawnHandler;
+    private GemLeveler gemLeveler;
+    private PartyJoiner partyJoiner;
 
     private List<Buff> buffs;
     private List<Entity> enemys = new List<Entity>();
@@ -31,7 +35,6 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
     private bool isCasting;
     private bool isMoving;
     internal DateTime lastTimeAny;
-    private DateTime lastAutoJoinPartyAttempt;
     private DateTime lastAreaChangeTime = DateTime.MinValue;
     private DateTime lastGraceLogTime = DateTime.MinValue;
     internal Entity localPlayer;
@@ -49,7 +52,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
             Instance = this;
 
         // Initialize timestamps
-        lastAutoJoinPartyAttempt = DateTime.Now;
+        // lastAutoJoinPartyAttempt is now managed within PartyJoiner class
 
         GameController.LeftPanel.WantUse(() => Settings.Enable);
         skillCoroutine = new Coroutine(WaitForSkillsAfterAreaChange(), this);
@@ -60,6 +63,11 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
         // Initialize skill classes
         summonRagingSpirits = new SummonRagingSpirits(this, Settings, autoPilot, summons);
+
+        // Initialize automation classes
+        respawnHandler = new RespawnHandler(this, Settings);
+        gemLeveler = new GemLeveler(this, Settings);
+        partyJoiner = new PartyJoiner(this, Settings);
 
         return true;
     }
@@ -81,6 +89,45 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         // Temporarily return empty collection to avoid GameController access issues
         // TODO: Implement proper entity access when framework dependencies are available
         return new List<Entity>();
+    }
+
+    // Method to get resurrect panel (used by RespawnHandler)
+    internal dynamic GetResurrectPanel()
+    {
+        try
+        {
+            return GameController.IngameState.IngameUi.ResurrectPanel;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    // Method to get gem level up panel (used by GemLeveler)
+    internal dynamic GetGemLvlUpPanel()
+    {
+        try
+        {
+            return GameController.IngameState.IngameUi.GemLvlUpPanel;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    // Method to get invites panel (used by PartyJoiner)
+    internal dynamic GetInvitesPanel()
+    {
+        try
+        {
+            return GameController.IngameState.IngameUi.InvitesPanel;
+        }
+        catch
+        {
+            return null;
+        }
     }
         
 
@@ -606,82 +653,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
             #region Auto Respawn
 
-            try
-            {
-                if (Settings.autoRespawnEnabled && Gcd())
-                {
-                    // Check if the resurrect panel is visible
-                    var resurrectPanel = GameController.IngameState.IngameUi.ResurrectPanel;
-                    if (resurrectPanel != null && resurrectPanel.IsVisible)
-                    {
-                        // Check if the resurrect at checkpoint button is available
-                        var resurrectAtCheckpoint = resurrectPanel.ResurrectAtCheckpoint;
-                        if (resurrectAtCheckpoint != null && resurrectAtCheckpoint.IsVisible)
-                        {
-                            BetterFollowbotLite.Instance.LogMessage("AUTO RESPAWN: Respawn panel detected, attempting checkpoint respawn");
-
-                            // Get the center position of the checkpoint respawn button
-                            var checkpointRect = resurrectAtCheckpoint.GetClientRectCache;
-                            var checkpointCenter = checkpointRect.Center;
-
-                            BetterFollowbotLite.Instance.LogMessage($"AUTO RESPAWN: Checkpoint button position - X: {checkpointCenter.X:F1}, Y: {checkpointCenter.Y:F1}");
-
-                            // Move mouse to the checkpoint respawn button with proper timing
-                            Mouse.SetCursorPos(checkpointCenter);
-
-                            // Wait longer to ensure mouse movement is registered and UI is ready
-                            System.Threading.Thread.Sleep(200);
-
-                            // Verify the mouse is actually at the target position
-                            var currentMousePos = GetMousePosition();
-                            var distanceFromTarget = Vector2.Distance(currentMousePos, checkpointCenter);
-
-                            if (distanceFromTarget < 10) // Within reasonable tolerance
-                            {
-                                BetterFollowbotLite.Instance.LogMessage($"AUTO RESPAWN: Mouse positioned correctly (distance: {distanceFromTarget:F1}), performing click");
-
-                                // Perform the click with proper timing
-                                Mouse.LeftClick();
-                                System.Threading.Thread.Sleep(150); // Wait after click
-
-                                // Verify click was successful by checking if panel is still visible
-                                System.Threading.Thread.Sleep(500); // Give time for respawn to process
-
-                                var panelStillVisible = resurrectPanel.IsVisible;
-                                if (!panelStillVisible)
-                                {
-                                    BetterFollowbotLite.Instance.LogMessage("AUTO RESPAWN: Checkpoint respawn successful - panel disappeared");
-                                }
-                                else
-                                {
-                                    BetterFollowbotLite.Instance.LogMessage("AUTO RESPAWN: Checkpoint respawn may have failed - panel still visible, retrying...");
-
-                                    // Retry with a longer delay
-                                    System.Threading.Thread.Sleep(300);
-                                    Mouse.SetCursorPos(checkpointCenter);
-                                    System.Threading.Thread.Sleep(300);
-                                    Mouse.LeftClick();
-                                    System.Threading.Thread.Sleep(200);
-                                }
-
-                                lastTimeAny = DateTime.Now; // Update global cooldown
-                            }
-                            else
-                            {
-                                BetterFollowbotLite.Instance.LogMessage($"AUTO RESPAWN: Mouse positioning failed - distance from target: {distanceFromTarget:F1}");
-                            }
-                        }
-                        else
-                        {
-                            BetterFollowbotLite.Instance.LogMessage("AUTO RESPAWN: Checkpoint respawn button not available or not visible");
-                        }
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                BetterFollowbotLite.Instance.LogMessage($"AUTO RESPAWN: Exception occurred - {e.Message}");
-            }
+            respawnHandler?.Execute();
 
             #endregion
 
@@ -778,325 +750,13 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
             #region Auto Level Gems
 
-            // Debug: Check if auto level gems is enabled
-            if (Settings.autoLevelGemsEnabled.Value)
-            {
-                BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Setting value is true, checking GCD...");
-            }
-
-            if (Settings.autoLevelGemsEnabled && Gcd())
-            {
-                try
-                {
-                    BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Feature enabled, checking for gem level up panel...");
-
-                    // Check if the gem level up panel is visible
-                    var gemLvlUpPanel = GameController.IngameState.IngameUi.GemLvlUpPanel;
-                    if (gemLvlUpPanel != null && gemLvlUpPanel.IsVisible)
-                    {
-                        // Get the array of gems to level up
-                        var gemsToLvlUp = gemLvlUpPanel.GemsToLvlUp;
-                        if (gemsToLvlUp != null && gemsToLvlUp.Count > 0)
-                        {
-                            BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Found {gemsToLvlUp.Count} gems available for leveling");
-
-                            // Process each gem in the array
-                            foreach (var gem in gemsToLvlUp)
-                            {
-                                if (gem != null && gem.IsVisible)
-                                {
-                                    try
-                                    {
-                                        // Get the children of the gem element
-                                        var gemChildren = gem.Children;
-                                        if (gemChildren != null && gemChildren.Count > 1)
-                                        {
-                                            // Get the second child ([1]) which contains the level up button
-                                            var levelUpButton = gemChildren[1];
-                                            if (levelUpButton != null && levelUpButton.IsVisible)
-                                            {
-                                                // Get the center position of the level up button
-                                                var buttonRect = levelUpButton.GetClientRectCache;
-                                                var buttonCenter = buttonRect.Center;
-
-                                                BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Leveling up gem at position X: {buttonCenter.X:F1}, Y: {buttonCenter.Y:F1}");
-
-                                                // Move mouse to the button and click
-                                                Mouse.SetCursorPos(buttonCenter);
-
-                                                // Wait for mouse to settle
-                                                System.Threading.Thread.Sleep(150);
-
-                                                // Verify mouse position
-                                                var currentMousePos = GetMousePosition();
-                                                var distanceFromTarget = Vector2.Distance(currentMousePos, buttonCenter);
-                                                BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Mouse distance from target: {distanceFromTarget:F1}");
-
-                                                if (distanceFromTarget < 5) // Close enough to target
-                                                {
-                                                    // Perform click with verification
-                                                    BetterFollowbotLite.Instance.LogMessage("AUTO LEVEL GEMS: Performing left click on level up button");
-
-                                                    // First click attempt - use synchronous mouse events
-                                                    Mouse.LeftMouseDown();
-                                                    System.Threading.Thread.Sleep(40);
-                                                    Mouse.LeftMouseUp();
-                                                System.Threading.Thread.Sleep(200);
-
-                                                    // Check if button is still visible (if not, click was successful)
-                                                    var buttonStillVisible = levelUpButton.IsVisible;
-                                                    if (!buttonStillVisible)
-                                                    {
-                                                        BetterFollowbotLite.Instance.LogMessage("AUTO LEVEL GEMS: Click successful - button disappeared");
-                                                    }
-                                                    else
-                                                    {
-                                                        BetterFollowbotLite.Instance.LogMessage("AUTO LEVEL GEMS: Button still visible, attempting second click");
-
-                                                        // Exponential backoff: wait longer before second attempt
-                                                        System.Threading.Thread.Sleep(500);
-                                                        Mouse.LeftMouseDown();
-                                                        System.Threading.Thread.Sleep(40);
-                                                        Mouse.LeftMouseUp();
-                                                        System.Threading.Thread.Sleep(200);
-
-                                                        // Final check
-                                                        buttonStillVisible = levelUpButton.IsVisible;
-                                                        if (!buttonStillVisible)
-                                                        {
-                                                            BetterFollowbotLite.Instance.LogMessage("AUTO LEVEL GEMS: Second click successful");
-                                                        }
-                                                        else
-                                                        {
-                                                            BetterFollowbotLite.Instance.LogMessage("AUTO LEVEL GEMS: Both clicks failed - button still visible");
-                                                        }
-                                                    }
-                                                }
-                                                else
-                                                {
-                                                    BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Mouse positioning failed - too far from target ({distanceFromTarget:F1})");
-                                                }
-
-                                                // Add delay between gem level ups
-                                                System.Threading.Thread.Sleep(300);
-
-                                                BetterFollowbotLite.Instance.LogMessage("AUTO LEVEL GEMS: Gem level up attempt completed");
-
-                                                // Update global cooldown after leveling a gem
-                                                lastTimeAny = DateTime.Now;
-
-                                                // Only level up one gem per frame to avoid spam
-                                                break;
-                                            }
-                                            else
-                                            {
-                                                BetterFollowbotLite.Instance.LogMessage("AUTO LEVEL GEMS: Level up button not found or not visible");
-                                            }
-                                        }
-                                        else
-                                        {
-                                            BetterFollowbotLite.Instance.LogMessage("AUTO LEVEL GEMS: Gem children not found or insufficient count");
-                                        }
-                                    }
-                                    catch (Exception gemEx)
-                                    {
-                                        BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Error processing individual gem - {gemEx.Message}");
-                                    }
-                                }
-                            }
-                        }
-                        else
-                        {
-                            BetterFollowbotLite.Instance.LogMessage("AUTO LEVEL GEMS: No gems available for leveling");
-                        }
-                    }
-                }
-                catch (Exception e)
-                {
-                    BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Exception occurred - {e.Message}");
-                }
-            }
+            gemLeveler?.Execute();
 
             #endregion
 
             #region Auto Join Party
 
-            // Check if auto join party is enabled and enough time has passed since last attempt (0.5 second cooldown)
-            var timeSinceLastAttempt = (DateTime.Now - lastAutoJoinPartyAttempt).TotalSeconds;
-            if (Settings.autoJoinPartyEnabled && timeSinceLastAttempt >= 0.5 && Gcd())
-            {
-                // Only log every 10 seconds to avoid spam
-                if (timeSinceLastAttempt >= 10.0 || lastAutoJoinPartyAttempt == DateTime.MinValue)
-                {
-                    BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Active - checking for party invites");
-                }
-                try
-                {
-                    // Check if player is already in a party - if so, don't accept invites
-                    var partyElement = PartyElements.GetPlayerInfoElementList();
-                    var isInParty = partyElement != null && partyElement.Count > 0;
-
-                    if (isInParty)
-                    {
-                        // Only log this occasionally to avoid spam (every 15 seconds)
-                        if (timeSinceLastAttempt >= 15.0)
-                        {
-                            BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Player already in party ({partyElement.Count} members)");
-                        }
-                        // Still update the cooldown to prevent spam
-                        lastAutoJoinPartyAttempt = DateTime.Now;
-                        return;
-                    }
-
-                    // Check if the invites panel is visible
-                    var invitesPanel = GameController.IngameState.IngameUi.InvitesPanel;
-                    if (invitesPanel != null && invitesPanel.IsVisible)
-                    {
-                        // Only log when we actually find an invite (less frequent)
-                        BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Party invite detected - attempting to accept");
-
-                        // Get the children for navigation
-                        var children = invitesPanel.Children;
-
-                        // Navigate the UI hierarchy as originally specified: InvitesPanel -> Children[0] -> Children[2] -> Children[0]
-                        if (children != null && children.Count > 0)
-                        {
-                            var firstChild = children[0];
-                            if (firstChild != null && firstChild.Children != null && firstChild.Children.Count > 2)
-                            {
-                                var secondChild = firstChild.Children[2];
-                                if (secondChild != null && secondChild.Children != null && secondChild.Children.Count > 0)
-                                {
-                                    var acceptButton = secondChild.Children[0];
-                                    if (acceptButton != null && acceptButton.IsVisible)
-                                    {
-                                        // Get the center position of the accept button
-                                        var buttonRect = acceptButton.GetClientRectCache;
-                                        var buttonCenter = buttonRect.Center;
-
-                                        BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Accept button position - X: {buttonCenter.X:F1}, Y: {buttonCenter.Y:F1}");
-
-                                        // Move mouse to the accept button
-                                        Mouse.SetCursorPos(buttonCenter);
-
-                                        // Wait for mouse to settle - longer delay to avoid AutoPilot interference
-                                        System.Threading.Thread.Sleep(300);
-
-                                        // Verify mouse position
-                                        var currentMousePos = GetMousePosition();
-                                        var distanceFromTarget = Vector2.Distance(currentMousePos, buttonCenter);
-                                        BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Mouse distance from target: {distanceFromTarget:F1}");
-
-                                        if (distanceFromTarget < 15) // Allow slightly more tolerance
-                                        {
-                                            // Perform click with verification
-                                            BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Performing left click on accept button");
-
-                                            // First click attempt - use synchronous mouse events
-                                            Mouse.LeftMouseDown();
-                                            System.Threading.Thread.Sleep(40);
-                                            Mouse.LeftMouseUp();
-                                            System.Threading.Thread.Sleep(300); // Longer delay
-
-                                            // Check if we successfully joined a party
-                                            var partyAfterClick = PartyElements.GetPlayerInfoElementList();
-                                            var joinedParty = partyAfterClick != null && partyAfterClick.Count > 0;
-
-                                            if (joinedParty)
-                                            {
-                                                BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Successfully joined party!");
-                                            }
-                                            else
-                                            {
-                                                // Second click attempt with longer delay
-                                                System.Threading.Thread.Sleep(600);
-                                                Mouse.LeftMouseDown();
-                                                System.Threading.Thread.Sleep(40);
-                                                Mouse.LeftMouseUp();
-                                                System.Threading.Thread.Sleep(300);
-
-                                                // Check again
-                                                partyAfterClick = PartyElements.GetPlayerInfoElementList();
-                                                joinedParty = partyAfterClick != null && partyAfterClick.Count > 0;
-
-                                                if (joinedParty)
-                                                {
-                                                    BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Successfully joined party on second attempt!");
-                                                }
-                                                else
-                                                {
-                                                    // Only log failures occasionally to avoid spam
-                                                    var timeSinceLastFailure = (DateTime.Now - lastAutoJoinPartyAttempt).TotalSeconds;
-                                                    if (timeSinceLastFailure >= 30.0)
-                                                    {
-                                                        BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Failed to join party - may need manual intervention");
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        else
-                                        {
-                                            BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Mouse positioning failed - too far from target ({distanceFromTarget:F1})");
-                                        }
-
-                                        // Update cooldowns
-                                        lastTimeAny = DateTime.Now;
-                                        lastAutoJoinPartyAttempt = DateTime.Now;
-                                    }
-                                    else
-                                    {
-                                        // Only log button not found occasionally to avoid spam
-                                        var timeSinceLastLog = (DateTime.Now - lastAutoJoinPartyAttempt).TotalSeconds;
-                                        if (timeSinceLastLog >= 20.0)
-                                        {
-                                            BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Accept button not found or not visible");
-                                        }
-                                    }
-                                }
-                                else
-                                {
-                                    // Only log navigation failures occasionally to avoid spam
-                                    var timeSinceLastLog = (DateTime.Now - lastAutoJoinPartyAttempt).TotalSeconds;
-                                    if (timeSinceLastLog >= 30.0)
-                                    {
-                                        BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: UI hierarchy navigation failed");
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                var timeSinceLastLog = (DateTime.Now - lastAutoJoinPartyAttempt).TotalSeconds;
-                                if (timeSinceLastLog >= 30.0)
-                                {
-                                    BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: UI hierarchy navigation failed");
-                                }
-                            }
-                        }
-                        else
-                        {
-                            var timeSinceLastLog = (DateTime.Now - lastAutoJoinPartyAttempt).TotalSeconds;
-                            if (timeSinceLastLog >= 30.0)
-                            {
-                                BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: Invites panel has no children");
-                            }
-                        }
-                    }
-                    else
-                    {
-                        // Don't log when no invites are present - this is normal operation
-                        // Only log occasionally if there might be an issue
-                        var timeSinceLastLog = (DateTime.Now - lastAutoJoinPartyAttempt).TotalSeconds;
-                        if (timeSinceLastLog >= 60.0) // Log once per minute when no invites
-                        {
-                            BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY: No party invites detected");
-                        }
-                    }
-                }
-                catch (Exception e)
-                {
-                    BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Exception occurred - {e.Message}");
-                }
-            }
+            partyJoiner?.Execute();
 
             #endregion
 
