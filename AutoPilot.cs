@@ -1524,14 +1524,12 @@ namespace BetterFollowbotLite;
     {
         while (true)
         {
-            try
+            if (!BetterFollowbotLite.Instance.Settings.Enable.Value || !BetterFollowbotLite.Instance.Settings.autoPilotEnabled.Value || BetterFollowbotLite.Instance.localPlayer == null || !BetterFollowbotLite.Instance.localPlayer.IsAlive ||
+                !BetterFollowbotLite.Instance.GameController.IsForeGroundCache || MenuWindow.IsOpened || BetterFollowbotLite.Instance.GameController.IsLoading || !BetterFollowbotLite.Instance.GameController.InGame)
             {
-                if (!BetterFollowbotLite.Instance.Settings.Enable.Value || !BetterFollowbotLite.Instance.Settings.autoPilotEnabled.Value || BetterFollowbotLite.Instance.localPlayer == null || !BetterFollowbotLite.Instance.localPlayer.IsAlive ||
-                    !BetterFollowbotLite.Instance.GameController.IsForeGroundCache || MenuWindow.IsOpened || BetterFollowbotLite.Instance.GameController.IsLoading || !BetterFollowbotLite.Instance.GameController.InGame)
-                {
-                    yield return new WaitTime(100);
-                    continue;
-                }
+                yield return new WaitTime(100);
+                continue;
+            }
 
             // ADDITIONAL SAFEGUARD: Don't execute tasks during zone loading or when game state is unstable
             if (BetterFollowbotLite.Instance.GameController.IsLoading ||
@@ -1552,31 +1550,24 @@ namespace BetterFollowbotLite;
                 TaskNode currentTask = null;
                 bool taskAccessError = false;
 
-                // PRIORITY: Check if there are any teleport tasks and process them first
-                var teleportTasks = tasks.Where(t => t.Type == TaskNodeType.TeleportConfirm || t.Type == TaskNodeType.TeleportButton);
-                if (teleportTasks.Any())
+                try
                 {
-                    try
+                    // PRIORITY: Check if there are any teleport tasks and process them first
+                    var teleportTasks = tasks.Where(t => t.Type == TaskNodeType.TeleportConfirm || t.Type == TaskNodeType.TeleportButton);
+                    if (teleportTasks.Any())
                     {
                         currentTask = teleportTasks.First();
                         BetterFollowbotLite.Instance.LogMessage($"PRIORITY: Processing teleport task {currentTask.Type} instead of {tasks.First().Type}");
                     }
-                    catch (Exception e)
-                    {
-                        taskAccessError = true;
-                        BetterFollowbotLite.Instance.LogMessage($"PRIORITY: Error accessing teleport task - {e.Message}");
-                    }
-                }
-                else
-                {
-                    try
+                    else
                     {
                         currentTask = tasks.First();
                     }
-                    catch (Exception e)
-                    {
-                        taskAccessError = true;
-                    }
+                }
+                catch (Exception e)
+                {
+                    taskAccessError = true;
+                    BetterFollowbotLite.Instance.LogError($"Task access error: {e.Message}");
                 }
 
                 if (taskAccessError)
@@ -1683,6 +1674,7 @@ namespace BetterFollowbotLite;
                 bool screenPosError = false;
                 bool keyDownError = false;
                 bool keyUpError = false;
+                bool mouseError = false;
                 bool taskExecutionError = false;
 
                 // Action flags for different task types
@@ -1811,13 +1803,13 @@ namespace BetterFollowbotLite;
                                 }
                                 catch (Exception e)
                                 {
+                                    BetterFollowbotLite.Instance.LogError($"Screen position calculation error: {e.Message}");
                                     screenPosError = true;
                                 }
 
                                 
                                 if (!screenPosError)
                                 {
-                                    
                                     try
                                     {
                                         Input.KeyDown(BetterFollowbotLite.Instance.Settings.autoPilotMoveKey);
@@ -1840,12 +1832,22 @@ namespace BetterFollowbotLite;
                                         keyUpError = true;
                                     }
 
+                                    try
+                                    {
+                                        Mouse.SetCursorPos(movementScreenPos);
+                                    }
+                                    catch (Exception e)
+                                    {
+                                        BetterFollowbotLite.Instance.LogError($"Mouse position error: {e.Message}");
+                                        mouseError = true;
+                                    }
+
                                     //Within bounding range. Task is complete
                                     //Note: Was getting stuck on close objects... testing hacky fix.
                                     var completionThreshold = BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value * 1.5;
                                     BetterFollowbotLite.Instance.LogMessage($"[DEBUG] Task check - Distance: {taskDistance:F1}, Threshold: {completionThreshold:F1}, Attempts: {currentTask.AttemptCount}, Task type: {currentTask.Type}");
 
-                                    if (taskDistance <= completionThreshold)
+                                    if (taskDistance <= completionThreshold && !mouseError)
                                     {
                                         BetterFollowbotLite.Instance.LogMessage($"[DEBUG] TASK COMPLETE: Completing task - Distance: {taskDistance:F1}, Task count before: {tasks.Count}");
                                         tasks.Remove(currentTask);
@@ -2126,13 +2128,13 @@ namespace BetterFollowbotLite;
                         continue;
                     }
 
-                    if (screenPosError)
+                    if (screenPosError || mouseError)
                     {
                         yield return new WaitTime(50);
                         continue;
                     }
 
-                    if (!screenPosError && currentTask.Type == TaskNodeType.Movement)
+                    if (!screenPosError && !mouseError && currentTask.Type == TaskNodeType.Movement)
                     {
                         // LAST CHANCE CHECK: Before executing movement, check if player has turned around
                         if (ShouldClearPathForResponsiveness())
@@ -2317,15 +2319,8 @@ namespace BetterFollowbotLite;
                 }
             }
 
-                lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
-                yield return new WaitTime(50);
-            }
-            catch (Exception e)
-            {
-                BetterFollowbotLite.Instance.LogError($"AutoPilotLogic: Critical exception in main loop: {e.Message}\nStackTrace: {e.StackTrace}");
-                // Don't let the coroutine die - wait a bit and continue
-                yield return new WaitTime(200);
-            }
+            lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
+            yield return new WaitTime(50);
         }
         // ReSharper disable once IteratorNeverReturns
     }
@@ -3077,16 +3072,16 @@ namespace BetterFollowbotLite;
                 var timeSinceLastUpdate = DateTime.Now - lastPositionUpdateTime;
 
                 // Check for common blocking conditions
-                var hasTransitionTasks = tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.TeleportConfirm || t.Type == TaskNodeType.TeleportButton);
+                var debugHasTransitionTasks = tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.TeleportConfirm || t.Type == TaskNodeType.TeleportButton);
                 var isInPortalTransition = portalState != PortalState.Inactive;
                 var isCloseToLeader = distanceToTarget < BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value;
                 var isInClearPathRange = distanceToTarget < BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance.Value;
 
                 BetterFollowbotLite.Instance.LogMessage($"[DEBUG] ZERO TASKS: Bot has follow target but 0 tasks! Distance: {distanceToTarget:F1}, Time since last update: {timeSinceLastUpdate.TotalSeconds:F1}s");
-                BetterFollowbotLite.Instance.LogMessage($"[DEBUG] ZERO TASKS: Conditions - Transition tasks: {hasTransitionTasks}, Portal state: {portalState}, Close to leader: {isCloseToLeader}, In clear range: {isInClearPathRange}");
+                BetterFollowbotLite.Instance.LogMessage($"[DEBUG] ZERO TASKS: Conditions - Transition tasks: {debugHasTransitionTasks}, Portal state: {portalState}, Close to leader: {isCloseToLeader}, In clear range: {isInClearPathRange}");
 
                 // If we're not close to the leader and not blocked by transitions, this is the bug
-                if (!isCloseToLeader && !hasTransitionTasks && !isInPortalTransition)
+                if (!isCloseToLeader && !debugHasTransitionTasks && !isInPortalTransition)
                 {
                     BetterFollowbotLite.Instance.LogMessage($"[DEBUG] ZERO TASKS: POTENTIAL BUG - Should have movement tasks but don't! Distance: {distanceToTarget:F1}, Clear distance: {BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance.Value:F1}");
                 }
