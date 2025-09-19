@@ -189,7 +189,7 @@ namespace BetterFollowbotLite;
                     var timeSinceLastUpdate = DateTime.Now - lastPositionUpdateTime;
 
                     // Only update if both distance and time thresholds are met
-                    if (timeSinceLastUpdate.TotalMilliseconds > 100)
+                    if (timeSinceLastUpdate.TotalMilliseconds > 500)
                     {
                         lastTargetPosition = newPosition;
                         lastPositionUpdateTime = DateTime.Now;
@@ -3003,7 +3003,7 @@ namespace BetterFollowbotLite;
                 var timeSinceLastUpdate = DateTime.Now - lastPositionUpdateTime;
 
                 // Only update if BOTH distance threshold AND time threshold are met
-                if (distanceFromLastUpdate > 10.0f && timeSinceLastUpdate.TotalMilliseconds > 100)
+                if (distanceFromLastUpdate > 10.0f && timeSinceLastUpdate.TotalMilliseconds > 500)
                 {
                     // Significant movement after minimum time - update the target position
                     lastTargetPosition = currentTargetPos;
