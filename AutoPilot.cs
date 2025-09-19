@@ -2375,7 +2375,7 @@ namespace BetterFollowbotLite;
     {
         try
         {
-            BetterFollowbotLite.Instance.LogMessage($"[DEBUG] UpdateAutoPilotLogic: START - Task count: {tasks.Count}, Follow target: {(followTarget != null ? "Valid" : "Null")}");
+            BetterFollowbotLite.Instance.LogMessage($"[DEBUG] UpdateAutoPilotLogic: START - Task count: {tasks.Count}, Follow target: {(this.followTarget != null ? "Valid" : "Null")}");
 
             // GLOBAL TELEPORT PROTECTION: Block ALL task creation and responsiveness during teleport
             if (IsTeleportInProgress)
