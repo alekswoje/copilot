@@ -223,7 +223,7 @@ namespace BetterFollowbotLite;
                     Position = e.GetComponent<Positioned>().GridPosition,
                     Distance = Vector3.Distance(new Vector3(e.GetComponent<Positioned>().GridPosition.X, e.GetComponent<Positioned>().GridPosition.Y, 0), leaderPosition),
                     Type = e.Type.ToString(),
-                    Name = e.GetComponent<ObjectMagicProperties>()?.Name ?? "Portal"
+                    Name = "Portal"
                 })
                 .Where(p => p.Distance < 300) // Within 300 units of leader (reasonable portal distance)
                 .OrderBy(p => p.Distance)
@@ -239,7 +239,7 @@ namespace BetterFollowbotLite;
                         Position = e.GetComponent<Positioned>().GridPosition,
                         Distance = Vector3.Distance(new Vector3(e.GetComponent<Positioned>().GridPosition.X, e.GetComponent<Positioned>().GridPosition.Y, 0), leaderPosition),
                         Type = e.Type.ToString(),
-                        Name = e.GetComponent<ObjectMagicProperties>()?.Name ?? "Portal"
+                        Name = "Portal"
                     })
                     .Where(p => p.Distance < 800) // Within 800 units of leader (extended but reasonable range)
                     .OrderBy(p => p.Distance)
@@ -271,7 +271,7 @@ namespace BetterFollowbotLite;
                         Position = e.GetComponent<Positioned>().GridPosition,
                         Distance = Vector3.Distance(new Vector3(e.GetComponent<Positioned>().GridPosition.X, e.GetComponent<Positioned>().GridPosition.Y, 0), leaderPosition),
                         Type = e.Type.ToString(),
-                        Name = e.GetComponent<ObjectMagicProperties>()?.Name ?? "Portal-Like"
+                        Name = "Portal-Like"
                     })
                     .OrderBy(p => p.Distance)
                     .Take(5) // Take closest 5
@@ -282,8 +282,7 @@ namespace BetterFollowbotLite;
 
             // Special handling for "The Warden's Quarters" portal
             var wardensPortal = portals.FirstOrDefault(p =>
-                p.Entity.GetComponent<ObjectMagicProperties>()?.Name?.Contains("Warden") == true ||
-                p.Entity.GetComponent<ObjectMagicProperties>()?.Name?.Contains("Quarters") == true);
+                p.Type.Contains("Warden") || p.Type.Contains("Quarters"));
 
             if (wardensPortal != null)
             {
@@ -294,8 +293,7 @@ namespace BetterFollowbotLite;
             // Log details of found portals
             foreach (var portal in portals)
             {
-                var entityName = portal.Entity.GetComponent<ObjectMagicProperties>()?.Name ?? "Unknown";
-                BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Found {portal.Type} '{entityName}' at distance {portal.Distance:F0}");
+                BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Found {portal.Type} '{portal.Name}' at distance {portal.Distance:F0}");
             }
 
             if (portals.Any())
