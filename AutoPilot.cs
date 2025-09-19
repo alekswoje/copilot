@@ -127,15 +127,17 @@ namespace BetterFollowbotLite;
             BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Waiting 500ms for position updates...");
             System.Threading.Thread.Sleep(500);
 
-            // Move toward the new position - portals often activate on proximity
-            tasks.Add(new TaskNode(newPosition, 0, TaskNodeType.Movement));
-            BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Added movement task toward {newPosition}");
+            // Move toward the portal location (where the leader was) to find and click the portal
+            // Don't move toward the target position since portals are physical objects at the source
+            var portalPos = lastTargetPosition; // This is where the portal should be
+            tasks.Add(new TaskNode(portalPos, 0, TaskNodeType.Movement));
+            BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Added movement task toward portal location {portalPos} (where leader was before transition)");
 
             // Set a flag to indicate we're in portal transition mode
             // This will be used in the main update loop to try portal activation when close
             portalTransitionActive = true;
             portalTransitionTarget = newPosition;
-            portalLocation = lastTargetPosition; // Save the portal location (where leader was before transition)
+            portalLocation = portalPos; // Save the portal location (where the portal actually is)
             BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Portal transition mode activated, target: {newPosition}, portal location: {portalLocation}");
 
             // Record this portal transition
@@ -2278,7 +2280,13 @@ namespace BetterFollowbotLite;
 
                 BetterFollowbotLite.Instance.LogMessage($"PORTAL: Checking activation - Portal active, distance to portal: {distanceToPortal:F0}, distance to target: {distanceToTarget:F0}, portal location: ({portalLocation.X:F0}, {portalLocation.Y:F0})");
 
-                if (distanceToPortal < 100) // Within 100 units of where the leader WAS (where the portal is)
+                // Check if we're close to the portal location OR if we're close to the target (in case the portal location is wrong)
+                bool closeToPortal = distanceToPortal < 100;
+                bool closeToTarget = distanceToTarget < 100;
+
+                BetterFollowbotLite.Instance.LogMessage($"PORTAL: Close to portal: {closeToPortal}, Close to target: {closeToTarget}");
+
+                if (closeToPortal || closeToTarget) // Within 100 units of either the portal location or target
                 {
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL: Within activation range of portal location ({distanceToPortal:F0} units) - finding portal");
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL: Current player position: ({playerPos.X:F0}, {playerPos.Y:F0})");
