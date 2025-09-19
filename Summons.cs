@@ -28,7 +28,12 @@ internal class Summons
     {
         try
         {
-            return BetterFollowbotLite.Instance.localPlayer.GetComponent<Actor>().DeployedObjects
+            // Count skeletons from deployed objects using Actor component
+            var actorComponent = BetterFollowbotLite.Instance.localPlayer.GetComponent<Actor>();
+            if (actorComponent == null)
+                return 0;
+
+            return actorComponent.DeployedObjects
                 .Count(x => x?.Entity != null && x.Entity.IsAlive &&
                            (x.Entity.Path.Contains("Skeleton") ||
                             x.Entity.Path.Contains("skeleton") ||
@@ -44,13 +49,17 @@ internal class Summons
     {
         try
         {
-            // Count raging spirits from deployed objects
-            var deployedSpirits = BetterFollowbotLite.Instance.localPlayer.GetComponent<Actor>().DeployedObjects
+            // Count raging spirits from deployed objects using Actor component
+            var actorComponent = BetterFollowbotLite.Instance.localPlayer.GetComponent<Actor>();
+            if (actorComponent == null)
+                return 0;
+
+            var deployedSpirits = actorComponent.DeployedObjects
                 .Count(x => x?.Entity != null && x.Entity.IsAlive &&
                            (x.Entity.Path.Contains("RagingSpirit") ||
                             x.Entity.Path.Contains("ragingspirit") ||
                             x.Entity.Metadata.ToLower().Contains("ragingspirit") ||
-                            x.Entity.Metadata.ToLower().Contains("spirit") && x.Entity.Metadata.ToLower().Contains("rag")));
+                            (x.Entity.Metadata.ToLower().Contains("spirit") && x.Entity.Metadata.ToLower().Contains("rag"))));
 
             return deployedSpirits;
         }
@@ -64,7 +73,12 @@ internal class Summons
     {
         try
         {
-            return BetterFollowbotLite.Instance.localPlayer.GetComponent<Actor>().DeployedObjects
+            // Count all minions from deployed objects using Actor component
+            var actorComponent = BetterFollowbotLite.Instance.localPlayer.GetComponent<Actor>();
+            if (actorComponent == null)
+                return 0;
+
+            return actorComponent.DeployedObjects
                 .Count(x => x?.Entity != null && x.Entity.IsAlive &&
                            (x.Entity.Path.Contains("Skeleton") ||
                             x.Entity.Path.Contains("skeleton") ||

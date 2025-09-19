@@ -793,46 +793,47 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                             if (ragingSpiritCount < Settings.summonRagingSpiritsMinCount.Value &&
                                 totalMinionCount < Settings.summonRagingSpiritsMinCount.Value)
                             {
-                                // Check for HOSTILE rare/unique enemies within 500 units (exclude player's own minions)
+                                // Check for HOSTILE rare/unique enemies within 500 units
                                 bool hostileEnemyNearby = false;
                                 var entities = GameController.Entities.Where(x => x.Type == EntityType.Monster);
                                 int enemyCount = 0;
 
+                                // Get list of deployed object IDs to exclude player's own minions
+                                var deployedObjectIds = new HashSet<uint>();
+                                if (localPlayer.TryGetComponent<Actor>(out var actorComponent))
+                                {
+                                    foreach (var deployedObj in actorComponent.DeployedObjects)
+                                    {
+                                        if (deployedObj?.Entity != null)
+                                        {
+                                            deployedObjectIds.Add(deployedObj.Entity.Id);
+                                        }
+                                    }
+                                }
+
                                 foreach (var entity in entities)
                                 {
-                                    if (entity.IsValid && entity.IsAlive)
+                                    if (entity.IsValid && entity.IsAlive && entity.IsHostile)
                                     {
                                         var distanceToEntity = Vector3.Distance(playerPosition, entity.Pos);
 
-                                        // Only check entities within 500 units
-                                        if (distanceToEntity <= 500)
+                                        // Only check entities within 500 units and ensure they're not player's deployed objects
+                                        if (distanceToEntity <= 500 && !deployedObjectIds.Contains(entity.Id))
                                         {
-                                            // Skip if this is one of the player's own minions
-                                            bool isPlayerMinion = entity.Path.Contains("RagingSpirit") ||
-                                                                 entity.Path.Contains("ragingspirit") ||
-                                                                 entity.Metadata.ToLower().Contains("ragingspirit") ||
-                                                                 entity.Metadata.ToLower().Contains("spirit") && entity.Metadata.ToLower().Contains("rag") ||
-                                                                 entity.Path.Contains("Skeleton") ||
-                                                                 entity.Path.Contains("skeleton") ||
-                                                                 entity.Metadata.ToLower().Contains("skeleton");
-
-                                            if (!isPlayerMinion)
+                                            var rarityComponent = entity.GetComponent<ObjectMagicProperties>();
+                                            if (rarityComponent != null)
                                             {
-                                                var rarityComponent = entity.GetComponent<ObjectMagicProperties>();
-                                                if (rarityComponent != null)
-                                                {
-                                                    var rarity = rarityComponent.Rarity;
-                                                    enemyCount++;
+                                                var rarity = rarityComponent.Rarity;
+                                                enemyCount++;
 
-                                                    // Only consider Rare, Unique, Magic, or White as hostile enemies
-                                                    if (rarity == MonsterRarity.Unique || rarity == MonsterRarity.Rare ||
-                                                        (Settings.summonRagingSpiritsMagicNormal.Value &&
-                                                        (rarity == MonsterRarity.Magic || rarity == MonsterRarity.White)))
-                                                    {
-                                                        hostileEnemyNearby = true;
-                                                        BetterFollowbotLite.Instance.LogMessage($"SRS: Found hostile enemy - {entity.Path}, Rarity: {rarity}, Distance: {distanceToEntity:F1}");
-                                                        break;
-                                                    }
+                                                // Only consider Rare, Unique, Magic, or White as hostile enemies
+                                                if (rarity == MonsterRarity.Unique || rarity == MonsterRarity.Rare ||
+                                                    (Settings.summonRagingSpiritsMagicNormal.Value &&
+                                                    (rarity == MonsterRarity.Magic || rarity == MonsterRarity.White)))
+                                                {
+                                                    hostileEnemyNearby = true;
+                                                    BetterFollowbotLite.Instance.LogMessage($"SRS: Found hostile enemy - {entity.Path}, Rarity: {rarity}, Distance: {distanceToEntity:F1}");
+                                                    break;
                                                 }
                                             }
                                         }
