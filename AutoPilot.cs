@@ -431,19 +431,51 @@ namespace BetterFollowbotLite;
                 {
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: WARNING - Camera is very far from portal ({cameraDistance:F0} units)! This suggests camera hasn't updated to new zone yet.");
 
-                    // Wait for camera to sync before attempting portal click
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Waiting for camera to sync (up to 3 seconds)...");
+                    // Wait for camera to sync before attempting portal click - longer wait and better sync detection
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Waiting for camera to sync (up to 12 seconds)...");
                     var startTime = DateTime.Now;
-                    while (Vector3.Distance(camera.Position, portalPos) > 3000 && (DateTime.Now - startTime).TotalSeconds < 3)
+                    var lastCameraDistance = cameraDistance;
+                    var cameraMoved = false;
+                    var syncAttempts = 0;
+
+                    while ((DateTime.Now - startTime).TotalSeconds < 12)
                     {
-                        System.Threading.Thread.Sleep(100);
+                        System.Threading.Thread.Sleep(300); // Wait 300ms between checks
+                        cameraDistance = Vector3.Distance(camera.Position, portalPos);
                         screenPos = BetterFollowbotLite.Instance.GameController.IngameState.Camera.WorldToScreen(portalPos);
+                        syncAttempts++;
+
+                        // Check if camera has moved significantly
+                        if (Math.Abs(cameraDistance - lastCameraDistance) > 1000)
+                        {
+                            cameraMoved = true;
+                            BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Camera moved! Distance changed from {lastCameraDistance:F0} to {cameraDistance:F0} (attempt {syncAttempts})");
+                        }
+
+                        lastCameraDistance = cameraDistance;
+
+                        // Break if camera is now reasonably close (< 3000 units) AND screen position is valid
+                        if (cameraDistance < 3000 && screenPos.X >= 0 && screenPos.Y >= 0 && screenPos.X <= 1920 && screenPos.Y <= 1080)
+                        {
+                            BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Camera sync complete! Distance: {cameraDistance:F0}, Screen pos valid: ({screenPos.X:F1}, {screenPos.Y:F1})");
+                            break;
+                        }
+
+                        // Every 3 attempts, try to force camera update
+                        if (syncAttempts % 3 == 0)
+                        {
+                            BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Attempting to force camera update (attempt {syncAttempts})");
+                            // Try moving mouse to different positions to trigger camera updates
+                            Mouse.SetCursorPos(new Vector2(100, 100));
+                            System.Threading.Thread.Sleep(100);
+                            Mouse.SetCursorPos(new Vector2(1820, 980));
+                            System.Threading.Thread.Sleep(100);
+                            Mouse.SetCursorPos(new Vector2(960, 540));
+                            System.Threading.Thread.Sleep(200);
+                        }
                     }
 
-                    // Recalculate screen position after waiting
-                    screenPos = BetterFollowbotLite.Instance.GameController.IngameState.Camera.WorldToScreen(portalPos);
-                    cameraDistance = Vector3.Distance(camera.Position, portalPos);
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: After sync wait - Camera distance: {cameraDistance:F0}, Screen pos: ({screenPos.X:F1}, {screenPos.Y:F1})");
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: After sync wait - Camera distance: {cameraDistance:F0}, Screen pos: ({screenPos.X:F1}, {screenPos.Y:F1}), Camera moved: {cameraMoved}, Attempts: {syncAttempts}");
                 }
 
                 BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: ===== END PORTAL CLICK CALCULATION =====");
@@ -467,17 +499,36 @@ namespace BetterFollowbotLite;
                 {
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Screen position is INVALID - attempting retry clicks");
 
-                    // Retry portal click up to 3 times with delays
-                    for (int retry = 1; retry <= 3; retry++)
+                    // Store initial player position to detect if portal was successful
+                    var initialPlayerPos = BetterFollowbotLite.Instance.GameController.Player.GetComponent<Positioned>()?.GridPosition ?? Vector2i.Zero;
+                    var portalSuccessful = false;
+
+                    // Retry portal click up to 5 times with increasing delays
+                    for (int retry = 1; retry <= 5; retry++)
                     {
-                        BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Retry attempt {retry}/3");
-                        System.Threading.Thread.Sleep(500); // Wait 500ms between retries
+                        BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Retry attempt {retry}/5");
+
+                        // Longer delay for later retries to allow more time for camera sync
+                        int delay = retry <= 2 ? 500 : 1000;
+                        System.Threading.Thread.Sleep(delay);
+
+                        // Check if player has moved significantly (portal might have worked)
+                        var currentPlayerPos = BetterFollowbotLite.Instance.GameController.Player.GetComponent<Positioned>()?.GridPosition ?? Vector2i.Zero;
+                        var playerMoved = Vector2.Distance(new Vector2(initialPlayerPos.X, initialPlayerPos.Y), new Vector2(currentPlayerPos.X, currentPlayerPos.Y)) > 100;
+
+                        if (playerMoved)
+                        {
+                            BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Player moved {Vector2.Distance(new Vector2(initialPlayerPos.X, initialPlayerPos.Y), new Vector2(currentPlayerPos.X, currentPlayerPos.Y)):F0} units - portal may have worked!");
+                            portalSuccessful = true;
+                            break;
+                        }
 
                         // Recalculate screen position
                         screenPos = BetterFollowbotLite.Instance.GameController.IngameState.Camera.WorldToScreen(portalPos);
-                        BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Retry {retry} - Screen pos: ({screenPos.X:F1}, {screenPos.Y:F1})");
+                        cameraDistance = Vector3.Distance(camera.Position, portalPos);
+                        BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Retry {retry} - Screen pos: ({screenPos.X:F1}, {screenPos.Y:F1}), Camera distance: {cameraDistance:F0}");
 
-                        if (screenPos.X >= 0 && screenPos.Y >= 0 && screenPos.X <= 1920 && screenPos.Y <= 1080)
+                        if (screenPos.X >= 0 && screenPos.Y >= 0 && screenPos.X <= 1920 && screenPos.Y <= 1080 && cameraDistance < 5000)
                         {
                             BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Retry {retry} successful - screen position now valid, attempting click");
                             Mouse.SetCursorPos(screenPos);
@@ -486,12 +537,41 @@ namespace BetterFollowbotLite;
                             System.Threading.Thread.Sleep(50);
                             Mouse.LeftMouseUp();
                             BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Retry click {retry} completed successfully");
+                            portalSuccessful = true;
                             break; // Exit retry loop on success
+                        }
+                        else if (retry == 3)
+                        {
+                            // On retry 3, try to force camera update by moving mouse and right-clicking
+                            BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Retry {retry} - attempting to force camera update");
+                            Mouse.SetCursorPos(new Vector2(960, 540)); // Center of screen
+                            System.Threading.Thread.Sleep(200);
+                            Mouse.RightMouseDown();
+                            System.Threading.Thread.Sleep(50);
+                            Mouse.RightMouseUp();
+                            System.Threading.Thread.Sleep(300);
                         }
                         else
                         {
-                            BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Retry {retry} failed - screen position still invalid");
+                            BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Retry {retry} failed - screen position still invalid (camera: {cameraDistance:F0} units away)");
                         }
+                    }
+
+                    // Final fallback - if still no valid click and portal not successful, try clicking center of screen
+                    if (!portalSuccessful && !(screenPos.X >= 0 && screenPos.Y >= 0 && screenPos.X <= 1920 && screenPos.Y <= 1080))
+                    {
+                        BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: All retries failed - attempting fallback center screen click");
+                        var centerPos = new Vector2(960, 540);
+                        Mouse.SetCursorPos(centerPos);
+                        System.Threading.Thread.Sleep(100);
+                        Mouse.LeftMouseDown();
+                        System.Threading.Thread.Sleep(50);
+                        Mouse.LeftMouseUp();
+                        BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Fallback center screen click completed");
+                    }
+                    else if (portalSuccessful)
+                    {
+                        BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Portal follow appears successful based on player movement");
                     }
                 }
 
