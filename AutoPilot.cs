@@ -79,7 +79,8 @@ namespace BetterFollowbotLite;
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Current Zone: {currentZone}");
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Leader moved from ({lastTargetPosition.X:F0}, {lastTargetPosition.Y:F0}) to ({newPosition.X:F0}, {newPosition.Y:F0})");
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Distance moved: {distanceMoved:F0} units");
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Player position: ({localPlayer.GetComponent<Positioned>().GridPosition.X:F0}, {localPlayer.GetComponent<Positioned>().GridPosition.Y:F0})");
+                    var playerPos = BetterFollowbotLite.Instance.GameController.Player.GetComponent<Positioned>().GridPosition;
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Player position: ({playerPos.X:F0}, {playerPos.Y:F0})");
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: ===== END PORTAL TRANSITION DETECTED =====");
 
                     // Check if this is a recent portal transition to prevent immediate backtracking
@@ -98,7 +99,6 @@ namespace BetterFollowbotLite;
 
                     // For same-zone portal transitions, immediately try to follow through portal
                     // Don't apply cooldown since we need to follow immediately
-                    var currentZone = BetterFollowbotLite.Instance.GameController?.Area.CurrentArea.DisplayName ?? "Unknown";
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Same-zone transition detected in '{currentZone}' - attempting immediate portal follow");
 
                     // Try to find and click portal near the leader's new position
