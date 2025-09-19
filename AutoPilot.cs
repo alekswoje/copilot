@@ -2288,15 +2288,15 @@ namespace BetterFollowbotLite;
                         {
                             BetterFollowbotLite.Instance.LogMessage($"PORTAL: Clicking at screen position ({screenPos.X:F0}, {screenPos.Y:F0})");
 
-                            // Use the same clicking pattern as other parts of the code
+                            // Use the same clicking pattern as other parts of the code (SetCursorPosAndLeftClickHuman timing)
                             Mouse.SetCursorPos(screenPos);
-                            System.Threading.Thread.Sleep(50);
+                            System.Threading.Thread.Sleep(BetterFollowbotLite.Instance.Settings.autoPilotInputFrequency.Value + 100);
                             Mouse.LeftMouseDown();
-                            System.Threading.Thread.Sleep(30);
+                            System.Threading.Thread.Sleep(BetterFollowbotLite.Instance.Settings.autoPilotInputFrequency.Value + 100);
                             Mouse.LeftMouseUp();
 
-                            // Wait a moment to see if portal activated
-                            System.Threading.Thread.Sleep(200);
+                            // Wait a moment to see if portal activated (same as LeftClick method)
+                            System.Threading.Thread.Sleep(100);
 
                             // Check if we moved significantly (portal likely worked)
                             var currentPos = BetterFollowbotLite.Instance.GameController.Player.GetComponent<Positioned>()?.GridPosition ?? Vector2i.Zero;
@@ -2317,15 +2317,15 @@ namespace BetterFollowbotLite;
                         {
                             BetterFollowbotLite.Instance.LogMessage($"PORTAL: Portal screen position is invalid ({screenPos.X:F0}, {screenPos.Y:F0}) - trying center click as fallback");
 
-                            // Fallback: Click center of screen (common portal activation method)
+                            // Fallback: Click center of screen (common portal activation method) - using same timing
                             var centerPos = new Vector2(960, 540);
                             Mouse.SetCursorPos(centerPos);
-                            System.Threading.Thread.Sleep(50);
+                            System.Threading.Thread.Sleep(BetterFollowbotLite.Instance.Settings.autoPilotInputFrequency.Value + 100);
                             Mouse.LeftMouseDown();
-                            System.Threading.Thread.Sleep(30);
+                            System.Threading.Thread.Sleep(BetterFollowbotLite.Instance.Settings.autoPilotInputFrequency.Value + 100);
                             Mouse.LeftMouseUp();
 
-                            System.Threading.Thread.Sleep(200);
+                            System.Threading.Thread.Sleep(100);
 
                             // Check if center click worked
                             var currentPos = BetterFollowbotLite.Instance.GameController.Player.GetComponent<Positioned>()?.GridPosition ?? Vector2i.Zero;
@@ -2343,12 +2343,12 @@ namespace BetterFollowbotLite;
                     {
                         BetterFollowbotLite.Instance.LogMessage($"PORTAL: Error during portal activation: {ex.Message}");
 
-                        // Last resort: Center click
+                        // Last resort: Center click - using same timing
                         var centerPos = new Vector2(960, 540);
                         Mouse.SetCursorPos(centerPos);
-                        System.Threading.Thread.Sleep(50);
+                        System.Threading.Thread.Sleep(BetterFollowbotLite.Instance.Settings.autoPilotInputFrequency.Value + 100);
                         Mouse.LeftMouseDown();
-                        System.Threading.Thread.Sleep(30);
+                        System.Threading.Thread.Sleep(BetterFollowbotLite.Instance.Settings.autoPilotInputFrequency.Value + 100);
                         Mouse.LeftMouseUp();
                     }
                 }
