@@ -15,6 +15,47 @@ namespace BetterFollowbotLite;
 
     public class AutoPilot
     {
+        // Special portal names that should be treated as high-priority interzone portals
+        private static readonly string[] SpecialPortalNames = new[]
+        {
+            "arena", "pit", "combat",    // Arena portals
+            "warden", "quarters"         // Warden's Quarters portal
+        };
+
+        /// <summary>
+        /// Determines if a portal label contains any of the special portal names
+        /// </summary>
+        private static bool IsSpecialPortal(string portalLabel)
+        {
+            if (string.IsNullOrEmpty(portalLabel)) return false;
+            return SpecialPortalNames.Any(specialName =>
+                portalLabel.Contains(specialName, StringComparison.OrdinalIgnoreCase));
+        }
+
+        /// <summary>
+        /// Gets the display name for a special portal type
+        /// </summary>
+        private static string GetSpecialPortalType(string portalLabel)
+        {
+            if (string.IsNullOrEmpty(portalLabel)) return "Unknown";
+
+            return (portalLabel.Contains("warden", StringComparison.OrdinalIgnoreCase) ||
+                   portalLabel.Contains("quarters", StringComparison.OrdinalIgnoreCase))
+                   ? "Warden's Quarters" : "Arena";
+        }
+
+        /// <summary>
+        /// Gets the display name for a special portal type (short version for UI)
+        /// </summary>
+        private static string GetSpecialPortalTypeShort(string portalLabel)
+        {
+            if (string.IsNullOrEmpty(portalLabel)) return "UNKNOWN";
+
+            return (portalLabel.Contains("warden", StringComparison.OrdinalIgnoreCase) ||
+                   portalLabel.Contains("quarters", StringComparison.OrdinalIgnoreCase))
+                   ? "WARDEN'S QUARTERS" : "ARENA PORTAL";
+        }
+
         // Most Logic taken from Alpha Plugin
         private Coroutine autoPilotCoroutine;
         private readonly Random random = new Random();
@@ -698,10 +739,11 @@ namespace BetterFollowbotLite;
             }
         }
 
-        // Handle special cases like "Arena" portal
-        if (zoneName.Contains("arena") && (portalLabel.Contains("arena") || portalLabel.Contains("pit") || portalLabel.Contains("combat")))
+        // Handle special cases like Arena and Warden's Quarters portals
+        if (IsSpecialPortal(portalLabel))
         {
-            BetterFollowbotLite.Instance.LogMessage($"PORTAL MATCH: Special case - Arena portal detected for zone '{zoneName}'");
+            var portalType = GetSpecialPortalType(portalLabel);
+            BetterFollowbotLite.Instance.LogMessage($"PORTAL MATCH: Special case - {portalType} portal detected for zone '{zoneName}'");
             return true;
         }
 
@@ -2027,25 +2069,27 @@ namespace BetterFollowbotLite;
 
                                 if (allPortals != null && allPortals.Count > 0)
                                 {
-                                    // First, check if there's an Arena portal - give it priority
-                                    var arenaPortal = allPortals.FirstOrDefault(p => p.Label?.Text?.ToLower().Contains("arena") ?? false);
+                                    // First, check if there's a special portal (Arena or Warden's Quarters) - give them priority
+                                    var specialPortal = allPortals.FirstOrDefault(p =>
+                                        IsSpecialPortal(p.Label?.Text ?? ""));
                                     LabelOnGround selectedPortal;
 
-                                    if (arenaPortal != null)
+                                    if (specialPortal != null)
                                     {
-                                        var arenaDistance = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, arenaPortal.ItemOnGround.Pos);
-                                        BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Found Arena portal at distance {arenaDistance:F1}");
+                                        var portalType = GetSpecialPortalType(specialPortal.Label?.Text ?? "");
+                                        var portalDistance = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, specialPortal.ItemOnGround.Pos);
+                                        BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Found {portalType} portal at distance {portalDistance:F1}");
 
-                                        if (arenaDistance < 200)
+                                        if (portalDistance < 200)
                                         {
-                                            BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Using Arena portal as likely destination");
-                                            selectedPortal = arenaPortal;
+                                            BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Using {portalType} portal as likely destination");
+                                            selectedPortal = specialPortal;
                                         }
                                         else
                                         {
-                                            // Arena portal too far, fall back to closest
+                                            // Special portal too far, fall back to closest
                                             selectedPortal = allPortals.First();
-                                            BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Arena portal too far, using closest instead");
+                                            BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: {portalType} portal too far, using closest instead");
                                         }
                                     }
                                     else
@@ -2420,10 +2464,11 @@ namespace BetterFollowbotLite;
                 var distancePos = new System.Numerics.Vector2(labelRect.TopLeft.X, labelRect.TopLeft.Y - 35);
                 BetterFollowbotLite.Instance.Graphics.DrawText($"{distance:F1}m", distancePos, Color.Cyan);
 
-                // Highlight Arena portals specially
-                if (portalLabel.ToLower().Contains("arena"))
+                // Highlight special portals (Arena and Warden's Quarters)
+                if (IsSpecialPortal(portalLabel))
                 {
-                    BetterFollowbotLite.Instance.Graphics.DrawText("ARENA PORTAL", new System.Numerics.Vector2(labelRect.TopLeft.X, labelRect.TopLeft.Y - 50), Color.OrangeRed);
+                    var portalType = GetSpecialPortalTypeShort(portalLabel);
+                    BetterFollowbotLite.Instance.Graphics.DrawText(portalType, new System.Numerics.Vector2(labelRect.TopLeft.X, labelRect.TopLeft.Y - 50), Color.OrangeRed);
                 }
             }
         }
