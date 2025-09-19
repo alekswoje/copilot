@@ -39,4 +39,56 @@ internal class Summons
             return 0;
         }
     }
+
+    public static int GetRagingSpiritCount()
+    {
+        try
+        {
+            // Try to get the count from the SummonRagingSpirit skill's DeployedEntities first (most accurate)
+            var srsSkill = BetterFollowbotLite.Instance.GameController.Game.IngameState.IngameUi.SkillBar.Skills
+                .FirstOrDefault(s => s?.Name != null && (s.Name.Contains("SummonRagingSpirit") ||
+                                                        s.Name.Contains("Summon Raging Spirit") ||
+                                                        (s.Name.Contains("summon") && s.Name.Contains("spirit") && s.Name.Contains("rag"))));
+
+            if (srsSkill != null && srsSkill.DeployedEntities != null)
+            {
+                // Use the skill's DeployedEntities array for most accurate count
+                return srsSkill.DeployedEntities.Count(x => x?.Entity != null && x.Entity.IsAlive);
+            }
+
+            // Fallback: Count raging spirits from deployed objects
+            var deployedSpirits = BetterFollowbotLite.Instance.localPlayer.GetComponent<Actor>().DeployedObjects
+                .Count(x => x?.Entity != null && x.Entity.IsAlive &&
+                           (x.Entity.Path.Contains("RagingSpirit") ||
+                            x.Entity.Path.Contains("ragingspirit") ||
+                            x.Entity.Metadata.ToLower().Contains("ragingspirit") ||
+                            x.Entity.Metadata.ToLower().Contains("spirit") && x.Entity.Metadata.ToLower().Contains("rag")));
+
+            return deployedSpirits;
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
+    public static int GetTotalMinionCount()
+    {
+        try
+        {
+            return BetterFollowbotLite.Instance.localPlayer.GetComponent<Actor>().DeployedObjects
+                .Count(x => x?.Entity != null && x.Entity.IsAlive &&
+                           (x.Entity.Path.Contains("Skeleton") ||
+                            x.Entity.Path.Contains("skeleton") ||
+                            x.Entity.Metadata.ToLower().Contains("skeleton") ||
+                            x.Entity.Path.Contains("RagingSpirit") ||
+                            x.Entity.Path.Contains("ragingspirit") ||
+                            x.Entity.Metadata.ToLower().Contains("ragingspirit") ||
+                            (x.Entity.Metadata.ToLower().Contains("spirit") && x.Entity.Metadata.ToLower().Contains("rag"))));
+        }
+        catch
+        {
+            return 0;
+        }
+    }
 }

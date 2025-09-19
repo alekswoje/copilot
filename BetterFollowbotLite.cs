@@ -29,6 +29,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
     private bool isCasting;
     private bool isMoving;
     internal DateTime lastTimeAny;
+    internal DateTime lastSRSSummonTime = DateTime.MinValue;
     private DateTime lastAutoJoinPartyAttempt;
     private DateTime lastAreaChangeTime = DateTime.MinValue;
     private DateTime lastGraceLogTime = DateTime.MinValue;
@@ -769,16 +770,27 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                     {
                         var distanceToLeader = Vector3.Distance(playerPosition, autoPilot.FollowTargetPosition);
 
+                        // Add a cooldown to prevent chain reactions (at least 2 seconds between summons)
+                        var timeSinceLastSRSSummon = DateTime.Now - lastSRSSummonTime;
+                        if (timeSinceLastSRSSummon.TotalSeconds < 2.0)
+                        {
+                            // Too soon since last summon, skip
+                            return;
+                        }
+
                         // Check if we're close to the leader (within AutoPilot follow distance)
                         if (distanceToLeader <= Settings.autoPilotClearPathDistance.Value)
                         {
-                            // Count current summoned minions
-                            var totalMinionCount = Summons.GetSkeletonCount();
+                            // Count current summoned minions properly
+                            var ragingSpiritCount = Summons.GetRagingSpiritCount();
+                            var totalMinionCount = Summons.GetTotalMinionCount();
+                            var skeletonCount = Summons.GetSkeletonCount();
 
-                            // Only cast SRS if we have less than the minimum required count
-                            if (totalMinionCount < Settings.summonRagingSpiritsMinCount.Value)
+                            // Only cast SRS if we have less than the minimum required count AND we're under the total minion limit
+                            if (ragingSpiritCount < Settings.summonRagingSpiritsMinCount.Value &&
+                                totalMinionCount < Settings.summonRagingSpiritsMinCount.Value)
                             {
-                                // Check for rare/unique enemies within 1000 units
+                                // Check for rare/unique enemies within 500 units
                                 bool rareOrUniqueNearby = false;
                                 var entities = GameController.Entities.Where(x => x.Type == EntityType.Monster);
 
@@ -814,6 +826,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                     }
                                 }
 
+                                // Only summon if there are still enemies nearby AND we haven't summoned recently
                                 if (rareOrUniqueNearby)
                                 {
                                     // Find the Summon Raging Spirits skill
@@ -825,11 +838,12 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                     if (summonRagingSpiritsSkill != null && summonRagingSpiritsSkill.IsOnSkillBar && summonRagingSpiritsSkill.CanBeUsed)
                                     {
                                         var enemyType = Settings.summonRagingSpiritsMagicNormal.Value ? "Rare/Unique/Magic/White" : "Rare/Unique";
-                                        BetterFollowbotLite.Instance.LogMessage($"SRS: Current minions: {totalMinionCount}, Required: {Settings.summonRagingSpiritsMinCount.Value}, Distance to leader: {distanceToLeader:F1} (max: {Settings.autoPilotClearPathDistance.Value}), {enemyType} enemy within 500 units detected");
+                                        BetterFollowbotLite.Instance.LogMessage($"SRS: Current spirits: {ragingSpiritCount}, Total minions: {totalMinionCount}, Required: {Settings.summonRagingSpiritsMinCount.Value}, Distance to leader: {distanceToLeader:F1}, {enemyType} enemy detected");
 
                                         // Use the Summon Raging Spirits skill
                                         Keyboard.KeyPress(GetSkillInputKey(summonRagingSpiritsSkill.SkillSlotIndex));
                                         lastTimeAny = DateTime.Now; // Update global cooldown
+                                        lastSRSSummonTime = DateTime.Now; // Track SRS summon time
 
                                         BetterFollowbotLite.Instance.LogMessage("SRS: Summoned Raging Spirit successfully");
                                     }
@@ -842,6 +856,19 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                         BetterFollowbotLite.Instance.LogMessage("SRS: SummonRagingSpirit skill is on cooldown or unavailable");
                                     }
                                 }
+                                else
+                                {
+                                    // No enemies nearby, don't summon
+                                    if (totalMinionCount > 0)
+                                    {
+                                        BetterFollowbotLite.Instance.LogMessage($"SRS: No enemies detected nearby, skipping summon (Current: {ragingSpiritCount} spirits, {totalMinionCount} total minions)");
+                                    }
+                                }
+                            }
+                            else if (totalMinionCount >= Settings.summonRagingSpiritsMinCount.Value)
+                            {
+                                // We're at the minion limit, don't summon more
+                                BetterFollowbotLite.Instance.LogMessage($"SRS: At minion limit ({totalMinionCount}/{Settings.summonRagingSpiritsMinCount.Value}), skipping summon");
                             }
                         }
                     }
