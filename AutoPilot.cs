@@ -1564,6 +1564,7 @@ namespace BetterFollowbotLite;
 
         yield return new WaitTime(30 + random.Next(BetterFollowbotLite.Instance.Settings.autoPilotInputFrequency));
     }
+    // ReSharper disable once IteratorNeverReturns
     private IEnumerator AutoPilotLogic()
     {
         while (true)
@@ -2430,20 +2431,20 @@ namespace BetterFollowbotLite;
     {
         BetterFollowbotLite.Instance.LogMessage($"[DEBUG] UpdateAutoPilotLogic: START - Task count: {tasks.Count}, Follow target: {(this.followTarget != null ? "Valid" : "Null")}");
 
-            // GLOBAL TELEPORT PROTECTION: Block ALL task creation and responsiveness during teleport
-            if (IsTeleportInProgress)
-            {
-                BetterFollowbotLite.Instance.LogMessage($"TELEPORT: Blocking all task creation - teleport in progress ({tasks.Count} tasks)");
-                return; // Exit immediately to prevent any interference
-            }
+        // GLOBAL TELEPORT PROTECTION: Block ALL task creation and responsiveness during teleport
+        if (IsTeleportInProgress)
+        {
+            BetterFollowbotLite.Instance.LogMessage($"TELEPORT: Blocking all task creation - teleport in progress ({tasks.Count} tasks)");
+            return; // Exit immediately to prevent any interference
+        }
 
-            // Removed portal transition protection - let proximity activation work immediately like arena portals
+        // Removed portal transition protection - let proximity activation work immediately like arena portals
 
-            if (!BetterFollowbotLite.Instance.Settings.Enable.Value || !BetterFollowbotLite.Instance.Settings.autoPilotEnabled.Value || BetterFollowbotLite.Instance.localPlayer == null || !BetterFollowbotLite.Instance.localPlayer.IsAlive ||
-                !BetterFollowbotLite.Instance.GameController.IsForeGroundCache || MenuWindow.IsOpened || BetterFollowbotLite.Instance.GameController.IsLoading || !BetterFollowbotLite.Instance.GameController.InGame)
-            {
-                return;
-            }
+        if (!BetterFollowbotLite.Instance.Settings.Enable.Value || !BetterFollowbotLite.Instance.Settings.autoPilotEnabled.Value || BetterFollowbotLite.Instance.localPlayer == null || !BetterFollowbotLite.Instance.localPlayer.IsAlive ||
+            !BetterFollowbotLite.Instance.GameController.IsForeGroundCache || MenuWindow.IsOpened || BetterFollowbotLite.Instance.GameController.IsLoading || !BetterFollowbotLite.Instance.GameController.InGame)
+        {
+            return;
+        }
 
             // PORTAL ACTIVATION: Robust portal handling with no random clicking
             // Only handle portals when we have an active portal transition target
@@ -3084,17 +3085,18 @@ namespace BetterFollowbotLite;
                             var responsiveThreshold = BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value / 2;
                             if (distanceFromLastTask >= responsiveThreshold)
                             {
-                        // Check current distance to leader before creating tasks
-                        var currentDistanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, followTarget.Pos);
-                        if (currentDistanceToLeader > BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value)
-                        {
-                            BetterFollowbotLite.Instance.LogMessage($"RESPONSIVENESS: Adding new path node - Distance: {distanceFromLastTask:F1}, Threshold: {responsiveThreshold:F1}, Current distance to leader: {currentDistanceToLeader:F1}");
-                        BetterFollowbotLite.Instance.LogMessage($"DEBUG: Creating task to position: {FollowTargetPosition} (Player at: {BetterFollowbotLite.Instance.playerPosition})");
-                        tasks.Add(new TaskNode(FollowTargetPosition, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
-                            }
-                        else
-                        {
-                            BetterFollowbotLite.Instance.LogMessage($"WITHIN FOLLOW DISTANCE: Not creating tasks - Current distance {currentDistanceToLeader:F1} <= follow distance {BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value:F1}");
+                                // Check current distance to leader before creating tasks
+                                var currentDistanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, followTarget.Pos);
+                                if (currentDistanceToLeader > BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value)
+                                {
+                                    BetterFollowbotLite.Instance.LogMessage($"RESPONSIVENESS: Adding new path node - Distance: {distanceFromLastTask:F1}, Threshold: {responsiveThreshold:F1}, Current distance to leader: {currentDistanceToLeader:F1}");
+                                    BetterFollowbotLite.Instance.LogMessage($"DEBUG: Creating task to position: {FollowTargetPosition} (Player at: {BetterFollowbotLite.Instance.playerPosition})");
+                                    tasks.Add(new TaskNode(FollowTargetPosition, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
+                                }
+                                else
+                                {
+                                    BetterFollowbotLite.Instance.LogMessage($"WITHIN FOLLOW DISTANCE: Not creating tasks - Current distance {currentDistanceToLeader:F1} <= follow distance {BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value:F1}");
+                                }
                             }
                         }
                         else
@@ -3176,8 +3178,9 @@ namespace BetterFollowbotLite;
                     BetterFollowbotLite.Instance.LogMessage($"[DEBUG] ZERO TASKS: POTENTIAL BUG - Should have movement tasks but don't! Distance: {distanceToTarget:F1}, Clear distance: {BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance.Value:F1}");
                 }
             }
+        }
     }
-    // ReSharper disable once IteratorNeverReturns
+    }
 
     private bool CheckDashTerrain(Vector2 targetPosition)
     {
