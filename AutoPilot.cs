@@ -2308,6 +2308,16 @@ namespace BetterFollowbotLite;
                     return;
                 }
 
+                // If we've been teleported far from the portal location (successful teleport), deactivate portal mode
+                if (distanceToPortal > 1000)
+                {
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Bot teleported far from portal location ({distanceToPortal:F0} units) - deactivating portal mode");
+                    portalTransitionActive = false;
+                    portalLocation = Vector3.Zero;
+                    portalActivationStartTime = DateTime.MinValue;
+                    // Don't return here - let normal movement continue
+                }
+
                 if (closeToPortal || activationTimeout) // Within 200 units of portal OR timeout after 10 seconds
                 {
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL: Within activation range of portal location ({distanceToPortal:F0} units) - finding portal");
