@@ -79,8 +79,31 @@ namespace BetterFollowbotLite;
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Current Zone: {currentZone}");
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Leader moved from ({lastTargetPosition.X:F0}, {lastTargetPosition.Y:F0}) to ({newPosition.X:F0}, {newPosition.Y:F0})");
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Distance moved: {distanceMoved:F0} units");
-                    var playerPos = BetterFollowbotLite.Instance.GameController.Player.GetComponent<Positioned>().GridPosition;
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Player position: ({playerPos.X:F0}, {playerPos.Y:F0})");
+                    // Get player position properly - try multiple methods
+                    var playerEntity = BetterFollowbotLite.Instance.GameController.Player;
+                    Vector2i playerPos;
+                    if (playerEntity != null && playerEntity.GetComponent<Positioned>() != null)
+                    {
+                        playerPos = playerEntity.GetComponent<Positioned>().GridPosition;
+                        BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Player position (via Player entity): ({playerPos.X:F0}, {playerPos.Y:F0})");
+                    }
+                    else
+                    {
+                        // Fallback: try to find local player in entities
+                        var localPlayer = BetterFollowbotLite.Instance.GameController.Entities
+                            .FirstOrDefault(e => e.IsValid && e.GetComponent<Positioned>() != null &&
+                                e.GetComponent<Player>() != null && e.GetComponent<Player>().Name == BetterFollowbotLite.Instance.GameController.Player.GetComponent<Player>().Name);
+                        if (localPlayer != null)
+                        {
+                            playerPos = localPlayer.GetComponent<Positioned>().GridPosition;
+                            BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Player position (via entity search): ({playerPos.X:F0}, {playerPos.Y:F0})");
+                        }
+                        else
+                        {
+                            playerPos = new Vector2i(0, 0);
+                            BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: ERROR - Could not determine player position!");
+                        }
+                    }
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: ===== END PORTAL TRANSITION DETECTED =====");
 
                     // Check if this is a recent portal transition to prevent immediate backtracking
@@ -100,6 +123,10 @@ namespace BetterFollowbotLite;
                     // For same-zone portal transitions, immediately try to follow through portal
                     // Don't apply cooldown since we need to follow immediately
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Same-zone transition detected in '{currentZone}' - attempting immediate portal follow");
+
+                    // Add a small delay to allow positions to update after transition
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Waiting 500ms for position updates...");
+                    System.Threading.Thread.Sleep(500);
 
                     // Try to find and click portal near the leader's new position
                     TryFollowThroughPortal(newPosition);
@@ -320,21 +347,47 @@ namespace BetterFollowbotLite;
             // Special handling for "The Warden's Quarters" portal
             BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: ===== WARDEN'S PORTAL DETECTION =====");
             BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Looking for Warden's portal among {portals.Count} portals");
+            BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Leader position for portal search: ({leaderPosition.X:F0}, {leaderPosition.Y:F0})");
 
+            // First try: exact name match
             var wardensPortal = portals.FirstOrDefault(p =>
                 p.Type.Contains("Warden") || p.Type.Contains("Quarters"));
 
             if (wardensPortal != null)
             {
-                BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: *** FOUND WARDEN'S PORTAL *** Type: {wardensPortal.Type}, Position: ({wardensPortal.Position.X:F0}, {wardensPortal.Position.Y:F0}), Distance: {wardensPortal.Distance:F0}");
+                BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: *** FOUND WARDEN'S PORTAL (exact match) *** Type: {wardensPortal.Type}, Position: ({wardensPortal.Position.X:F0}, {wardensPortal.Position.Y:F0}), Distance: {wardensPortal.Distance:F0}");
                 portals = new[] { wardensPortal }.ToList(); // Only use the Warden's portal
             }
             else
             {
-                BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: *** NO WARDEN'S PORTAL FOUND *** Checking all portal types:");
-                foreach (var p in portals)
+                // Second try: look for AreaTransition portals that are reasonably close to leader
+                // In Upper Prison, the Warden's portal should be within ~1000 units of where the leader entered
+                var areaTransitions = portals.Where(p => p.Type.Contains("AreaTransition")).ToList();
+                BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Found {areaTransitions.Count} AreaTransition portals");
+
+                if (areaTransitions.Any())
                 {
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW:   Portal Type: {p.Type} (contains Warden: {p.Type.Contains("Warden")}, contains Quarters: {p.Type.Contains("Quarters")})");
+                    // Sort by distance and take the closest one that's reasonably near the leader
+                    var closestTransition = areaTransitions.OrderBy(p => p.Distance).First();
+                    if (closestTransition.Distance < 1000) // Within reasonable range
+                    {
+                        BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: *** FOUND WARDEN'S PORTAL (closest AreaTransition) *** Type: {closestTransition.Type}, Position: ({closestTransition.Position.X:F0}, {closestTransition.Position.Y:F0}), Distance: {closestTransition.Distance:F0}");
+                        portals = new[] { closestTransition }.ToList();
+                        wardensPortal = closestTransition;
+                    }
+                    else
+                    {
+                        BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Closest AreaTransition is {closestTransition.Distance:F0} units away - too far, might be wrong portal");
+                    }
+                }
+
+                if (wardensPortal == null)
+                {
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: *** NO WARDEN'S PORTAL FOUND *** Checking all portal types:");
+                    foreach (var p in portals)
+                    {
+                        BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW:   Portal Type: {p.Type} (contains Warden: {p.Type.Contains("Warden")}, contains Quarters: {p.Type.Contains("Quarters")}, Distance: {p.Distance:F0})");
+                    }
                 }
             }
             BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: ===== END WARDEN'S DETECTION =====");
@@ -362,7 +415,21 @@ namespace BetterFollowbotLite;
                 BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Portal World Position: ({portalPos.X:F0}, {portalPos.Y:F0}, {portalPos.Z:F0})");
                 BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Calculated Screen Position: ({screenPos.X:F1}, {screenPos.Y:F1})");
                 BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Screen Position Valid: {screenPos.X >= 0 && screenPos.Y >= 0 && screenPos.X <= 1920 && screenPos.Y <= 1080}");
-                BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Current Camera Position: {BetterFollowbotLite.Instance.GameController.IngameState.Camera.Position}");
+
+                var camera = BetterFollowbotLite.Instance.GameController.IngameState.Camera;
+                BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Camera Position: ({camera.Position.X:F0}, {camera.Position.Y:F0}, {camera.Position.Z:F0})");
+                BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Camera Distance to Portal: {Vector3.Distance(camera.Position, portalPos):F0} units");
+
+                // Check if camera is looking at the right area
+                var cameraToPortal = portalPos - camera.Position;
+                BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Vector from Camera to Portal: ({cameraToPortal.X:F0}, {cameraToPortal.Y:F0}, {cameraToPortal.Z:F0})");
+
+                // Check if this might be a camera sync issue
+                if (Vector3.Distance(camera.Position, portalPos) > 5000)
+                {
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: WARNING - Camera is very far from portal ({Vector3.Distance(camera.Position, portalPos):F0} units)! This suggests camera hasn't updated to new zone yet.");
+                }
+
                 BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: ===== END PORTAL CLICK CALCULATION =====");
 
                 // Add a task to click on the portal
