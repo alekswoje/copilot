@@ -180,13 +180,26 @@ namespace BetterFollowbotLite;
                     // For zone transitions, apply the cooldown to let the zone load
                     lastPortalTransitionTime = DateTime.Now;
                 }
-                else if (newPosition != lastTargetPosition)
+                // Only update follow target position if the movement is significant (> 10 units)
+                // This prevents constant updates for tiny movements that cause movement stuttering
+                else if (distanceMoved > 10.0f)
                 {
-                    BetterFollowbotLite.Instance.LogMessage($"AUTOPILOT: Updated follow target position from {lastTargetPosition} to {newPosition}");
+                    BetterFollowbotLite.Instance.LogMessage($"AUTOPILOT: Updated follow target position from {lastTargetPosition} to {newPosition} (moved {distanceMoved:F1} units)");
+                    lastTargetPosition = newPosition;
+                }
+                // For very small movements (< 10 units), don't update the target position
+                // This prevents the bot from constantly recalculating paths for tiny movements
+                else
+                {
+                    // Don't update lastTargetPosition for tiny movements
+                    BetterFollowbotLite.Instance.LogMessage($"AUTOPILOT: Ignoring tiny movement of {distanceMoved:F1} units (threshold: 10.0 units)");
                 }
             }
-
-            lastTargetPosition = newPosition;
+            else
+            {
+                // No previous position, set it
+                lastTargetPosition = newPosition;
+            }
         }
         else if (followTarget != null && !followTarget.IsValid)
         {
@@ -2967,8 +2980,27 @@ namespace BetterFollowbotLite;
 
                 }
             }
+            // Only update lastTargetPosition if the follow target has moved significantly (> 10 units)
+            // This prevents constant movement task creation for tiny movements
             if (followTarget?.Pos != null)
-                lastTargetPosition = followTarget.Pos;
+            {
+                var currentTargetPos = followTarget.Pos;
+                if (lastTargetPosition == Vector3.Zero)
+                {
+                    // First time setting the position
+                    lastTargetPosition = currentTargetPos;
+                }
+                else
+                {
+                    var distanceFromLastUpdate = Vector3.Distance(lastTargetPosition, currentTargetPos);
+                    if (distanceFromLastUpdate > 10.0f)
+                    {
+                        // Significant movement - update the target position
+                        lastTargetPosition = currentTargetPos;
+                    }
+                    // For tiny movements (< 10 units), keep the old position to prevent movement stuttering
+                }
+            }
         }
         catch (Exception e)
         {
