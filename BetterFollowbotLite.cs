@@ -772,11 +772,14 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
                         // Add a cooldown to prevent chain reactions (at least 2 seconds between summons)
                         var timeSinceLastSRSSummon = DateTime.Now - lastSRSSummonTime;
-                        if (timeSinceLastSRSSummon.TotalSeconds < 2.0)
+                        bool srsOnCooldown = timeSinceLastSRSSummon.TotalSeconds < 2.0;
+
+                        if (srsOnCooldown)
                         {
-                            // Too soon since last summon, skip
-                            return;
+                            // Too soon since last summon, skip SRS logic
+                            BetterFollowbotLite.Instance.LogMessage("SRS: Cooldown active, skipping summon check");
                         }
+                        else
 
                         // Check if we're close to the leader (within AutoPilot follow distance)
                         if (distanceToLeader <= Settings.autoPilotClearPathDistance.Value)
@@ -790,9 +793,10 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                             if (ragingSpiritCount < Settings.summonRagingSpiritsMinCount.Value &&
                                 totalMinionCount < Settings.summonRagingSpiritsMinCount.Value)
                             {
-                                // Check for rare/unique enemies within 500 units
-                                bool rareOrUniqueNearby = false;
+                                // Check for HOSTILE rare/unique enemies within 500 units (exclude player's own minions)
+                                bool hostileEnemyNearby = false;
                                 var entities = GameController.Entities.Where(x => x.Type == EntityType.Monster);
+                                int enemyCount = 0;
 
                                 foreach (var entity in entities)
                                 {
@@ -800,34 +804,49 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                     {
                                         var distanceToEntity = Vector3.Distance(playerPosition, entity.Pos);
 
-                                        // Check if entity is within range and is rare or unique
+                                        // Only check entities within 500 units
                                         if (distanceToEntity <= 500)
                                         {
-                                            var rarityComponent = entity.GetComponent<ObjectMagicProperties>();
-                                            if (rarityComponent != null)
-                                            {
-                                                var rarity = rarityComponent.Rarity;
+                                            // Skip if this is one of the player's own minions
+                                            bool isPlayerMinion = entity.Path.Contains("RagingSpirit") ||
+                                                                 entity.Path.Contains("ragingspirit") ||
+                                                                 entity.Metadata.ToLower().Contains("ragingspirit") ||
+                                                                 entity.Metadata.ToLower().Contains("spirit") && entity.Metadata.ToLower().Contains("rag") ||
+                                                                 entity.Path.Contains("Skeleton") ||
+                                                                 entity.Path.Contains("skeleton") ||
+                                                                 entity.Metadata.ToLower().Contains("skeleton");
 
-                                                // Always check for rare/unique
-                                                if (rarity == MonsterRarity.Unique || rarity == MonsterRarity.Rare)
+                                            if (!isPlayerMinion)
+                                            {
+                                                var rarityComponent = entity.GetComponent<ObjectMagicProperties>();
+                                                if (rarityComponent != null)
                                                 {
-                                                    rareOrUniqueNearby = true;
-                                                    break;
-                                                }
-                                                // Also check for magic/white if enabled
-                                                else if (Settings.summonRagingSpiritsMagicNormal.Value &&
-                                                        (rarity == MonsterRarity.Magic || rarity == MonsterRarity.White))
-                                                {
-                                                    rareOrUniqueNearby = true;
-                                                    break;
+                                                    var rarity = rarityComponent.Rarity;
+                                                    enemyCount++;
+
+                                                    // Only consider Rare, Unique, Magic, or White as hostile enemies
+                                                    if (rarity == MonsterRarity.Unique || rarity == MonsterRarity.Rare ||
+                                                        (Settings.summonRagingSpiritsMagicNormal.Value &&
+                                                        (rarity == MonsterRarity.Magic || rarity == MonsterRarity.White)))
+                                                    {
+                                                        hostileEnemyNearby = true;
+                                                        BetterFollowbotLite.Instance.LogMessage($"SRS: Found hostile enemy - {entity.Path}, Rarity: {rarity}, Distance: {distanceToEntity:F1}");
+                                                        break;
+                                                    }
                                                 }
                                             }
                                         }
                                     }
                                 }
 
-                                // Only summon if there are still enemies nearby AND we haven't summoned recently
-                                if (rareOrUniqueNearby)
+                                // Debug: Log what we found
+                                if (enemyCount > 0 && !hostileEnemyNearby)
+                                {
+                                    BetterFollowbotLite.Instance.LogMessage($"SRS: Found {enemyCount} entities but none qualify as hostile enemies");
+                                }
+
+                                // Only summon if there are still HOSTILE enemies nearby AND we haven't summoned recently
+                                if (hostileEnemyNearby)
                                 {
                                     // Find the Summon Raging Spirits skill
                                     var summonRagingSpiritsSkill = skills.FirstOrDefault(s =>
@@ -838,7 +857,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                     if (summonRagingSpiritsSkill != null && summonRagingSpiritsSkill.IsOnSkillBar && summonRagingSpiritsSkill.CanBeUsed)
                                     {
                                         var enemyType = Settings.summonRagingSpiritsMagicNormal.Value ? "Rare/Unique/Magic/White" : "Rare/Unique";
-                                        BetterFollowbotLite.Instance.LogMessage($"SRS: Current spirits: {ragingSpiritCount}, Total minions: {totalMinionCount}, Required: {Settings.summonRagingSpiritsMinCount.Value}, Distance to leader: {distanceToLeader:F1}, {enemyType} enemy detected");
+                                        BetterFollowbotLite.Instance.LogMessage($"SRS: Current spirits: {ragingSpiritCount}, Total minions: {totalMinionCount}, Required: {Settings.summonRagingSpiritsMinCount.Value}, Distance to leader: {distanceToLeader:F1}, Hostile {enemyType} enemy detected");
 
                                         // Use the Summon Raging Spirits skill
                                         Keyboard.KeyPress(GetSkillInputKey(summonRagingSpiritsSkill.SkillSlotIndex));
@@ -858,10 +877,10 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                 }
                                 else
                                 {
-                                    // No enemies nearby, don't summon
+                                    // No HOSTILE enemies nearby, don't summon
                                     if (totalMinionCount > 0)
                                     {
-                                        BetterFollowbotLite.Instance.LogMessage($"SRS: No enemies detected nearby, skipping summon (Current: {ragingSpiritCount} spirits, {totalMinionCount} total minions)");
+                                        BetterFollowbotLite.Instance.LogMessage($"SRS: No hostile enemies detected nearby, skipping summon (Current: {ragingSpiritCount} spirits, {totalMinionCount} total minions)");
                                     }
                                 }
                             }
