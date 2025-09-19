@@ -2268,11 +2268,15 @@ namespace BetterFollowbotLite;
             // PORTAL ACTIVATION: Find actual portal entity and click on it when close enough
             if (portalTransitionActive && portalTransitionTarget != Vector3.Zero)
             {
+                BetterFollowbotLite.Instance.LogMessage("PORTAL: Portal activation code reached - checking conditions");
+
                 var playerPos = BetterFollowbotLite.Instance.GameController.Player.GetComponent<Positioned>()?.GridPosition ?? Vector2i.Zero;
                 var distanceToTarget = Vector3.Distance(new Vector3(playerPos.X, playerPos.Y, 0), portalTransitionTarget);
                 var distanceToPortal = Vector3.Distance(new Vector3(playerPos.X, playerPos.Y, 0), lastTargetPosition);
 
-                if (distanceToPortal < 200) // Within 200 units of where the leader WAS (where the portal is)
+                BetterFollowbotLite.Instance.LogMessage($"PORTAL: Checking activation - Portal active, distance to portal: {distanceToPortal:F0}, distance to target: {distanceToTarget:F0}");
+
+                if (distanceToPortal < 100) // Within 100 units of where the leader WAS (where the portal is)
                 {
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL: Within activation range of portal location ({distanceToPortal:F0} units) - finding portal");
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL: Current player position: ({playerPos.X:F0}, {playerPos.Y:F0})");
