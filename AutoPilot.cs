@@ -918,9 +918,9 @@ namespace BetterFollowbotLite;
 
             // Calculate how much the player has moved since last update
             var playerMovement = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, lastPlayerPosition);
-            
-            // Much less aggressive: Only clear path if player moved significantly more
-            BetterFollowbotLite.Instance.LogMessage($"[DEBUG] RESPONSIVENESS: Player movement: {playerMovement:F1}, Threshold: 300, Task count: {tasks.Count}, Portal state: {portalState}");
+
+            // Much less aggressive: Only clear path if player moved significantly AND we're actually stuck
+            BetterFollowbotLite.Instance.LogMessage($"[DEBUG] RESPONSIVENESS: Player movement: {playerMovement:F1}, Threshold: 500, Task count: {tasks.Count}, Portal state: {portalState}");
 
             // CRITICAL FIX: Don't clear tasks during portal transitions
             if (portalState != PortalState.Inactive)
@@ -929,9 +929,17 @@ namespace BetterFollowbotLite;
                 return false;
             }
 
-            if (playerMovement > 300f) // Increased from 100f to 300f to be much less aggressive
+            // ADDITIONAL SAFEGUARD: Don't clear tasks if we have no tasks to replace them with
+            if (followTarget == null || !followTarget.IsValid)
             {
-                BetterFollowbotLite.Instance.LogMessage($"[DEBUG] RESPONSIVENESS: CLEARING PATH - Player moved {playerMovement:F1} units");
+                BetterFollowbotLite.Instance.LogMessage($"[DEBUG] RESPONSIVENESS: SKIPPING - No valid follow target");
+                return false;
+            }
+
+            // Only clear if player moved significantly AND we have tasks that might be stale
+            if (playerMovement > 500f && tasks.Count > 0) // Increased threshold and require existing tasks
+            {
+                BetterFollowbotLite.Instance.LogMessage($"[DEBUG] RESPONSIVENESS: CLEARING PATH - Player moved {playerMovement:F1} units, clearing {tasks.Count} tasks");
                 // Reduced logging frequency to prevent lag
                 lastPathClearTime = DateTime.Now;
                 lastResponsivenessCheck = DateTime.Now;
@@ -1516,12 +1524,14 @@ namespace BetterFollowbotLite;
     {
         while (true)
         {
-            if (!BetterFollowbotLite.Instance.Settings.Enable.Value || !BetterFollowbotLite.Instance.Settings.autoPilotEnabled.Value || BetterFollowbotLite.Instance.localPlayer == null || !BetterFollowbotLite.Instance.localPlayer.IsAlive ||
-                !BetterFollowbotLite.Instance.GameController.IsForeGroundCache || MenuWindow.IsOpened || BetterFollowbotLite.Instance.GameController.IsLoading || !BetterFollowbotLite.Instance.GameController.InGame)
+            try
             {
-                yield return new WaitTime(100);
-                continue;
-            }
+                if (!BetterFollowbotLite.Instance.Settings.Enable.Value || !BetterFollowbotLite.Instance.Settings.autoPilotEnabled.Value || BetterFollowbotLite.Instance.localPlayer == null || !BetterFollowbotLite.Instance.localPlayer.IsAlive ||
+                    !BetterFollowbotLite.Instance.GameController.IsForeGroundCache || MenuWindow.IsOpened || BetterFollowbotLite.Instance.GameController.IsLoading || !BetterFollowbotLite.Instance.GameController.InGame)
+                {
+                    yield return new WaitTime(100);
+                    continue;
+                }
 
             // ADDITIONAL SAFEGUARD: Don't execute tasks during zone loading or when game state is unstable
             if (BetterFollowbotLite.Instance.GameController.IsLoading ||
@@ -2307,8 +2317,15 @@ namespace BetterFollowbotLite;
                 }
             }
 
-            lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
-            yield return new WaitTime(50);
+                lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
+                yield return new WaitTime(50);
+            }
+            catch (Exception e)
+            {
+                BetterFollowbotLite.Instance.LogError($"AutoPilotLogic: Critical exception in main loop: {e.Message}\nStackTrace: {e.StackTrace}");
+                // Don't let the coroutine die - wait a bit and continue
+                yield return new WaitTime(200);
+            }
         }
         // ReSharper disable once IteratorNeverReturns
     }
@@ -2765,15 +2782,29 @@ namespace BetterFollowbotLite;
                 //We are NOT within clear path distance range of leader. Logic can continue
                 if (distanceToLeader >= BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance.Value)
                 {
-                    // IMPORTANT: Don't process large movements if we already have any transition-related task active
+                    // IMPORTANT: Don't process large movements if we have transition-related tasks, but allow fallback after timeout
                     // This prevents zone transition detection from interfering with active transitions/teleports
-                    if (tasks.Any(t =>
+                    var transitionTasks = tasks.Where(t =>
                         t.Type == TaskNodeType.Transition ||
                         t.Type == TaskNodeType.TeleportConfirm ||
-                        t.Type == TaskNodeType.TeleportButton))
+                        t.Type == TaskNodeType.TeleportButton);
+
+                    if (transitionTasks.Any())
                     {
-                        BetterFollowbotLite.Instance.LogMessage("ZONE TRANSITION: Transition/teleport task already active, skipping movement processing");
-                        return; // Exit early to prevent interference
+                        // Allow fallback after 10 seconds to prevent permanent blocking
+                        var oldestTransitionTask = transitionTasks.OrderBy(t => t.AttemptCount).First();
+                        if (oldestTransitionTask.AttemptCount < 20) // 20 attempts = ~10 seconds at 50ms intervals
+                        {
+                            BetterFollowbotLite.Instance.LogMessage("ZONE TRANSITION: Transition/teleport task active, skipping movement processing to prevent interference");
+                            return; // Exit early to prevent interference
+                        }
+                        else
+                        {
+                            BetterFollowbotLite.Instance.LogMessage("ZONE TRANSITION: Transition task timeout reached, clearing stale tasks and allowing movement");
+                            tasks.RemoveAll(t => t.Type == TaskNodeType.Transition ||
+                                               t.Type == TaskNodeType.TeleportConfirm ||
+                                               t.Type == TaskNodeType.TeleportButton);
+                        }
                     }
 
                     //Leader moved VERY far in one frame. Check for transition to use to follow them.
@@ -3045,7 +3076,20 @@ namespace BetterFollowbotLite;
                 var distanceToTarget = Vector3.Distance(playerPos, lastTargetPosition);
                 var timeSinceLastUpdate = DateTime.Now - lastPositionUpdateTime;
 
-                BetterFollowbotLite.Instance.LogMessage($"[DEBUG] ZERO TASKS: Bot has follow target but 0 tasks! Distance: {distanceToTarget:F1}, Time since last update: {timeSinceLastUpdate.TotalSeconds:F1}s, Last target pos: {lastTargetPosition}");
+                // Check for common blocking conditions
+                var hasTransitionTasks = tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.TeleportConfirm || t.Type == TaskNodeType.TeleportButton);
+                var isInPortalTransition = portalState != PortalState.Inactive;
+                var isCloseToLeader = distanceToTarget < BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value;
+                var isInClearPathRange = distanceToTarget < BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance.Value;
+
+                BetterFollowbotLite.Instance.LogMessage($"[DEBUG] ZERO TASKS: Bot has follow target but 0 tasks! Distance: {distanceToTarget:F1}, Time since last update: {timeSinceLastUpdate.TotalSeconds:F1}s");
+                BetterFollowbotLite.Instance.LogMessage($"[DEBUG] ZERO TASKS: Conditions - Transition tasks: {hasTransitionTasks}, Portal state: {portalState}, Close to leader: {isCloseToLeader}, In clear range: {isInClearPathRange}");
+
+                // If we're not close to the leader and not blocked by transitions, this is the bug
+                if (!isCloseToLeader && !hasTransitionTasks && !isInPortalTransition)
+                {
+                    BetterFollowbotLite.Instance.LogMessage($"[DEBUG] ZERO TASKS: POTENTIAL BUG - Should have movement tasks but don't! Distance: {distanceToTarget:F1}, Clear distance: {BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance.Value:F1}");
+                }
             }
             BetterFollowbotLite.Instance.LogMessage($"[DEBUG] UpdateAutoPilotLogic: END - Task count: {tasks.Count}");
         }
