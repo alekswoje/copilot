@@ -9,6 +9,7 @@ using ExileCore.PoEMemory.Elements;
 using ExileCore.PoEMemory.MemoryObjects;
 using ExileCore.Shared;
 using ExileCore.Shared.Enums;
+using GameOffsets.Native;
 using SharpDX;
 
 namespace BetterFollowbotLite;
@@ -81,7 +82,7 @@ namespace BetterFollowbotLite;
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Distance moved: {distanceMoved:F0} units");
                     // Get player position properly - try multiple methods
                     var playerEntity = BetterFollowbotLite.Instance.GameController.Player;
-                    var playerPos = default;
+                    Vector2i playerPos = default;
                     if (playerEntity != null && playerEntity.GetComponent<Positioned>() != null)
                     {
                         playerPos = playerEntity.GetComponent<Positioned>().GridPosition;
@@ -773,7 +774,7 @@ namespace BetterFollowbotLite;
             int rateLimitMs = isOverrideCheck ? 2000 : 5000; // Much less aggressive - increased from 100/500 to 2000/5000ms
             if ((DateTime.Now - lastPathClearTime).TotalMilliseconds < rateLimitMs)
                 return false;
-
+            
             // Additional cooldown for responsiveness checks to prevent excessive path clearing
             if ((DateTime.Now - lastResponsivenessCheck).TotalMilliseconds < 1000) // Much slower - increased from 200 to 1000ms
                 return false;
