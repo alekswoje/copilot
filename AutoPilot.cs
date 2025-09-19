@@ -2275,18 +2275,22 @@ namespace BetterFollowbotLite;
                 BetterFollowbotLite.Instance.LogMessage("PORTAL: Portal activation code reached - checking conditions");
 
                 var playerPos = BetterFollowbotLite.Instance.GameController.Player.GetComponent<Positioned>()?.GridPosition ?? Vector2i.Zero;
-                var distanceToTarget = Vector3.Distance(new Vector3(playerPos.X, playerPos.Y, 0), portalTransitionTarget);
-                var distanceToPortal = Vector3.Distance(new Vector3(playerPos.X, playerPos.Y, 0), portalLocation);
+                var playerPosVec3 = new Vector3(playerPos.X, playerPos.Y, 0);
+                var distanceToTarget = Vector3.Distance(playerPosVec3, portalTransitionTarget);
+                var distanceToPortal = Vector3.Distance(playerPosVec3, portalLocation);
+
+                BetterFollowbotLite.Instance.LogMessage($"PORTAL: DEBUG - Player pos: ({playerPos.X:F1}, {playerPos.Y:F1}), Portal pos: ({portalLocation.X:F1}, {portalLocation.Y:F1})");
 
                 BetterFollowbotLite.Instance.LogMessage($"PORTAL: Checking activation - Portal active, distance to portal: {distanceToPortal:F0}, distance to target: {distanceToTarget:F0}, portal location: ({portalLocation.X:F0}, {portalLocation.Y:F0})");
 
                 // Check if we're close to the portal location OR if we're close to the target (in case the portal location is wrong)
-                bool closeToPortal = distanceToPortal < 100;
-                bool closeToTarget = distanceToTarget < 100;
+                // Use a much smaller threshold since the bot should be very close to the portal
+                bool closeToPortal = distanceToPortal < 50;
+                bool closeToTarget = distanceToTarget < 50;
 
-                BetterFollowbotLite.Instance.LogMessage($"PORTAL: Close to portal: {closeToPortal}, Close to target: {closeToTarget}");
+                BetterFollowbotLite.Instance.LogMessage($"PORTAL: Close to portal: {closeToPortal} (dist: {distanceToPortal:F1}), Close to target: {closeToTarget} (dist: {distanceToTarget:F1})");
 
-                if (closeToPortal || closeToTarget) // Within 100 units of either the portal location or target
+                if (closeToPortal || closeToTarget) // Within 50 units of either the portal location or target
                 {
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL: Within activation range of portal location ({distanceToPortal:F0} units) - finding portal");
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL: Current player position: ({playerPos.X:F0}, {playerPos.Y:F0})");
