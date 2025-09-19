@@ -88,8 +88,11 @@ namespace BetterFollowbotLite;
                 if (distanceMoved > BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance.Value)
                 {
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Leader moved {distanceMoved:F0} units - interzone portal detected (threshold: {BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance.Value})");
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Portal location set to {lastTargetPosition} (where leader was before portal)");
-                    portalLocation = lastTargetPosition; // Save where the portal actually is
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Portal transition detected - bot should look for portals near current position to follow leader");
+
+                    // Don't set portalLocation to leader's old position - the portal object stays in the same world location
+                    // Instead, mark that we're in a portal transition state so the bot will look for portals to follow
+                    portalLocation = Vector3.One; // Use as a flag to indicate portal transition mode is active
                 }
             }
 
@@ -558,8 +561,10 @@ namespace BetterFollowbotLite;
                             BetterFollowbotLite.Instance.LogMessage($"PORTAL DEBUG: Found {potentialPortals.Count} potential portal entities without labels");
                             foreach (var portal in potentialPortals)
                             {
-                                // Use portalLocation if available (where the portal actually is), otherwise fall back to lastTargetPosition
-                                var referencePosition = portalLocation != Vector3.Zero ? portalLocation : lastTargetPosition;
+                                // During portal transition, look for portals near bot's current position
+                                // Otherwise use portalLocation if available, or fall back to lastTargetPosition
+                                var referencePosition = portalLocation == Vector3.One ? BetterFollowbotLite.Instance.playerPosition :
+                                                      portalLocation != Vector3.Zero ? portalLocation : lastTargetPosition;
                                 var distance = Vector3.Distance(referencePosition, portal.Pos);
                                 BetterFollowbotLite.Instance.LogMessage($"PORTAL DEBUG: Portal entity at distance {distance:F1}, Metadata: {portal.Metadata}");
                             }
@@ -573,8 +578,10 @@ namespace BetterFollowbotLite;
                 foreach (var portal in allPortalLabels)
                 {
                     var labelText = portal.Label?.Text ?? "NULL";
-                    // Use portalLocation if available (where the portal actually is), otherwise fall back to lastTargetPosition
-                    var referencePosition = portalLocation != Vector3.Zero ? portalLocation : lastTargetPosition;
+                    // During portal transition, look for portals near bot's current position
+                    // Otherwise use portalLocation if available, or fall back to lastTargetPosition
+                    var referencePosition = portalLocation == Vector3.One ? BetterFollowbotLite.Instance.playerPosition :
+                                          portalLocation != Vector3.Zero ? portalLocation : lastTargetPosition;
                     var distance = Vector3.Distance(referencePosition, portal.ItemOnGround.Pos);
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL DEBUG: Available portal - Text: '{labelText}', Distance: {distance:F1}");
                 }
@@ -1641,15 +1648,15 @@ namespace BetterFollowbotLite;
                 return; // Exit immediately to prevent any interference
             }
 
-            // PORTAL LOCATION RESET: Clear portal location when bot successfully reaches leader after portal transition
-            if (portalLocation != Vector3.Zero && this.followTarget != null)
+            // PORTAL TRANSITION RESET: Clear portal transition mode when bot successfully reaches leader
+            if (portalLocation == Vector3.One && this.followTarget != null)
             {
                 var distanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, this.followTarget.Pos);
                 // If bot is now close to leader after being far away, portal transition was successful
                 if (distanceToLeader < 300) // Within normal following distance
                 {
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Bot successfully reached leader after portal transition - clearing portal tracking");
-                    portalLocation = Vector3.Zero; // Clear portal location to allow normal operation
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Bot successfully reached leader after portal transition - clearing portal transition mode");
+                    portalLocation = Vector3.Zero; // Clear portal transition mode to allow normal operation
                 }
             }
 
