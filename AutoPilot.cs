@@ -28,6 +28,7 @@ namespace BetterFollowbotLite;
         private bool portalTransitionActive = false;
         private Vector3 portalTransitionTarget;
         private Vector3 portalLocation = Vector3.Zero; // Where the portal actually is (leader's position before transition)
+        private DateTime portalActivationStartTime = DateTime.MinValue; // When portal activation started
         private Entity followTarget;
         private DateTime lastPortalTransitionTime = DateTime.MinValue;
 
@@ -138,6 +139,7 @@ namespace BetterFollowbotLite;
             portalTransitionActive = true;
             portalTransitionTarget = newPosition;
             portalLocation = portalPos; // Save the portal location (where the portal actually is)
+            portalActivationStartTime = DateTime.Now; // Track when portal activation started
             BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Portal transition mode activated, target: {newPosition}, portal location: {portalLocation}");
 
             // Record this portal transition
@@ -2286,13 +2288,17 @@ namespace BetterFollowbotLite;
                 BetterFollowbotLite.Instance.LogMessage($"PORTAL: Checking activation - Portal active, distance to portal: {distanceToPortal:F0}, distance to target: {distanceToTarget:F0}, portal location: ({portalLocation.X:F0}, {portalLocation.Y:F0})");
 
                 // Check if we're close to the portal location OR if we're close to the target (in case the portal location is wrong)
-                // Use a much smaller threshold since the bot should be very close to the portal
-                bool closeToPortal = distanceToPortal < 50;
-                bool closeToTarget = distanceToTarget < 50;
+                // Use a larger threshold since there might be coordinate system issues
+                bool closeToPortal = distanceToPortal < 200;
+                bool closeToTarget = distanceToTarget < 200;
 
-                BetterFollowbotLite.Instance.LogMessage($"PORTAL: Close to portal: {closeToPortal} (dist: {distanceToPortal:F1}), Close to target: {closeToTarget} (dist: {distanceToTarget:F1})");
+                // Time-based fallback: if we've been trying for more than 10 seconds, assume we're close enough
+                var timeSinceActivationStart = DateTime.Now - portalActivationStartTime;
+                bool activationTimeout = timeSinceActivationStart.TotalSeconds > 10;
 
-                if (closeToPortal || closeToTarget) // Within 50 units of either the portal location or target
+                BetterFollowbotLite.Instance.LogMessage($"PORTAL: Close to portal: {closeToPortal} (dist: {distanceToPortal:F1}), Close to target: {closeToTarget} (dist: {distanceToTarget:F1}), Timeout: {activationTimeout} ({timeSinceActivationStart.TotalSeconds:F1}s)");
+
+                if (closeToPortal || closeToTarget || activationTimeout) // Within 200 units OR timeout after 10 seconds
                 {
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL: Within activation range of portal location ({distanceToPortal:F0} units) - finding portal");
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL: Current player position: ({playerPosVec3.X:F0}, {playerPosVec3.Y:F0})");
@@ -2413,6 +2419,7 @@ namespace BetterFollowbotLite;
                                     BetterFollowbotLite.Instance.LogMessage($"PORTAL: SUCCESS - Player moved {movementDistance:F0} units, portal activated!");
                                     portalTransitionActive = false; // Deactivate portal mode
                                     portalLocation = Vector3.Zero; // Clear portal location
+                                    portalActivationStartTime = DateTime.MinValue; // Reset activation timer
                                     return; // Exit early
                                 }
                                 else
@@ -2443,6 +2450,7 @@ namespace BetterFollowbotLite;
                                     BetterFollowbotLite.Instance.LogMessage($"PORTAL: CENTER CLICK SUCCESS - Player moved {movementDistance:F0} units!");
                                     portalTransitionActive = false;
                                     portalLocation = Vector3.Zero; // Clear portal location
+                                    portalActivationStartTime = DateTime.MinValue; // Reset activation timer
                                     return;
                                 }
                             }
