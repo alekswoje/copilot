@@ -44,19 +44,7 @@ internal class Summons
     {
         try
         {
-            // Try to get the count from the SummonRagingSpirit skill's DeployedEntities first (most accurate)
-            var srsSkill = BetterFollowbotLite.Instance.skills?.FirstOrDefault(s =>
-                s?.Name != null && (s.Name.Contains("SummonRagingSpirit") ||
-                                    s.Name.Contains("Summon Raging Spirit") ||
-                                    (s.Name.Contains("summon") && s.Name.Contains("spirit") && s.Name.Contains("rag"))));
-
-            if (srsSkill != null && srsSkill.DeployedEntities != null)
-            {
-                // Use the skill's DeployedEntities array for most accurate count
-                return srsSkill.DeployedEntities.Count(x => x?.Entity != null && x.Entity.IsAlive);
-            }
-
-            // Fallback: Count raging spirits from deployed objects
+            // Count raging spirits from deployed objects
             var deployedSpirits = BetterFollowbotLite.Instance.localPlayer.GetComponent<Actor>().DeployedObjects
                 .Count(x => x?.Entity != null && x.Entity.IsAlive &&
                            (x.Entity.Path.Contains("RagingSpirit") ||
