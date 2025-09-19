@@ -920,7 +920,15 @@ namespace BetterFollowbotLite;
             var playerMovement = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, lastPlayerPosition);
             
             // Much less aggressive: Only clear path if player moved significantly more
-            BetterFollowbotLite.Instance.LogMessage($"[DEBUG] RESPONSIVENESS: Player movement: {playerMovement:F1}, Threshold: 300, Task count: {tasks.Count}");
+            BetterFollowbotLite.Instance.LogMessage($"[DEBUG] RESPONSIVENESS: Player movement: {playerMovement:F1}, Threshold: 300, Task count: {tasks.Count}, Portal state: {portalState}");
+
+            // CRITICAL FIX: Don't clear tasks during portal transitions
+            if (portalState != PortalState.Inactive)
+            {
+                BetterFollowbotLite.Instance.LogMessage($"[DEBUG] RESPONSIVENESS: SKIPPING - Portal transition active (state: {portalState})");
+                return false;
+            }
+
             if (playerMovement > 300f) // Increased from 100f to 300f to be much less aggressive
             {
                 BetterFollowbotLite.Instance.LogMessage($"[DEBUG] RESPONSIVENESS: CLEARING PATH - Player moved {playerMovement:F1} units");
