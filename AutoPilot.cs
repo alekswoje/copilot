@@ -2298,7 +2298,17 @@ namespace BetterFollowbotLite;
 
                 BetterFollowbotLite.Instance.LogMessage($"PORTAL: Close to portal: {closeToPortal} (dist: {distanceToPortal:F1}), Close to target: {closeToTarget} (dist: {distanceToTarget:F1}), Timeout: {activationTimeout} ({timeSinceActivationStart.TotalSeconds:F1}s)");
 
-                if (closeToPortal || closeToTarget || activationTimeout) // Within 200 units OR timeout after 10 seconds
+                // If we're close to the target (leader's new position), deactivate portal mode to prevent loops
+                if (closeToTarget && distanceToTarget < 100)
+                {
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Close to target location ({distanceToTarget:F0} units) - deactivating portal mode to prevent loops");
+                    portalTransitionActive = false;
+                    portalLocation = Vector3.Zero;
+                    portalActivationStartTime = DateTime.MinValue;
+                    return;
+                }
+
+                if (closeToPortal || activationTimeout) // Within 200 units of portal OR timeout after 10 seconds
                 {
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL: Within activation range of portal location ({distanceToPortal:F0} units) - finding portal");
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL: Current player position: ({playerPosVec3.X:F0}, {playerPosVec3.Y:F0})");
@@ -2318,10 +2328,10 @@ namespace BetterFollowbotLite;
 
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL: Found {portalLabels?.Count ?? 0} visible portal labels");
 
-                    // Find portals near the leader's pre-portal position
+                    // Find portals near the leader's pre-portal position (where the portal actually is)
                     var portalsNearLeader = portalLabels?
                         .Select(label => {
-                            var distance = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, label.ItemOnGround.Pos);
+                            var distance = Vector3.Distance(portalLocation, label.ItemOnGround.Pos);
                             var portalText = label.Label?.Text ?? "Unknown";
                             return new {
                                 Label = label,
@@ -2331,11 +2341,11 @@ namespace BetterFollowbotLite;
                                 Metadata = label.ItemOnGround.Metadata
                             };
                         })
-                        .Where(p => p.Distance < 1000) // Within 1000 units of player
+                        .Where(p => p.Distance < 1000) // Within 1000 units of portal location
                         .OrderBy(p => p.Distance)
                         .ToList();
 
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Found {portalsNearLeader?.Count ?? 0} portals within 1000 units");
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Found {portalsNearLeader?.Count ?? 0} portals within 1000 units of portal location {portalLocation}");
 
                     // Log details of portals found
                     if (portalsNearLeader != null && portalsNearLeader.Any())
