@@ -22,6 +22,10 @@ namespace BetterFollowbotLite;
 
         private Vector3 lastTargetPosition;
         private Vector3 lastPlayerPosition;
+
+        // Portal transition tracking
+        private bool portalTransitionActive = false;
+        private Vector3 portalTransitionTarget;
         private Entity followTarget;
         private DateTime lastPortalTransitionTime = DateTime.MinValue;
 
@@ -116,25 +120,30 @@ namespace BetterFollowbotLite;
                         return;
                     }
 
-                    // PORTAL TRANSITION HANDLING: Clear all tasks and handle portal following
-                    var tasksCleared = tasks.Count;
-                    tasks.Clear();
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Cleared {tasksCleared} tasks to prevent following to old position");
+            // PORTAL TRANSITION HANDLING: Clear all tasks and handle portal following
+            var tasksCleared = tasks.Count;
+            tasks.Clear();
+            BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Cleared {tasksCleared} tasks to prevent following to old position");
 
-                    // For same-zone portal transitions, immediately try to follow through portal
-                    // Don't apply cooldown since we need to follow immediately
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Same-zone transition detected in '{currentZone}' - attempting immediate portal follow");
+            // For same-zone portal transitions, move toward the new position
+            BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Same-zone transition detected in '{currentZone}' - moving toward new position");
 
-                    // Add a small delay to allow positions to update after transition
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Waiting 500ms for position updates...");
-                    System.Threading.Thread.Sleep(500);
+            // Add a small delay to allow positions to update after transition
+            BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Waiting 500ms for position updates...");
+            System.Threading.Thread.Sleep(500);
 
-                    // Simply move toward the new position - most portals activate on proximity
-                    tasks.Add(new TaskNode(newPosition, 0, TaskNodeType.Movement));
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Added movement task toward {newPosition}");
+            // Move toward the new position - portals often activate on proximity
+            tasks.Add(new TaskNode(newPosition, 0, TaskNodeType.Movement));
+            BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Added movement task toward {newPosition}");
 
-                    // Record this portal transition
-                    lastPortalTransitionTime = DateTime.Now;
+            // Set a flag to indicate we're in portal transition mode
+            // This will be used in the main update loop to try portal activation when close
+            portalTransitionActive = true;
+            portalTransitionTarget = newPosition;
+            BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Portal transition mode activated, target: {newPosition}");
+
+            // Record this portal transition
+            lastPortalTransitionTime = DateTime.Now;
                 }
                 // If the target moved more than 500 units but less than 1000, it's likely a zone transition
                 else if (distanceMoved > 500)
@@ -488,21 +497,43 @@ namespace BetterFollowbotLite;
                 }
                 else
                 {
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Screen position is INVALID - portal may require proximity interaction");
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Screen position is INVALID - trying proximity + activation approach");
 
-                    // Primary strategy: Move directly toward the portal location
-                    // Many portals in PoE activate automatically when you get close enough
+                    // Strategy: Move toward portal AND try activation when close
                     if (portalPos != Vector3.Zero)
                     {
-                        BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Moving directly toward portal at {portalPos}");
+                        BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Moving toward portal at {portalPos}");
                         tasks.Add(new TaskNode(portalPos, 0, TaskNodeType.Movement));
+
+                        // When we're close to the portal area, try some activation clicks
+                        var playerPos = BetterFollowbotLite.Instance.GameController.Player.GetComponent<Positioned>()?.GridPosition ?? Vector2i.Zero;
+                        var distanceToPortal = Vector3.Distance(new Vector3(playerPos.X, playerPos.Y, 0), portalPos);
+
+                        if (distanceToPortal < 50) // Within 50 units of portal
+                        {
+                            BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Close to portal ({distanceToPortal:F0} units) - trying activation clicks");
+
+                            // Try a few center clicks when close to portal
+                            for (int i = 0; i < 3; i++)
+                            {
+                                var centerPos = new Vector2(960, 540);
+                                Mouse.SetCursorPos(centerPos);
+                                System.Threading.Thread.Sleep(200);
+                                Mouse.LeftMouseDown();
+                                System.Threading.Thread.Sleep(100);
+                                Mouse.LeftMouseUp();
+                                System.Threading.Thread.Sleep(300);
+                            }
+
+                            BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Portal activation clicks completed");
+                        }
                     }
                     else
                     {
-                        BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: No valid portal position available for movement");
+                        BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: No valid portal position available");
                     }
 
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Proximity-based portal following initiated");
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL FOLLOW: Proximity + activation approach initiated");
                 }
 
                 BetterFollowbotLite.Instance.LogMessage("PORTAL FOLLOW: Attempted direct portal click");
@@ -2247,6 +2278,36 @@ namespace BetterFollowbotLite;
                 !BetterFollowbotLite.Instance.GameController.IsForeGroundCache || MenuWindow.IsOpened || BetterFollowbotLite.Instance.GameController.IsLoading || !BetterFollowbotLite.Instance.GameController.InGame)
             {
                 return;
+            }
+
+            // PORTAL TRANSITION ACTIVATION: Try to activate portals when close to target
+            if (portalTransitionActive && portalTransitionTarget != Vector3.Zero)
+            {
+                var playerPos = BetterFollowbotLite.Instance.GameController.Player.GetComponent<Positioned>()?.GridPosition ?? Vector2i.Zero;
+                var distanceToTarget = Vector3.Distance(new Vector3(playerPos.X, playerPos.Y, 0), portalTransitionTarget);
+
+                if (distanceToTarget < 100) // Within 100 units of target (portal area)
+                {
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL ACTIVATION: Close to portal target ({distanceToTarget:F0} units) - trying activation");
+
+                    // Try center screen clicks to activate portal
+                    for (int i = 0; i < 3; i++)
+                    {
+                        var centerPos = new Vector2(960, 540);
+                        Mouse.SetCursorPos(centerPos);
+                        System.Threading.Thread.Sleep(300);
+                        Mouse.LeftMouseDown();
+                        System.Threading.Thread.Sleep(150);
+                        Mouse.LeftMouseUp();
+                        System.Threading.Thread.Sleep(500);
+                    }
+
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL ACTIVATION: Portal activation attempts completed");
+
+                    // Deactivate portal transition mode after attempts
+                    portalTransitionActive = false;
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL ACTIVATION: Portal transition mode deactivated");
+                }
             }
 
             // COMPREHENSIVE ZONE LOADING PROTECTION: Prevent random movement during zone transitions
