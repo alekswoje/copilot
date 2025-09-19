@@ -22,6 +22,7 @@ namespace BetterFollowbotLite;
         private readonly Random random = new Random();
 
         private Vector3 lastTargetPosition;
+        private DateTime lastPositionUpdateTime = DateTime.MinValue;
         private Vector3 lastPlayerPosition;
 
         // Cached values for performance
@@ -181,24 +182,29 @@ namespace BetterFollowbotLite;
                     lastPortalTransitionTime = DateTime.Now;
                 }
                 // Only update follow target position if the movement is significant (> 10 units)
+                // AND enough time has passed since last update
                 // This prevents constant updates for tiny movements that cause movement stuttering
                 else if (distanceMoved > 10.0f)
                 {
-                    BetterFollowbotLite.Instance.LogMessage($"AUTOPILOT: Updated follow target position from {lastTargetPosition} to {newPosition} (moved {distanceMoved:F1} units)");
-                    lastTargetPosition = newPosition;
+                    var timeSinceLastUpdate = DateTime.Now - lastPositionUpdateTime;
+
+                    // Only update if both distance and time thresholds are met
+                    if (timeSinceLastUpdate.TotalMilliseconds > 100)
+                    {
+                        lastTargetPosition = newPosition;
+                        lastPositionUpdateTime = DateTime.Now;
+                    }
+                    // Don't log rejections to reduce spam - the system will work fine without them
                 }
                 // For very small movements (< 10 units), don't update the target position
                 // This prevents the bot from constantly recalculating paths for tiny movements
-                else
-                {
-                    // Don't update lastTargetPosition for tiny movements
-                    BetterFollowbotLite.Instance.LogMessage($"AUTOPILOT: Ignoring tiny movement of {distanceMoved:F1} units (threshold: 10.0 units)");
-                }
+                // No logging to reduce spam
             }
             else
             {
                 // No previous position, set it
                 lastTargetPosition = newPosition;
+                lastPositionUpdateTime = DateTime.Now;
             }
         }
         else if (followTarget != null && !followTarget.IsValid)
@@ -2985,21 +2991,26 @@ namespace BetterFollowbotLite;
             if (followTarget?.Pos != null)
             {
                 var currentTargetPos = followTarget.Pos;
-                if (lastTargetPosition == Vector3.Zero)
+            if (lastTargetPosition == Vector3.Zero)
+            {
+                // First time setting the position
+                lastTargetPosition = currentTargetPos;
+                lastPositionUpdateTime = DateTime.Now;
+            }
+            else
+            {
+                var distanceFromLastUpdate = Vector3.Distance(lastTargetPosition, currentTargetPos);
+                var timeSinceLastUpdate = DateTime.Now - lastPositionUpdateTime;
+
+                // Only update if BOTH distance threshold AND time threshold are met
+                if (distanceFromLastUpdate > 10.0f && timeSinceLastUpdate.TotalMilliseconds > 100)
                 {
-                    // First time setting the position
+                    // Significant movement after minimum time - update the target position
                     lastTargetPosition = currentTargetPos;
+                    lastPositionUpdateTime = DateTime.Now;
                 }
-                else
-                {
-                    var distanceFromLastUpdate = Vector3.Distance(lastTargetPosition, currentTargetPos);
-                    if (distanceFromLastUpdate > 10.0f)
-                    {
-                        // Significant movement - update the target position
-                        lastTargetPosition = currentTargetPos;
-                    }
-                    // For tiny movements (< 10 units), keep the old position to prevent movement stuttering
-                }
+                // Don't log rejections to reduce spam - the system will work fine without them
+            }
             }
         }
         catch (Exception e)
