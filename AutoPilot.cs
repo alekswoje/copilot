@@ -1648,12 +1648,42 @@ namespace BetterFollowbotLite;
                 return; // Exit immediately to prevent any interference
             }
 
+            // PORTAL TRANSITION HANDLING: Actively search for portals during portal transition mode
+            // TODO: Add logic to check how close the leader was to this portal before teleporting
+            // This would help determine if we should click this portal or if there might be a closer one
+            if (portalLocation == Vector3.One)
+            {
+                BetterFollowbotLite.Instance.LogMessage($"PORTAL: In portal transition mode - actively searching for portals to follow leader");
+
+                // Get leader party element for portal search
+                var leaderElement = GetLeaderPartyElement();
+                if (leaderElement != null)
+                {
+                    // Force portal search during portal transition
+                    var portal = GetBestPortalLabel(leaderElement, forceSearch: true);
+                    if (portal != null)
+                    {
+                        BetterFollowbotLite.Instance.LogMessage($"PORTAL: Found portal '{portal.Label?.Text}' during transition - creating transition task");
+                        tasks.Add(new TaskNode(portal, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value, TaskNodeType.Transition));
+                        BetterFollowbotLite.Instance.LogMessage($"PORTAL: Portal transition task created for portal at {portal.ItemOnGround.Pos}");
+                    }
+                    else
+                    {
+                        BetterFollowbotLite.Instance.LogMessage($"PORTAL: No portals found during transition - will retry on next update");
+                    }
+                }
+                else
+                {
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Cannot search for portals - no leader party element found");
+                }
+            }
+
             // PORTAL TRANSITION RESET: Clear portal transition mode when bot successfully reaches leader
             if (portalLocation == Vector3.One && this.followTarget != null)
             {
                 var distanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, this.followTarget.Pos);
                 // If bot is now close to leader after being far away, portal transition was successful
-                if (distanceToLeader < 300) // Within normal following distance
+                if (distanceToLeader < 1000) // Increased from 300 to 1000 for portal transitions
                 {
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL: Bot successfully reached leader after portal transition - clearing portal transition mode");
                     portalLocation = Vector3.Zero; // Clear portal transition mode to allow normal operation
