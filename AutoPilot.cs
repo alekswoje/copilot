@@ -2275,12 +2275,13 @@ namespace BetterFollowbotLite;
             {
                 BetterFollowbotLite.Instance.LogMessage("PORTAL: Portal activation code reached - checking conditions");
 
-                var playerPos = BetterFollowbotLite.Instance.GameController.Player.GetComponent<Positioned>()?.GridPosition ?? Vector2i.Zero;
-                var playerPosVec3 = new Vector3(playerPos.X, playerPos.Y, 0);
+                // Use the last known player position instead of GridPosition during portal transition
+                // GridPosition can be unreliable during transitions
+                var playerPosVec3 = BetterFollowbotLite.Instance.playerPosition;
                 var distanceToTarget = Vector3.Distance(playerPosVec3, portalTransitionTarget);
                 var distanceToPortal = Vector3.Distance(playerPosVec3, portalLocation);
 
-                BetterFollowbotLite.Instance.LogMessage($"PORTAL: DEBUG - Player pos: ({playerPos.X:F1}, {playerPos.Y:F1}), Portal pos: ({portalLocation.X:F1}, {portalLocation.Y:F1})");
+                BetterFollowbotLite.Instance.LogMessage($"PORTAL: DEBUG - Player pos: ({playerPosVec3.X:F1}, {playerPosVec3.Y:F1}), Portal pos: ({portalLocation.X:F1}, {portalLocation.Y:F1})");
 
                 BetterFollowbotLite.Instance.LogMessage($"PORTAL: Checking activation - Portal active, distance to portal: {distanceToPortal:F0}, distance to target: {distanceToTarget:F0}, portal location: ({portalLocation.X:F0}, {portalLocation.Y:F0})");
 
@@ -2294,7 +2295,7 @@ namespace BetterFollowbotLite;
                 if (closeToPortal || closeToTarget) // Within 50 units of either the portal location or target
                 {
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL: Within activation range of portal location ({distanceToPortal:F0} units) - finding portal");
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Current player position: ({playerPos.X:F0}, {playerPos.Y:F0})");
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Current player position: ({playerPosVec3.X:F0}, {playerPosVec3.Y:F0})");
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL: Portal location (leader was here): ({portalLocation.X:F0}, {portalLocation.Y:F0})");
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL: Leader moved to: ({portalTransitionTarget.X:F0}, {portalTransitionTarget.Y:F0})");
 
@@ -2378,7 +2379,7 @@ namespace BetterFollowbotLite;
                         BetterFollowbotLite.Instance.LogMessage($"PORTAL: Selected portal for clicking - Text: '{selectedPortal.Text}', Position: ({selectedPortal.Position.X:F0}, {selectedPortal.Position.Y:F0})");
 
                         // Store initial position to detect if portal worked
-                        var initialPos = playerPos;
+                        var initialPos = playerPosVec3;
 
                         try
                         {
@@ -2404,8 +2405,8 @@ namespace BetterFollowbotLite;
                                 System.Threading.Thread.Sleep(100);
 
                                 // Check if we moved significantly (portal likely worked)
-                                var currentPos = BetterFollowbotLite.Instance.GameController.Player.GetComponent<Positioned>()?.GridPosition ?? Vector2i.Zero;
-                                var movementDistance = Vector3.Distance(new Vector3(initialPos.X, initialPos.Y, 0), new Vector3(currentPos.X, currentPos.Y, 0));
+                                var currentPosVec3 = BetterFollowbotLite.Instance.playerPosition;
+                                var movementDistance = Vector3.Distance(initialPos, currentPosVec3);
 
                                 if (movementDistance > 500) // If we moved more than 500 units, portal likely worked
                                 {
@@ -2434,8 +2435,8 @@ namespace BetterFollowbotLite;
                                 System.Threading.Thread.Sleep(100);
 
                                 // Check if center click worked
-                                var currentPos = BetterFollowbotLite.Instance.GameController.Player.GetComponent<Positioned>()?.GridPosition ?? Vector2i.Zero;
-                                var movementDistance = Vector3.Distance(new Vector3(initialPos.X, initialPos.Y, 0), new Vector3(currentPos.X, currentPos.Y, 0));
+                                var currentPosVec3 = BetterFollowbotLite.Instance.playerPosition;
+                                var movementDistance = Vector3.Distance(initialPos, currentPosVec3);
 
                                 if (movementDistance > 500)
                                 {
