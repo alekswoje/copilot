@@ -81,7 +81,7 @@ namespace BetterFollowbotLite;
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Distance moved: {distanceMoved:F0} units");
                     // Get player position properly - try multiple methods
                     var playerEntity = BetterFollowbotLite.Instance.GameController.Player;
-                    Vector2i playerPos;
+                    var playerPos = default;
                     if (playerEntity != null && playerEntity.GetComponent<Positioned>() != null)
                     {
                         playerPos = playerEntity.GetComponent<Positioned>().GridPosition;
@@ -90,9 +90,10 @@ namespace BetterFollowbotLite;
                     else
                     {
                         // Fallback: try to find local player in entities
+                        var currentPlayerName = BetterFollowbotLite.Instance.GameController.Player.GetComponent<Player>()?.PlayerName ?? "";
                         var localPlayer = BetterFollowbotLite.Instance.GameController.Entities
                             .FirstOrDefault(e => e.IsValid && e.GetComponent<Positioned>() != null &&
-                                e.GetComponent<Player>() != null && e.GetComponent<Player>().Name == BetterFollowbotLite.Instance.GameController.Player.GetComponent<Player>().Name);
+                                e.GetComponent<Player>() != null && e.GetComponent<Player>().PlayerName == currentPlayerName);
                         if (localPlayer != null)
                         {
                             playerPos = localPlayer.GetComponent<Positioned>().GridPosition;
@@ -100,7 +101,6 @@ namespace BetterFollowbotLite;
                         }
                         else
                         {
-                            playerPos = new Vector2i(0, 0);
                             BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: ERROR - Could not determine player position!");
                         }
                     }
