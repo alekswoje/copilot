@@ -24,6 +24,7 @@ namespace BetterFollowbotLite;
         private Vector3 lastTargetPosition;
         private DateTime lastPositionUpdateTime = DateTime.MinValue;
         private Vector3 lastPlayerPosition;
+        private int followTargetRetryCount = 0;
 
         // Cached values for performance
         private Vector3 cachedPlayerPosition;
@@ -81,6 +82,7 @@ namespace BetterFollowbotLite;
         if (target != null)
         {
             lastTargetPosition = target.Pos;
+            followTargetRetryCount = 0; // Reset retry counter on successful target acquisition
             BetterFollowbotLite.Instance.LogMessage($"AUTOPILOT: Set follow target '{target.GetComponent<Player>()?.PlayerName ?? "Unknown"}' at position: {target.Pos}");
         }
         else
@@ -209,10 +211,48 @@ namespace BetterFollowbotLite;
         }
         else if (followTarget != null && !followTarget.IsValid)
         {
-            // Follow target became invalid, clear it
-            BetterFollowbotLite.Instance.LogMessage("AUTOPILOT: Follow target became invalid, clearing");
-            followTarget = null;
-            lastTargetPosition = Vector3.Zero;
+            // Follow target became invalid - try to re-find it before clearing
+            BetterFollowbotLite.Instance.LogMessage("AUTOPILOT: Follow target became invalid, attempting to re-find");
+
+            // AGGRESSIVE RETRY: Try multiple times to re-find the follow target
+            Entity reFoundTarget = null;
+            bool targetReFound = false;
+
+            for (int retryCount = 0; retryCount < 3 && !targetReFound; retryCount++)
+            {
+                reFoundTarget = GetFollowingTarget();
+                if (reFoundTarget != null && reFoundTarget.IsValid)
+                {
+                    BetterFollowbotLite.Instance.LogMessage($"AUTOPILOT: Successfully re-found follow target on retry {retryCount + 1}, continuing");
+                    followTarget = reFoundTarget;
+                    lastTargetPosition = reFoundTarget.Pos;
+                    lastPositionUpdateTime = DateTime.Now;
+                    followTargetRetryCount = 0; // Reset retry counter on success
+                    targetReFound = true;
+                }
+                else if (retryCount < 2) // Don't wait after the last retry
+                {
+                    System.Threading.Thread.Sleep(50); // Short wait between retries
+                }
+            }
+
+            if (!targetReFound)
+            {
+                followTargetRetryCount++;
+                if (followTargetRetryCount >= 5) // Give up after 5 consecutive failures
+                {
+                    BetterFollowbotLite.Instance.LogMessage($"AUTOPILOT: Could not re-find follow target after {followTargetRetryCount} consecutive attempts, clearing");
+                    followTarget = null;
+                    lastTargetPosition = Vector3.Zero;
+                    followTargetRetryCount = 0; // Reset counter
+                }
+                else
+                {
+                    BetterFollowbotLite.Instance.LogMessage($"AUTOPILOT: Could not re-find follow target (attempt {followTargetRetryCount}), keeping old target position");
+                    // Keep the old target position and hope the entity comes back
+                    // Don't clear the follow target completely yet
+                }
+            }
         }
     }
 
@@ -2614,8 +2654,34 @@ namespace BetterFollowbotLite;
                 }
                 else
                 {
-                    BetterFollowbotLite.Instance.LogMessage("LEADER WAIT: Party leader exists but entity not found yet - waiting for entity loading");
-                    return; // Wait for entity to become available
+                    // AGGRESSIVE RETRY: Keep trying to find the follow target instead of just waiting
+                    BetterFollowbotLite.Instance.LogMessage("LEADER SEARCH: Party leader exists but entity not found - attempting aggressive re-find");
+
+                    // Try multiple times to find the follow target
+                    for (int retryCount = 0; retryCount < 3; retryCount++)
+                    {
+                        followTarget = GetFollowingTarget();
+                        if (followTarget != null && followTarget.IsValid)
+                        {
+                            BetterFollowbotLite.Instance.LogMessage($"LEADER FOUND: Successfully found follow target on retry {retryCount + 1}");
+                            SetFollowTarget(followTarget);
+                            UpdateFollowTargetPosition(); // Update position tracking immediately
+                            break;
+                        }
+
+                        // Wait a short time between retries
+                        if (retryCount < 2) // Don't wait after the last retry
+                        {
+                            System.Threading.Thread.Sleep(100);
+                        }
+                    }
+
+                    // If we still couldn't find the target, then wait
+                    if (followTarget == null || !followTarget.IsValid)
+                    {
+                        BetterFollowbotLite.Instance.LogMessage("LEADER WAIT: Could not find follow target after retries - waiting for entity loading");
+                        return; // Wait for entity to become available
+                    }
                 }
             }
 
@@ -2765,8 +2831,8 @@ namespace BetterFollowbotLite;
                         BetterFollowbotLite.Instance.LogMessage($"FOLLOW TARGET NULL: Cleared {movementTaskCount} movement tasks - leader in same zone or party element unavailable");
                     }
                 }
-            } 
-            else if (followTarget != null)
+            }
+            else if (followTarget != null || (followTarget == null && lastTargetPosition != Vector3.Zero && followTargetRetryCount < 5))
             {
                 // Handle responsiveness and efficiency checks
                 HandleResponsivenessAndEfficiency();
