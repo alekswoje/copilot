@@ -2274,15 +2274,20 @@ namespace BetterFollowbotLite;
                 if (distanceToTarget < 200) // Within 200 units (similar to arena portal logic)
                 {
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL: Within activation range ({distanceToTarget:F0} units) - finding portal");
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Current player position: ({playerPos.X:F0}, {playerPos.Y:F0})");
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Target position: ({portalTransitionTarget.X:F0}, {portalTransitionTarget.Y:F0})");
 
                     // ===== PORTAL DETECTION LOGIC =====
                     // Find portals near where the leader WAS before the portal transition
                     Vector3 leaderPosition = lastTargetPosition; // Leader's position before portal
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Searching for portals near pre-portal position: ({leaderPosition.X:F0}, {leaderPosition.Y:F0})");
 
                     // Look for portal entities near the leader's pre-portal position
                     var allEntities = BetterFollowbotLite.Instance.GameController.Entities
                         .Where(e => e.IsValid && e.GetComponent<Positioned>() != null)
                         .ToList();
+
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Found {allEntities.Count} total entities in game world");
 
                     // Find portal-type entities
                     var portalEntities = allEntities.Where(e => e.Type == ExileCore.Shared.Enums.EntityType.Portal).ToList();
@@ -2293,8 +2298,16 @@ namespace BetterFollowbotLite;
                          e.Type.ToString().Contains("Warden") ||
                          e.Type.ToString().Contains("Quarters"))).ToList();
 
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Found {portalEntities.Count} Portal-type entities");
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Found {areaTransitions.Count} potential portal entities (AreaTransition/Portal/Warden/Quarters)");
+
+                    // Log some example entity types to see what's available
+                    var sampleEntities = allEntities.Take(10).Select(e => e.Type.ToString()).Distinct().ToList();
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Sample entity types: {string.Join(", ", sampleEntities)}");
+
                     // Combine all potential portals
                     var allPotentialPortals = portalEntities.Concat(areaTransitions).Distinct().ToList();
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Total potential portals: {allPotentialPortals.Count}");
 
                     // Find portals near the leader (within reasonable range for interzone portals)
                     var portalsNearLeader = allPotentialPortals
@@ -2311,6 +2324,21 @@ namespace BetterFollowbotLite;
                         .Where(p => p.Distance < 1000) // Within 1000 units of leader
                         .OrderBy(p => p.Distance)
                         .ToList();
+
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Found {portalsNearLeader.Count} portals within 1000 units of leader position");
+
+                    // Log details of portals found near leader
+                    if (portalsNearLeader.Any())
+                    {
+                        foreach (var portal in portalsNearLeader.Take(5)) // Log first 5
+                        {
+                            BetterFollowbotLite.Instance.LogMessage($"PORTAL: NEAR LEADER - Type: {portal.Type}, Position: ({portal.Position.X:F0}, {portal.Position.Y:F0}), Distance: {portal.Distance:F0}");
+                        }
+                    }
+                    else
+                    {
+                        BetterFollowbotLite.Instance.LogMessage($"PORTAL: No portals found within 1000 units of leader position ({leaderPosition.X:F0}, {leaderPosition.Y:F0})");
+                    }
 
                     // Special handling for "The Warden's Quarters" portal
                     var currentZone = BetterFollowbotLite.Instance.GameController?.Area.CurrentArea.DisplayName ?? "Unknown";
