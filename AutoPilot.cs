@@ -109,15 +109,15 @@ namespace BetterFollowbotLite;
                     var zonesAreDifferent = leaderPartyElement != null && !leaderPartyElement.ZoneName.Equals(currentZone);
 
                     if (zonesAreDifferent)
-                    {
-                        BetterFollowbotLite.Instance.LogMessage($"AUTOPILOT: Follow target moved {distanceMoved:F0} units (portal transition detected) from {lastTargetPosition} to {newPosition}");
+                {
+                    BetterFollowbotLite.Instance.LogMessage($"AUTOPILOT: Follow target moved {distanceMoved:F0} units (portal transition detected) from {lastTargetPosition} to {newPosition}");
 
-                        // ===== PORTAL TRANSITION DEBUG =====
-                        BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: ===== PORTAL TRANSITION DETECTED =====");
-                        BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Current Zone: {currentZone}");
+                    // ===== PORTAL TRANSITION DEBUG =====
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: ===== PORTAL TRANSITION DETECTED =====");
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Current Zone: {currentZone}");
                         BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Leader Zone: {leaderZone}");
-                        BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Leader moved from ({lastTargetPosition.X:F0}, {lastTargetPosition.Y:F0}) to ({newPosition.X:F0}, {newPosition.Y:F0})");
-                        BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Distance moved: {distanceMoved:F0} units");
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Leader moved from ({lastTargetPosition.X:F0}, {lastTargetPosition.Y:F0}) to ({newPosition.X:F0}, {newPosition.Y:F0})");
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Distance moved: {distanceMoved:F0} units");
                     // Get player position properly - try multiple methods
                     var playerEntity = BetterFollowbotLite.Instance.GameController.Player;
                     Vector2i playerPos = default;
@@ -246,8 +246,8 @@ namespace BetterFollowbotLite;
                 if (followTargetRetryCount >= 5) // Give up after 5 consecutive failures
                 {
                     BetterFollowbotLite.Instance.LogMessage($"AUTOPILOT: Could not re-find follow target after {followTargetRetryCount} consecutive attempts, clearing");
-                    followTarget = null;
-                    lastTargetPosition = Vector3.Zero;
+            followTarget = null;
+            lastTargetPosition = Vector3.Zero;
                     followTargetRetryCount = 0; // Reset counter
                 }
                 else
@@ -962,7 +962,7 @@ namespace BetterFollowbotLite;
 
             // Calculate how much the player has moved since last update
             var playerMovement = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, lastPlayerPosition);
-
+            
             // Much less aggressive: Only clear path if player moved significantly AND we're actually stuck
             BetterFollowbotLite.Instance.LogMessage($"[DEBUG] RESPONSIVENESS: Player movement: {playerMovement:F1}, Threshold: 500, Task count: {tasks.Count}, Portal active: {portalTransitionTarget != Vector3.Zero}");
 
@@ -1596,21 +1596,21 @@ namespace BetterFollowbotLite;
 
                 try
                 {
-                    // PRIORITY: Check if there are any teleport tasks and process them first
-                    var teleportTasks = tasks.Where(t => t.Type == TaskNodeType.TeleportConfirm || t.Type == TaskNodeType.TeleportButton);
-                    if (teleportTasks.Any())
+                // PRIORITY: Check if there are any teleport tasks and process them first
+                var teleportTasks = tasks.Where(t => t.Type == TaskNodeType.TeleportConfirm || t.Type == TaskNodeType.TeleportButton);
+                if (teleportTasks.Any())
                     {
                         currentTask = teleportTasks.First();
                         BetterFollowbotLite.Instance.LogMessage($"PRIORITY: Processing teleport task {currentTask.Type} instead of {tasks.First().Type}");
-                    }
-                    else
+                }
+                else
                     {
                         currentTask = tasks.First();
                     }
-                }
-                catch (Exception e)
-                {
-                    taskAccessError = true;
+                    }
+                    catch (Exception e)
+                    {
+                        taskAccessError = true;
                     BetterFollowbotLite.Instance.LogError($"Task access error: {e.Message}");
                 }
 
@@ -2428,9 +2428,7 @@ namespace BetterFollowbotLite;
     // New method for decision making that runs every game tick
     public void UpdateAutoPilotLogic()
     {
-        try
-        {
-            BetterFollowbotLite.Instance.LogMessage($"[DEBUG] UpdateAutoPilotLogic: START - Task count: {tasks.Count}, Follow target: {(this.followTarget != null ? "Valid" : "Null")}");
+        BetterFollowbotLite.Instance.LogMessage($"[DEBUG] UpdateAutoPilotLogic: START - Task count: {tasks.Count}, Follow target: {(this.followTarget != null ? "Valid" : "Null")}");
 
             // GLOBAL TELEPORT PROTECTION: Block ALL task creation and responsiveness during teleport
             if (IsTeleportInProgress)
@@ -2589,7 +2587,7 @@ namespace BetterFollowbotLite;
                                 portalTransitionTarget = Vector3.Zero;
                                 portalLocation = Vector3.Zero;
                                 portalActivationStartTime = DateTime.MinValue;
-                                return;
+                                    return;
                             }
                         }
                         catch (Exception ex)
@@ -2693,7 +2691,7 @@ namespace BetterFollowbotLite;
                     if (followTarget == null || !followTarget.IsValid)
                     {
                         BetterFollowbotLite.Instance.LogMessage("LEADER WAIT: Could not find follow target after retries - waiting for entity loading");
-                        return; // Wait for entity to become available
+                    return; // Wait for entity to become available
                     }
                 }
             }
@@ -2844,7 +2842,7 @@ namespace BetterFollowbotLite;
                         BetterFollowbotLite.Instance.LogMessage($"FOLLOW TARGET NULL: Cleared {movementTaskCount} movement tasks - leader in same zone or party element unavailable");
                     }
                 }
-            }
+            } 
             else if (followTarget != null || (followTarget == null && lastTargetPosition != Vector3.Zero && followTargetRetryCount < 5))
             {
                 // Handle responsiveness and efficiency checks
@@ -2911,7 +2909,7 @@ namespace BetterFollowbotLite;
                             // Look for portals if zones are different OR it's a large movement (inter-zone portal)
                             if (zonesAreDifferent || isInterZonePortal)
                             {
-                                var transition = GetBestPortalLabel(leaderPartyElement, forceSearch: true);
+                            var transition = GetBestPortalLabel(leaderPartyElement, forceSearch: true);
 
                             // If no portal matched by name, try to find the closest portal (likely the one the leader used)
                             if (transition == null)
@@ -3091,13 +3089,13 @@ namespace BetterFollowbotLite;
                         if (currentDistanceToLeader > BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value)
                         {
                             BetterFollowbotLite.Instance.LogMessage($"RESPONSIVENESS: Adding new path node - Distance: {distanceFromLastTask:F1}, Threshold: {responsiveThreshold:F1}, Current distance to leader: {currentDistanceToLeader:F1}");
-                            BetterFollowbotLite.Instance.LogMessage($"DEBUG: Creating task to position: {FollowTargetPosition} (Player at: {BetterFollowbotLite.Instance.playerPosition})");
-                            tasks.Add(new TaskNode(FollowTargetPosition, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
-                        }
+                        BetterFollowbotLite.Instance.LogMessage($"DEBUG: Creating task to position: {FollowTargetPosition} (Player at: {BetterFollowbotLite.Instance.playerPosition})");
+                        tasks.Add(new TaskNode(FollowTargetPosition, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
+                            }
                         else
                         {
                             BetterFollowbotLite.Instance.LogMessage($"WITHIN FOLLOW DISTANCE: Not creating tasks - Current distance {currentDistanceToLeader:F1} <= follow distance {BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value:F1}");
-                        }
+                            }
                         }
                         else
                         {
@@ -3135,27 +3133,26 @@ namespace BetterFollowbotLite;
             if (followTarget?.Pos != null)
             {
                 var currentTargetPos = followTarget.Pos;
-            if (lastTargetPosition == Vector3.Zero)
-            {
-                // First time setting the position
-                lastTargetPosition = currentTargetPos;
-                lastPositionUpdateTime = DateTime.Now;
-            }
-            else
-            {
-                var distanceFromLastUpdate = Vector3.Distance(lastTargetPosition, currentTargetPos);
-                var timeSinceLastUpdate = DateTime.Now - lastPositionUpdateTime;
-
-                // Update if either significant distance OR enough time has passed (very aggressive)
-                if (distanceFromLastUpdate > 10.0f || timeSinceLastUpdate.TotalMilliseconds > 1000)
+                if (lastTargetPosition == Vector3.Zero)
                 {
-                    // Significant movement or enough time has passed - update the target position
+                    // First time setting the position
                     lastTargetPosition = currentTargetPos;
                     lastPositionUpdateTime = DateTime.Now;
                 }
-                // Don't log rejections to reduce spam - the system will work fine without them
-            }
-            }
+                else
+                {
+                    var distanceFromLastUpdate = Vector3.Distance(lastTargetPosition, currentTargetPos);
+                    var timeSinceLastUpdate = DateTime.Now - lastPositionUpdateTime;
+
+                    // Update if either significant distance OR enough time has passed (very aggressive)
+                    if (distanceFromLastUpdate > 10.0f || timeSinceLastUpdate.TotalMilliseconds > 1000)
+                    {
+                        // Significant movement or enough time has passed - update the target position
+                        lastTargetPosition = currentTargetPos;
+                        lastPositionUpdateTime = DateTime.Now;
+                    }
+                    // Don't log rejections to reduce spam - the system will work fine without them
+                }
 
             // DEBUG: Log task state when we have no tasks but have a follow target
             if (tasks.Count == 0 && followTarget != null && followTarget.IsValid && lastTargetPosition != Vector3.Zero)
@@ -3179,14 +3176,7 @@ namespace BetterFollowbotLite;
                     BetterFollowbotLite.Instance.LogMessage($"[DEBUG] ZERO TASKS: POTENTIAL BUG - Should have movement tasks but don't! Distance: {distanceToTarget:F1}, Clear distance: {BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance.Value:F1}");
                 }
             }
-            BetterFollowbotLite.Instance.LogMessage($"[DEBUG] UpdateAutoPilotLogic: END - Task count: {tasks.Count}");
-            }
-        }
-        catch (Exception e)
-            {
-                BetterFollowbotLite.Instance.LogError($"UpdateAutoPilotLogic Error: {e}");
-            }
-        }
+    }
     // ReSharper disable once IteratorNeverReturns
 
     private bool CheckDashTerrain(Vector2 targetPosition)
