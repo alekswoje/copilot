@@ -11,6 +11,7 @@ using ExileCore.PoEMemory.MemoryObjects;
 using ExileCore.Shared;
 using ExileCore.Shared.Enums;
 using SharpDX;
+using BetterFollowbotLite.Skills;
 
 namespace BetterFollowbotLite;
 
@@ -22,6 +23,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
     internal static BetterFollowbotLite Instance;
     internal AutoPilot autoPilot = new AutoPilot();
     private readonly Summons summons = new Summons();
+    private SummonRagingSpirits summonRagingSpirits;
 
     private List<Buff> buffs;
     private List<Entity> enemys = new List<Entity>();
@@ -55,6 +57,10 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         Input.RegisterKey(Settings.autoPilotToggleKey.Value);
         Settings.autoPilotToggleKey.OnValueChanged += () => { Input.RegisterKey(Settings.autoPilotToggleKey.Value); };
         autoPilot.StartCoroutine();
+
+        // Initialize skill classes
+        summonRagingSpirits = new SummonRagingSpirits(this, Settings, autoPilot, summons);
+
         return true;
     }
         
@@ -67,6 +73,14 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
     private int GetMonsterWithin(float maxDistance, MonsterRarity rarity = MonsterRarity.White)
     {
         return (from monster in enemys where monster.Rarity >= rarity select Vector2.Distance(new Vector2(monster.PosNum.X, monster.PosNum.Y), new Vector2(playerPosition.X, playerPosition.Y))).Count(distance => distance <= maxDistance);
+    }
+
+    // Method to get entities from GameController (used by skill classes)
+    internal IEnumerable<Entity> GetEntitiesFromGameController()
+    {
+        // Temporarily return empty collection to avoid GameController access issues
+        // TODO: Implement proper entity access when framework dependencies are available
+        return new List<Entity>();
     }
         
 
@@ -145,7 +159,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
         }
     }
 
-    private Keys GetSkillInputKey(int index)
+    internal Keys GetSkillInputKey(int index)
     {
         return index switch
         {
@@ -757,93 +771,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                 }
 
                 // SRS (Summon Raging Spirits) logic
-                try
-                {
-                    if (Settings.summonRagingSpiritsEnabled.Value && autoPilot != null && autoPilot.FollowTarget != null)
-                    {
-                        var distanceToLeader = Vector3.Distance(playerPosition, autoPilot.FollowTargetPosition);
-
-                        // Check if we're close to the leader (within AutoPilot follow distance)
-                        if (distanceToLeader <= Settings.autoPilotClearPathDistance.Value)
-                        {
-                            // Count current summoned minions
-                            var totalMinionCount = Summons.GetSkeletonCount();
-
-                            // Only cast SRS if we have less than the minimum required count
-                            if (totalMinionCount < Settings.summonRagingSpiritsMinCount.Value)
-                            {
-                                // Check for rare/unique enemies within 1000 units
-                                bool rareOrUniqueNearby = false;
-                                var entities = GameController.Entities.Where(x => x.Type == EntityType.Monster);
-
-                                foreach (var entity in entities)
-                                {
-                                    if (entity.IsValid && entity.IsAlive)
-                                    {
-                                        var distanceToEntity = Vector3.Distance(playerPosition, entity.Pos);
-
-                                        // Check if entity is within range and is rare or unique
-                                        if (distanceToEntity <= 500)
-                                        {
-                                            var rarityComponent = entity.GetComponent<ObjectMagicProperties>();
-                                            if (rarityComponent != null)
-                                            {
-                                                var rarity = rarityComponent.Rarity;
-
-                                                // Always check for rare/unique
-                                                if (rarity == MonsterRarity.Unique || rarity == MonsterRarity.Rare)
-                                                {
-                                                    rareOrUniqueNearby = true;
-                                                    break;
-                                                }
-                                                // Also check for magic/white if enabled
-                                                else if (Settings.summonRagingSpiritsMagicNormal.Value &&
-                                                        (rarity == MonsterRarity.Magic || rarity == MonsterRarity.White))
-                                                {
-                                                    rareOrUniqueNearby = true;
-                                                    break;
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-
-                                if (rareOrUniqueNearby)
-                                {
-                                    // Find the Summon Raging Spirits skill
-                                    var summonRagingSpiritsSkill = skills.FirstOrDefault(s =>
-                                        s.Name.Contains("SummonRagingSpirit") ||
-                                        s.Name.Contains("Summon Raging Spirit") ||
-                                        (s.Name.Contains("summon") && s.Name.Contains("spirit") && s.Name.Contains("rag")));
-
-                                    if (summonRagingSpiritsSkill != null && summonRagingSpiritsSkill.IsOnSkillBar && summonRagingSpiritsSkill.CanBeUsed)
-                                    {
-                                        var enemyType = Settings.summonRagingSpiritsMagicNormal.Value ? "Rare/Unique/Magic/White" : "Rare/Unique";
-                                        BetterFollowbotLite.Instance.LogMessage($"SRS: Current minions: {totalMinionCount}, Required: {Settings.summonRagingSpiritsMinCount.Value}, Distance to leader: {distanceToLeader:F1} (max: {Settings.autoPilotClearPathDistance.Value}), {enemyType} enemy within 500 units detected");
-
-                                        // Use the Summon Raging Spirits skill
-                                        Keyboard.KeyPress(GetSkillInputKey(summonRagingSpiritsSkill.SkillSlotIndex));
-                                        lastTimeAny = DateTime.Now; // Update global cooldown
-
-                                        BetterFollowbotLite.Instance.LogMessage("SRS: Summoned Raging Spirit successfully");
-                                    }
-                                    else if (summonRagingSpiritsSkill == null)
-                                    {
-                                        BetterFollowbotLite.Instance.LogMessage("SRS: SummonRagingSpirit skill not found in skill bar");
-                                    }
-                                    else if (!summonRagingSpiritsSkill.CanBeUsed)
-                                    {
-                                        BetterFollowbotLite.Instance.LogMessage("SRS: SummonRagingSpirit skill is on cooldown or unavailable");
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                catch (Exception e)
-                {
-                    BetterFollowbotLite.Instance.LogMessage($"SRS: Exception occurred - {e.Message}");
-                }
+                summonRagingSpirits?.Execute();
             }
 
             #endregion
