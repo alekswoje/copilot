@@ -15,57 +15,26 @@ namespace BetterFollowbotLite;
 
     public class AutoPilot
     {
-        // Special portal names that should be treated as high-priority interzone portals
-        private static readonly string[] SpecialPortalNames = new[]
-        {
-            "arena", "pit", "combat",    // Arena portals
-            "warden", "quarters"         // Warden's Quarters portal
-        };
-
-        /// <summary>
-        /// Determines if a portal label contains any of the special portal names
-        /// </summary>
-        private static bool IsSpecialPortal(string portalLabel)
-        {
-            if (string.IsNullOrEmpty(portalLabel)) return false;
-            return SpecialPortalNames.Any(specialName =>
-                portalLabel.Contains(specialName, StringComparison.OrdinalIgnoreCase));
-        }
-
-        /// <summary>
-        /// Gets the display name for a special portal type
-        /// </summary>
-        private static string GetSpecialPortalType(string portalLabel)
-        {
-            if (string.IsNullOrEmpty(portalLabel)) return "Unknown";
-
-            return (portalLabel.Contains("warden", StringComparison.OrdinalIgnoreCase) ||
-                   portalLabel.Contains("quarters", StringComparison.OrdinalIgnoreCase))
-                   ? "Warden's Quarters" : "Arena";
-        }
-
-        /// <summary>
-        /// Gets the display name for a special portal type (short version for UI)
-        /// </summary>
-        private static string GetSpecialPortalTypeShort(string portalLabel)
-        {
-            if (string.IsNullOrEmpty(portalLabel)) return "UNKNOWN";
-
-            return (portalLabel.Contains("warden", StringComparison.OrdinalIgnoreCase) ||
-                   portalLabel.Contains("quarters", StringComparison.OrdinalIgnoreCase))
-                   ? "WARDEN'S QUARTERS" : "ARENA PORTAL";
-        }
+        // Portal management moved to PortalManager class
+        private PortalManager portalManager;
 
         // Most Logic taken from Alpha Plugin
         private Coroutine autoPilotCoroutine;
         private readonly Random random = new Random();
+
+        /// <summary>
+        /// Constructor for AutoPilot
+        /// </summary>
+        public AutoPilot()
+        {
+            portalManager = new PortalManager();
+        }
 
         private Vector3 lastTargetPosition;
         private Vector3 lastPlayerPosition;
         private Entity followTarget;
 
         // Portal transition tracking for interzone portals
-        private Vector3 portalLocation = Vector3.Zero; // Where the portal actually is (leader's position before transition)
 
         // GLOBAL FLAG: Prevents SMITE and other skills from interfering during teleport
         public static bool IsTeleportInProgress { get; private set; } = false;
@@ -122,20 +91,7 @@ namespace BetterFollowbotLite;
             }
 
             // PORTAL TRANSITION DETECTION: Detect when leader enters an interzone portal
-            if (lastTargetPosition != Vector3.Zero && newPosition != Vector3.Zero)
-            {
-                var distanceMoved = Vector3.Distance(lastTargetPosition, newPosition);
-                // Use the existing autoPilotClearPathDistance setting to detect portal transitions
-                if (distanceMoved > BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance.Value)
-                {
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Leader moved {distanceMoved:F0} units - interzone portal detected (threshold: {BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance.Value})");
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Portal transition detected - bot should look for portals near current position to follow leader");
-
-                    // Don't set portalLocation to leader's old position - the portal object stays in the same world location
-                    // Instead, mark that we're in a portal transition state so the bot will look for portals to follow
-                    portalLocation = Vector3.One; // Use as a flag to indicate portal transition mode is active
-                }
-            }
+            portalManager.DetectPortalTransition(lastTargetPosition, newPosition);
 
             lastTargetPosition = newPosition;
         }
@@ -603,9 +559,9 @@ namespace BetterFollowbotLite;
                             foreach (var portal in potentialPortals)
                             {
                                 // During portal transition, look for portals near bot's current position
-                                // Otherwise use portalLocation if available, or fall back to lastTargetPosition
-                                var referencePosition = portalLocation == Vector3.One ? BetterFollowbotLite.Instance.playerPosition :
-                                                      portalLocation != Vector3.Zero ? portalLocation : lastTargetPosition;
+                                // Otherwise use portal manager location if available, or fall back to lastTargetPosition
+                                var referencePosition = portalManager.IsInPortalTransition ? BetterFollowbotLite.Instance.playerPosition :
+                                                      portalManager.PortalLocation != Vector3.Zero ? portalManager.PortalLocation : lastTargetPosition;
                                 var distance = Vector3.Distance(referencePosition, portal.Pos);
                                 BetterFollowbotLite.Instance.LogMessage($"PORTAL DEBUG: Portal entity at distance {distance:F1}, Metadata: {portal.Metadata}");
                             }
@@ -620,9 +576,9 @@ namespace BetterFollowbotLite;
                 {
                     var labelText = portal.Label?.Text ?? "NULL";
                     // During portal transition, look for portals near bot's current position
-                    // Otherwise use portalLocation if available, or fall back to lastTargetPosition
-                    var referencePosition = portalLocation == Vector3.One ? BetterFollowbotLite.Instance.playerPosition :
-                                          portalLocation != Vector3.Zero ? portalLocation : lastTargetPosition;
+                    // Otherwise use portal manager location if available, or fall back to lastTargetPosition
+                    var referencePosition = portalManager.IsInPortalTransition ? BetterFollowbotLite.Instance.playerPosition :
+                                          portalManager.PortalLocation != Vector3.Zero ? portalManager.PortalLocation : lastTargetPosition;
                     var distance = Vector3.Distance(referencePosition, portal.ItemOnGround.Pos);
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL DEBUG: Available portal - Text: '{labelText}', Distance: {distance:F1}");
                 }
@@ -740,9 +696,9 @@ namespace BetterFollowbotLite;
         }
 
         // Handle special cases like Arena and Warden's Quarters portals
-        if (IsSpecialPortal(portalLabel))
+        if (PortalManager.IsSpecialPortal(portalLabel))
         {
-            var portalType = GetSpecialPortalType(portalLabel);
+            var portalType = PortalManager.GetSpecialPortalType(portalLabel);
             BetterFollowbotLite.Instance.LogMessage($"PORTAL MATCH: Special case - {portalType} portal detected for zone '{zoneName}'");
             return true;
         }
@@ -1693,7 +1649,7 @@ namespace BetterFollowbotLite;
             // PORTAL TRANSITION HANDLING: Actively search for portals during portal transition mode
             // TODO: Add logic to check how close the leader was to this portal before teleporting
             // This would help determine if we should click this portal or if there might be a closer one
-            if (portalLocation == Vector3.One)
+            if (portalManager.IsInPortalTransition)
             {
                 BetterFollowbotLite.Instance.LogMessage($"PORTAL: In portal transition mode - actively searching for portals to follow leader");
 
@@ -1721,14 +1677,14 @@ namespace BetterFollowbotLite;
             }
 
             // PORTAL TRANSITION RESET: Clear portal transition mode when bot successfully reaches leader
-            if (portalLocation == Vector3.One && this.followTarget != null)
+            if (portalManager.IsInPortalTransition && this.followTarget != null)
             {
                 var distanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, this.followTarget.Pos);
                 // If bot is now close to leader after being far away, portal transition was successful
                 if (distanceToLeader < 1000) // Increased from 300 to 1000 for portal transitions
                 {
                     BetterFollowbotLite.Instance.LogMessage($"PORTAL: Bot successfully reached leader after portal transition - clearing portal transition mode");
-                    portalLocation = Vector3.Zero; // Clear portal transition mode to allow normal operation
+                    portalManager.SetPortalTransitionMode(false); // Clear portal transition mode to allow normal operation
                 }
             }
 
@@ -2076,7 +2032,7 @@ namespace BetterFollowbotLite;
 
                                     if (specialPortal != null)
                                     {
-                                        var portalType = GetSpecialPortalType(specialPortal.Label?.Text ?? "");
+                                        var portalType = PortalManager.GetSpecialPortalType(specialPortal.Label?.Text ?? "");
                                         var portalDistance = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, specialPortal.ItemOnGround.Pos);
                                         BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Found {portalType} portal at distance {portalDistance:F1}");
 
@@ -2465,9 +2421,9 @@ namespace BetterFollowbotLite;
                 BetterFollowbotLite.Instance.Graphics.DrawText($"{distance:F1}m", distancePos, Color.Cyan);
 
                 // Highlight special portals (Arena and Warden's Quarters)
-                if (IsSpecialPortal(portalLabel))
+                if (PortalManager.IsSpecialPortal(portalLabel))
                 {
-                    var portalType = GetSpecialPortalTypeShort(portalLabel);
+                    var portalType = PortalManager.GetSpecialPortalType(portalLabel);
                     BetterFollowbotLite.Instance.Graphics.DrawText(portalType, new System.Numerics.Vector2(labelRect.TopLeft.X, labelRect.TopLeft.Y - 50), Color.OrangeRed);
                 }
             }
