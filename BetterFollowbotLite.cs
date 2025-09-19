@@ -770,9 +770,9 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                     {
                         var distanceToLeader = Vector3.Distance(playerPosition, autoPilot.FollowTargetPosition);
 
-                        // Add a cooldown to prevent chain reactions (at least 2 seconds between summons)
+                        // Add a cooldown to prevent chain reactions (at least 0.5 seconds between summons)
                         var timeSinceLastSRSSummon = DateTime.Now - lastSRSSummonTime;
-                        bool srsOnCooldown = timeSinceLastSRSSummon.TotalSeconds < 2.0;
+                        bool srsOnCooldown = timeSinceLastSRSSummon.TotalSeconds < 0.5;
 
                         if (srsOnCooldown)
                         {
