@@ -188,8 +188,8 @@ namespace BetterFollowbotLite;
                 {
                     var timeSinceLastUpdate = DateTime.Now - lastPositionUpdateTime;
 
-                    // Update if either significant distance OR enough time has passed
-                    if (timeSinceLastUpdate.TotalMilliseconds > 1000)
+                    // Update if either significant distance OR enough time has passed (very aggressive)
+                    if (timeSinceLastUpdate.TotalMilliseconds > 300)
                     {
                         lastTargetPosition = newPosition;
                         lastPositionUpdateTime = DateTime.Now;
@@ -3002,8 +3002,8 @@ namespace BetterFollowbotLite;
                 var distanceFromLastUpdate = Vector3.Distance(lastTargetPosition, currentTargetPos);
                 var timeSinceLastUpdate = DateTime.Now - lastPositionUpdateTime;
 
-                // Update if either significant distance OR enough time has passed
-                if (distanceFromLastUpdate > 10.0f || timeSinceLastUpdate.TotalMilliseconds > 1000)
+                // Update if either significant distance OR enough time has passed (very aggressive)
+                if (distanceFromLastUpdate > 10.0f || timeSinceLastUpdate.TotalMilliseconds > 300)
                 {
                     // Significant movement or enough time has passed - update the target position
                     lastTargetPosition = currentTargetPos;
@@ -3011,6 +3011,22 @@ namespace BetterFollowbotLite;
                 }
                 // Don't log rejections to reduce spam - the system will work fine without them
             }
+            }
+
+            // FALLBACK SAFETY NET: If we have no tasks but have a valid follow target, force-create a movement task
+            // This prevents the bot from getting stuck at 0 tasks due to aggressive debouncing
+            if (tasks.Count == 0 && followTarget != null && followTarget.IsValid && lastTargetPosition != Vector3.Zero)
+            {
+                var playerPos = GetPlayerPosition();
+                var distanceToTarget = Vector3.Distance(playerPos, lastTargetPosition);
+
+                // Only create task if we're reasonably far from the target (prevent spam when already close)
+                if (distanceToTarget > 50.0f)
+                {
+                    BetterFollowbotLite.Instance.LogMessage($"FALLBACK: No tasks but have follow target - force-creating movement task (distance: {distanceToTarget:F0})");
+                    tasks.Add(new TaskNode(lastTargetPosition, 0, TaskNodeType.Movement));
+                    lastPositionUpdateTime = DateTime.Now; // Reset timer to prevent immediate re-triggering
+                }
             }
         }
         catch (Exception e)
