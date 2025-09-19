@@ -600,9 +600,14 @@ namespace BetterFollowbotLite;
                                            !string.IsNullOrEmpty(currentZone) &&
                                            !MatchesPortalToZone(labelText, currentZone, x.Label?.Text ?? "");
 
-                        BetterFollowbotLite.Instance.LogMessage($"PORTAL DEBUG: Portal '{x.Label?.Text}' - Matches leader: {matchesLeaderZone}, Not current: {notCurrentZone}");
+                        // Special handling for Arena portals (like Warden's Quarters) - they're interzone portals
+                        // even if they're in the same zone, so we should accept them
+                        var isSpecialPortal = PortalManager.IsSpecialPortal(labelText);
 
-                        return matchesLeaderZone && notCurrentZone;
+                        BetterFollowbotLite.Instance.LogMessage($"PORTAL DEBUG: Portal '{x.Label?.Text}' - Matches leader: {matchesLeaderZone}, Not current: {notCurrentZone}, Special: {isSpecialPortal}");
+
+                        // Accept portal if it matches leader zone OR if it's a special portal (Arena/Warden's Quarters)
+                        return matchesLeaderZone || isSpecialPortal;
                     }
                     catch (Exception ex)
                     {
