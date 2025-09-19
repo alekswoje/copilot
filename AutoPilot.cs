@@ -24,11 +24,39 @@ namespace BetterFollowbotLite;
         private Vector3 lastTargetPosition;
         private Vector3 lastPlayerPosition;
 
+        // Cached values for performance
+        private Vector3 cachedPlayerPosition;
+        private DateTime lastPositionCacheTime;
+        private const double POSITION_CACHE_DURATION = 0.1; // Cache for 100ms
+
+        /// <summary>
+        /// Gets the player position with caching for performance
+        /// </summary>
+        private Vector3 GetPlayerPosition()
+        {
+            var now = DateTime.Now;
+            if ((now - lastPositionCacheTime).TotalSeconds < POSITION_CACHE_DURATION)
+            {
+                return cachedPlayerPosition;
+            }
+
+            cachedPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
+            lastPositionCacheTime = now;
+            return cachedPlayerPosition;
+        }
+
         // Portal transition tracking
-        private bool portalTransitionActive = false;
+        private PortalState portalState = PortalState.Inactive;
         private Vector3 portalTransitionTarget;
-        private Vector3 portalLocation = Vector3.Zero; // Where the portal actually is (leader's position before transition)
-        private DateTime portalActivationStartTime = DateTime.MinValue; // When portal activation started
+        private Vector3 portalLocation = Vector3.Zero;
+        private DateTime portalActivationStartTime = DateTime.MinValue;
+
+        private enum PortalState
+        {
+            Inactive,
+            Activating,
+            Active
+        }
         private Entity followTarget;
         private DateTime lastPortalTransitionTime = DateTime.MinValue;
 
@@ -134,9 +162,8 @@ namespace BetterFollowbotLite;
             tasks.Add(new TaskNode(portalPos, 0, TaskNodeType.Movement));
             BetterFollowbotLite.Instance.LogMessage($"PORTAL TRANSITION: Added movement task toward portal location {portalPos} (where leader was before transition)");
 
-            // Set a flag to indicate we're in portal transition mode
-            // This will be used in the main update loop to try portal activation when close
-            portalTransitionActive = true;
+            // Set portal state to activating
+            portalState = PortalState.Activating;
             portalTransitionTarget = newPosition;
             portalLocation = portalPos; // Save the portal location (where the portal actually is)
             portalActivationStartTime = DateTime.Now; // Track when portal activation started
@@ -2180,16 +2207,13 @@ namespace BetterFollowbotLite;
                                 var correctionTarget = botPos + (directionToPlayer * 400f); // Dash 400 units towards player
                                 
                                 var correctScreenPos = Helper.WorldToValidScreenPosition(correctionTarget);
-                                BetterFollowbotLite.Instance.LogMessage($"DEBUG: Dash override - Old position: {currentTask.WorldPosition}, Player position: {playerPos}");
-                                BetterFollowbotLite.Instance.LogMessage($"DEBUG: Dash override - Correction target: {correctionTarget}");
                                 yield return Mouse.SetCursorPosHuman(correctScreenPos);
                                 Keyboard.KeyPress(BetterFollowbotLite.Instance.Settings.autoPilotDashKey);
-                                lastDashTime = DateTime.Now; // Record dash time for cooldown
-                                BetterFollowbotLite.Instance.LogMessage("DASH OVERRIDE: Dashed towards player position to override old dash");
+                                lastDashTime = DateTime.Now;
                             }
                             else
                             {
-                                BetterFollowbotLite.Instance.LogMessage("DEBUG: Dash override skipped - player too close to bot");
+                                // Player too close, skip dash override
                             }
                             yield return null;
                             continue;
@@ -2198,10 +2222,9 @@ namespace BetterFollowbotLite;
                         if (instantPathOptimization)
                         {
                             // INSTANT MODE: Skip delays for immediate path correction
-                            BetterFollowbotLite.Instance.LogMessage("INSTANT PATH OPTIMIZATION: Dash task with no delays");
                             Keyboard.KeyPress(BetterFollowbotLite.Instance.Settings.autoPilotDashKey);
-                            lastDashTime = DateTime.Now; // Record dash time for cooldown
-                            instantPathOptimization = false; // Reset flag after use
+                            lastDashTime = DateTime.Now;
+                            instantPathOptimization = false;
                         }
                         else
                         {
@@ -2251,6 +2274,71 @@ namespace BetterFollowbotLite;
         // ReSharper disable once IteratorNeverReturns
     }
 
+    /// <summary>
+    /// Helper method to perform portal clicking with consistent timing
+    /// </summary>
+    private void ClickPortal(Vector2 position)
+    {
+        Mouse.SetCursorPos(position);
+        System.Threading.Thread.Sleep(BetterFollowbotLite.Instance.Settings.autoPilotInputFrequency.Value + 100);
+        Mouse.LeftMouseDown();
+        System.Threading.Thread.Sleep(BetterFollowbotLite.Instance.Settings.autoPilotInputFrequency.Value + 100);
+        Mouse.LeftMouseUp();
+        System.Threading.Thread.Sleep(100);
+    }
+
+    /// <summary>
+    /// Helper method to check if portal activation was successful
+    /// </summary>
+    private bool CheckPortalSuccess(Vector3 initialPos, out float movementDistance)
+    {
+        var currentPos = GetPlayerPosition();
+        movementDistance = Vector3.Distance(initialPos, currentPos);
+        return movementDistance > 500;
+    }
+
+    /// <summary>
+    /// Deactivates portal mode and resets all portal-related state
+    /// </summary>
+    private void DeactivatePortalMode()
+    {
+        portalState = PortalState.Inactive;
+        portalLocation = Vector3.Zero;
+        portalActivationStartTime = DateTime.MinValue;
+    }
+
+    /// <summary>
+    /// Handles responsiveness and efficiency checks, creating appropriate tasks
+    /// </summary>
+    private void HandleResponsivenessAndEfficiency()
+    {
+        if (!ShouldClearPathForResponsiveness() && !ShouldAbandonPathForEfficiency())
+            return;
+
+        instantPathOptimization = true;
+        ClearPathForEfficiency();
+
+        if (followTarget != null && followTarget.Pos != null &&
+            !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
+        {
+            var instantDistanceToLeader = Vector3.Distance(GetPlayerPosition(), FollowTargetPosition);
+
+            if (instantDistanceToLeader > 3000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled)
+            {
+                var hasConflictingTasks = tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
+                var isPortalTransitionActive = portalState != PortalState.Inactive && portalTransitionTarget != Vector3.Zero;
+                if (!hasConflictingTasks && !isPortalTransitionActive)
+                {
+                    tasks.Add(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
+                }
+            }
+            else
+            {
+                tasks.Add(new TaskNode(FollowTargetPosition, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
+            }
+        }
+    }
+
     // New method for decision making that runs every game tick
     public void UpdateAutoPilotLogic()
     {
@@ -2273,61 +2361,39 @@ namespace BetterFollowbotLite;
 
             // PORTAL ACTIVATION: Find actual portal entity and click on it when close enough
             // This takes priority over normal movement during portal transition
-            if (portalTransitionActive && portalTransitionTarget != Vector3.Zero && portalLocation != Vector3.Zero)
+            if (portalState != PortalState.Inactive && portalTransitionTarget != Vector3.Zero && portalLocation != Vector3.Zero)
             {
-                BetterFollowbotLite.Instance.LogMessage("PORTAL: Portal activation code reached - checking conditions");
-
-                // Use the last known player position instead of GridPosition during portal transition
-                // GridPosition can be unreliable during transitions
-                var playerPosVec3 = BetterFollowbotLite.Instance.playerPosition;
-                var distanceToTarget = Vector3.Distance(playerPosVec3, portalTransitionTarget);
+                // Use cached player position for performance
+                var playerPosVec3 = GetPlayerPosition();
                 var distanceToPortal = Vector3.Distance(playerPosVec3, portalLocation);
+                var distanceToTarget = Vector3.Distance(playerPosVec3, portalTransitionTarget);
 
-                BetterFollowbotLite.Instance.LogMessage($"PORTAL: DEBUG - Player pos: ({playerPosVec3.X:F1}, {playerPosVec3.Y:F1}), Portal pos: ({portalLocation.X:F1}, {portalLocation.Y:F1})");
-
-                BetterFollowbotLite.Instance.LogMessage($"PORTAL: Checking activation - Portal active, distance to portal: {distanceToPortal:F0}, distance to target: {distanceToTarget:F0}, portal location: ({portalLocation.X:F0}, {portalLocation.Y:F0})");
-
-                // Check if we're close to the portal location OR if we're close to the target (in case the portal location is wrong)
-                // Use a larger threshold since there might be coordinate system issues
-                bool closeToPortal = distanceToPortal < 200;
-                bool closeToTarget = distanceToTarget < 200;
-
-                // Time-based fallback: if we've been trying for more than 10 seconds, assume we're close enough
+                // Check activation conditions
                 var timeSinceActivationStart = DateTime.Now - portalActivationStartTime;
-                bool activationTimeout = timeSinceActivationStart.TotalSeconds > 10;
-
-                BetterFollowbotLite.Instance.LogMessage($"PORTAL: Close to portal: {closeToPortal} (dist: {distanceToPortal:F1}), Close to target: {closeToTarget} (dist: {distanceToTarget:F1}), Timeout: {activationTimeout} ({timeSinceActivationStart.TotalSeconds:F1}s)");
+                bool shouldActivate = distanceToPortal < 200 || timeSinceActivationStart.TotalSeconds > 10;
 
                 // If we're close to the target (leader's new position), deactivate portal mode to prevent loops
-                if (closeToTarget && distanceToTarget < 100)
+                if (distanceToTarget < 100)
                 {
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Close to target location ({distanceToTarget:F0} units) - deactivating portal mode to prevent loops");
-                    portalTransitionActive = false;
-                    portalLocation = Vector3.Zero;
-                    portalActivationStartTime = DateTime.MinValue;
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Close to target location ({distanceToTarget:F0} units) - deactivating portal mode");
+                    DeactivatePortalMode();
                     return;
                 }
 
                 // If we've been teleported far from the portal location (successful teleport), deactivate portal mode
                 if (distanceToPortal > 1000)
                 {
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Bot teleported far from portal location ({distanceToPortal:F0} units) - deactivating portal mode");
-                    portalTransitionActive = false;
-                    portalLocation = Vector3.Zero;
-                    portalActivationStartTime = DateTime.MinValue;
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Teleported far from portal location ({distanceToPortal:F0} units) - exiting portal mode");
+                    DeactivatePortalMode();
                     // Don't return here - let normal movement continue
                 }
 
-                if (closeToPortal || activationTimeout) // Within 200 units of portal OR timeout after 10 seconds
+                if (shouldActivate) // Within 200 units of portal OR timeout after 10 seconds
                 {
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Within activation range of portal location ({distanceToPortal:F0} units) - finding portal");
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Current player position: ({playerPosVec3.X:F0}, {playerPosVec3.Y:F0})");
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Portal location (leader was here): ({portalLocation.X:F0}, {portalLocation.Y:F0})");
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Leader moved to: ({portalTransitionTarget.X:F0}, {portalTransitionTarget.Y:F0})");
+                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Attempting activation at distance {distanceToPortal:F0} units");
 
                     // ===== PORTAL DETECTION LOGIC =====
                     // Use the same portal detection method as the visualization system
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Using reliable portal detection from ItemsOnGroundLabels");
 
                     // Find portals using the same method as the visualization (this is proven to work)
                     var portalLabels = BetterFollowbotLite.Instance.GameController?.Game?.IngameState?.IngameUi?.ItemsOnGroundLabels.Where(x =>
@@ -2335,8 +2401,6 @@ namespace BetterFollowbotLite;
                         x.ItemOnGround != null &&
                         (x.ItemOnGround.Metadata.ToLower().Contains("areatransition") ||
                          x.ItemOnGround.Metadata.ToLower().Contains("portal"))).ToList();
-
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Found {portalLabels?.Count ?? 0} visible portal labels");
 
                     // Find portals near the leader's pre-portal position (where the portal actually is)
                     var portalsNearLeader = portalLabels?
@@ -2355,19 +2419,10 @@ namespace BetterFollowbotLite;
                         .OrderBy(p => p.Distance)
                         .ToList();
 
-                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Found {portalsNearLeader?.Count ?? 0} portals within 1000 units of portal location {portalLocation}");
-
-                    // Log details of portals found
-                    if (portalsNearLeader != null && portalsNearLeader.Any())
+                    // Check if we found any portals
+                    if (portalsNearLeader == null || !portalsNearLeader.Any())
                     {
-                        foreach (var portal in portalsNearLeader.Take(3)) // Log closest 3
-                        {
-                            BetterFollowbotLite.Instance.LogMessage($"PORTAL: FOUND - Text: '{portal.Text}', Metadata: {portal.Metadata}, Position: ({portal.Position.X:F0}, {portal.Position.Y:F0}), Distance: {portal.Distance:F0}");
-                        }
-                    }
-                    else
-                    {
-                        BetterFollowbotLite.Instance.LogMessage($"PORTAL: No portals found within 1000 units of player position");
+                        BetterFollowbotLite.Instance.LogMessage("PORTAL: No portals found within range");
                     }
 
                     // Special handling for "The Warden's Quarters" portal
@@ -2383,27 +2438,25 @@ namespace BetterFollowbotLite;
                         if (wardensPortal != null)
                         {
                             selectedPortal = wardensPortal;
-                            BetterFollowbotLite.Instance.LogMessage($"PORTAL: *** FOUND WARDEN'S PORTAL *** Text: '{wardensPortal.Text}', Position: ({wardensPortal.Position.X:F0}, {wardensPortal.Position.Y:F0}), Distance: {wardensPortal.Distance:F0}");
+                            BetterFollowbotLite.Instance.LogMessage($"PORTAL: Found Warden's portal at distance {wardensPortal.Distance:F0}");
                         }
                         else if (portalsNearLeader.Any())
                         {
                             // Fallback: use closest portal in Upper Prison
                             selectedPortal = portalsNearLeader.First();
-                            BetterFollowbotLite.Instance.LogMessage($"PORTAL: *** USING CLOSEST PORTAL IN UPPER PRISON *** Text: '{selectedPortal.Text}', Position: ({selectedPortal.Position.X:F0}, {selectedPortal.Position.Y:F0}), Distance: {selectedPortal.Distance:F0}");
+                            BetterFollowbotLite.Instance.LogMessage($"PORTAL: Using closest portal in Upper Prison at distance {selectedPortal.Distance:F0}");
                         }
                     }
                     else if (portalsNearLeader != null && portalsNearLeader.Any())
                     {
                         // Use closest portal
                         selectedPortal = portalsNearLeader.First();
-                        BetterFollowbotLite.Instance.LogMessage($"PORTAL: *** USING CLOSEST PORTAL *** Text: '{selectedPortal.Text}', Position: ({selectedPortal.Position.X:F0}, {selectedPortal.Position.Y:F0}), Distance: {selectedPortal.Distance:F0}");
+                        BetterFollowbotLite.Instance.LogMessage($"PORTAL: Using closest portal at distance {selectedPortal.Distance:F0}");
                     }
 
                     // ===== PORTAL CLICKING LOGIC =====
                     if (selectedPortal != null)
                     {
-                        BetterFollowbotLite.Instance.LogMessage($"PORTAL: Selected portal for clicking - Text: '{selectedPortal.Text}', Position: ({selectedPortal.Position.X:F0}, {selectedPortal.Position.Y:F0})");
-
                         // Store initial position to detect if portal worked
                         var initialPos = playerPosVec3;
 
@@ -2411,94 +2464,60 @@ namespace BetterFollowbotLite;
                         {
                             // Use the world position and convert to screen coordinates for clicking
                             var screenPos = BetterFollowbotLite.Instance.GameController.IngameState.Camera.WorldToScreen(selectedPortal.Position);
-                            BetterFollowbotLite.Instance.LogMessage($"PORTAL: Portal screen position: ({screenPos.X:F0}, {screenPos.Y:F0})");
 
                             // Add offset to click slightly above the portal (where the label usually is)
                             var clickPos = new Vector2(screenPos.X, screenPos.Y - 20);
 
-                            BetterFollowbotLite.Instance.LogMessage($"PORTAL: Clicking at adjusted position ({clickPos.X:F0}, {clickPos.Y:F0})");
-
                             if (clickPos.X >= 0 && clickPos.Y >= 0 && clickPos.X <= 1920 && clickPos.Y <= 1080)
                             {
-                                // Use the same clicking pattern as other parts of the code
-                                Mouse.SetCursorPos(clickPos);
-                                System.Threading.Thread.Sleep(BetterFollowbotLite.Instance.Settings.autoPilotInputFrequency.Value + 100);
-                                Mouse.LeftMouseDown();
-                                System.Threading.Thread.Sleep(BetterFollowbotLite.Instance.Settings.autoPilotInputFrequency.Value + 100);
-                                Mouse.LeftMouseUp();
+                                // Click the portal
+                                ClickPortal(clickPos);
 
-                                // Wait a moment to see if portal activated
-                                System.Threading.Thread.Sleep(100);
-
-                                // Check if we moved significantly (portal likely worked)
-                                var currentPosVec3 = BetterFollowbotLite.Instance.playerPosition;
-                                var movementDistance = Vector3.Distance(initialPos, currentPosVec3);
-
-                                if (movementDistance > 500) // If we moved more than 500 units, portal likely worked
+                                // Check if portal activation was successful
+                                if (CheckPortalSuccess(initialPos, out float movementDistance))
                                 {
-                                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: SUCCESS - Player moved {movementDistance:F0} units, portal activated!");
-                                    portalTransitionActive = false; // Deactivate portal mode
-                                    portalLocation = Vector3.Zero; // Clear portal location
-                                    portalActivationStartTime = DateTime.MinValue; // Reset activation timer
-                                    return; // Exit early
+                                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Success - teleported {movementDistance:F0} units");
+                                    DeactivatePortalMode();
+                                    return;
                                 }
                                 else
                                 {
-                                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Clicked but no movement detected - portal may need more time or different approach");
+                                    BetterFollowbotLite.Instance.LogMessage("PORTAL: Click registered but no teleport detected");
                                 }
                             }
                             else
                             {
-                                BetterFollowbotLite.Instance.LogMessage($"PORTAL: Label position is invalid ({clickPos.X:F0}, {clickPos.Y:F0}) - trying center click as fallback");
+                                BetterFollowbotLite.Instance.LogMessage("PORTAL: Portal position invalid - using center screen fallback");
 
                                 // Fallback: Click center of screen
                                 var centerPos = new Vector2(960, 540);
-                                Mouse.SetCursorPos(centerPos);
-                                System.Threading.Thread.Sleep(BetterFollowbotLite.Instance.Settings.autoPilotInputFrequency.Value + 100);
-                                Mouse.LeftMouseDown();
-                                System.Threading.Thread.Sleep(BetterFollowbotLite.Instance.Settings.autoPilotInputFrequency.Value + 100);
-                                Mouse.LeftMouseUp();
-
-                                System.Threading.Thread.Sleep(100);
+                                ClickPortal(centerPos);
 
                                 // Check if center click worked
-                                var currentPosVec3 = BetterFollowbotLite.Instance.playerPosition;
-                                var movementDistance = Vector3.Distance(initialPos, currentPosVec3);
-
-                                if (movementDistance > 500)
+                                if (CheckPortalSuccess(initialPos, out float movementDistance))
                                 {
-                                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: CENTER CLICK SUCCESS - Player moved {movementDistance:F0} units!");
-                                    portalTransitionActive = false;
-                                    portalLocation = Vector3.Zero; // Clear portal location
-                                    portalActivationStartTime = DateTime.MinValue; // Reset activation timer
+                                    BetterFollowbotLite.Instance.LogMessage($"PORTAL: Center click success - teleported {movementDistance:F0} units");
+                                    DeactivatePortalMode();
                                     return;
                                 }
                             }
                         }
                         catch (Exception ex)
                         {
-                            BetterFollowbotLite.Instance.LogMessage($"PORTAL: Error during portal activation: {ex.Message}");
+                            BetterFollowbotLite.Instance.LogMessage($"PORTAL: Exception during activation: {ex.Message}");
 
                             // Last resort: Center click
                             var centerPos = new Vector2(960, 540);
-                            Mouse.SetCursorPos(centerPos);
-                            System.Threading.Thread.Sleep(BetterFollowbotLite.Instance.Settings.autoPilotInputFrequency.Value + 100);
-                            Mouse.LeftMouseDown();
-                            System.Threading.Thread.Sleep(BetterFollowbotLite.Instance.Settings.autoPilotInputFrequency.Value + 100);
-                            Mouse.LeftMouseUp();
+                            ClickPortal(centerPos);
                         }
                     }
                     else
                     {
-                        BetterFollowbotLite.Instance.LogMessage($"PORTAL: No portal found - falling back to center click");
+                        BetterFollowbotLite.Instance.LogMessage("PORTAL: No valid portal found - using center click fallback");
 
                         // Fallback: Click center of screen when no portal found
                         var centerPos = new Vector2(960, 540);
-                        Mouse.SetCursorPos(centerPos);
-                        System.Threading.Thread.Sleep(BetterFollowbotLite.Instance.Settings.autoPilotInputFrequency.Value + 100);
-                        Mouse.LeftMouseDown();
-                        System.Threading.Thread.Sleep(BetterFollowbotLite.Instance.Settings.autoPilotInputFrequency.Value + 100);
-                        Mouse.LeftMouseUp();
+                        ClickPortal(centerPos);
                     }
                 }
             }
@@ -2695,92 +2714,12 @@ namespace BetterFollowbotLite;
             } 
             else if (followTarget != null)
             {
-                // CHECK RESPONSIVENESS FIRST - Clear paths when player moves significantly
-                if (ShouldClearPathForResponsiveness())
-                {
-                    BetterFollowbotLite.Instance.LogMessage("RESPONSIVENESS: Preventing inefficient path creation - clearing for better tracking");
-                    instantPathOptimization = true; // Enable instant mode for immediate response
-                    ClearPathForEfficiency();
-                    
-                    // FORCE IMMEDIATE PATH RECALCULATION - Skip normal logic and create direct path
-                    // ADDITIONAL NULL CHECK: Ensure followTarget is still valid during responsiveness check
-                    if (followTarget != null && followTarget.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
-                    {
-                        var instantDistanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, FollowTargetPosition);
-                        BetterFollowbotLite.Instance.LogMessage($"RESPONSIVENESS: Creating direct path to leader - Distance: {instantDistanceToLeader:F1}");
-
-                        if (instantDistanceToLeader > 3000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 1000 to 1500 to reduce dash spam
-                        {
-                            // CRITICAL: Don't add dash tasks if we have conflicting tasks OR are in portal transition mode
-                            var hasConflictingTasks = tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
-                            var isPortalTransitionActive = portalTransitionActive && portalTransitionTarget != Vector3.Zero;
-                            if (!hasConflictingTasks && !isPortalTransitionActive)
-                            {
-                                tasks.Add(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
-                                BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Added dash task for distance {instantDistanceToLeader:F1}");
-                            }
-                            else
-                            {
-                                BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Skipping dash task - conflicting task active ({tasks.Count(t => t.Type == TaskNodeType.Dash)} dash tasks, {tasks.Count(t => t.Type == TaskNodeType.Transition)} transition tasks)");
-                            }
-                        }
-                        else
-                        {
-                            tasks.Add(new TaskNode(FollowTargetPosition, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
-                        }
-                    }
-                    else
-                    {
-                        BetterFollowbotLite.Instance.LogMessage("RESPONSIVENESS: followTarget became null during responsiveness check, skipping path creation");
-                    }
-                    return; // Skip the rest of the path creation logic
-                }
-
-                // CHECK PATH EFFICIENCY BEFORE CREATING NEW PATHS - PREVENT INEFFICIENT PATHS
-                if (ShouldAbandonPathForEfficiency())
-                {
-                    BetterFollowbotLite.Instance.LogMessage("INSTANT PATH OPTIMIZATION: Preventing inefficient path creation");
-                    instantPathOptimization = true; // Enable instant mode for immediate response
-                    ClearPathForEfficiency();
-                    
-                    // FORCE IMMEDIATE PATH RECALCULATION - Skip normal logic and create direct path
-                    // ADDITIONAL NULL CHECK: Ensure followTarget is still valid during efficiency check
-                    if (followTarget != null && followTarget.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
-                    {
-                        var instantDistanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, FollowTargetPosition);
-                        // Reduced logging frequency to prevent lag
-                        if (instantDistanceToLeader > 200f) // Only log for significant distances
-                            BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Creating direct path to leader - Distance: {instantDistanceToLeader:F1}");
-
-                        if (instantDistanceToLeader > 3000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 1000 to 1500 to reduce dash spam
-                        {
-                            // CRITICAL: Don't add dash tasks if we have conflicting tasks OR are in portal transition mode
-                            var hasConflictingTasks = tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
-                            var isPortalTransitionActive = portalTransitionActive && portalTransitionTarget != Vector3.Zero;
-                            if (!hasConflictingTasks && !isPortalTransitionActive)
-                            {
-                                tasks.Add(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
-                                BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Added dash task for distance {instantDistanceToLeader:F1}");
-                            }
-                            else
-                            {
-                                BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Skipping dash task - conflicting task active ({tasks.Count(t => t.Type == TaskNodeType.Dash)} dash tasks, {tasks.Count(t => t.Type == TaskNodeType.Transition)} transition tasks)");
-                            }
-                        }
-                        else
-                        {
-                            tasks.Add(new TaskNode(FollowTargetPosition, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
-                        }
-                    }
-                    else
-                    {
-                        BetterFollowbotLite.Instance.LogMessage("INSTANT PATH OPTIMIZATION: followTarget became null during efficiency check, skipping path creation");
-                    }
-                    return; // Skip the rest of the path creation logic
-                }
+                // Handle responsiveness and efficiency checks
+                HandleResponsivenessAndEfficiency();
+                if (instantPathOptimization) return;
 
                 // TODO: If in town, do not follow (optional)
-                var distanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, followTarget.Pos);
+                var distanceToLeader = Vector3.Distance(GetPlayerPosition(), followTarget.Pos);
                 //We are NOT within clear path distance range of leader. Logic can continue
                 if (distanceToLeader >= BetterFollowbotLite.Instance.Settings.autoPilotClearPathDistance.Value)
                 {
