@@ -2027,7 +2027,7 @@ namespace BetterFollowbotLite;
                                 {
                                     // First, check if there's a special portal (Arena or Warden's Quarters) - give them priority
                                     var specialPortal = allPortals.FirstOrDefault(p =>
-                                        IsSpecialPortal(p.Label?.Text ?? ""));
+                                        PortalManager.IsSpecialPortal(p.Label?.Text ?? ""));
                                     LabelOnGround selectedPortal;
 
                                     if (specialPortal != null)
