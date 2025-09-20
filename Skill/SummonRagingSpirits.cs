@@ -56,26 +56,40 @@ namespace BetterFollowbotLite.Skills
                     // Check if we're close to the leader (within AutoPilot follow distance)
                     if (distanceToLeader <= _settings.autoPilotClearPathDistance.Value)
                     {
-                        // Count current summoned minions
-                        var totalMinionCount = Summons.GetSkeletonCount();
-                        _instance.LogMessage($"SRS: Minion count check - Current: {totalMinionCount}, Required: {_settings.summonRagingSpiritsMinCount.Value}");
+                        // Count current summoned raging spirits
+                        var ragingSpiritCount = Summons.GetRagingSpiritCount();
+                        var totalMinionCount = Summons.GetTotalMinionCount();
+                        _instance.LogMessage($"SRS: Minion count check - Raging spirits: {ragingSpiritCount}, Total minions: {totalMinionCount}, Required: {_settings.summonRagingSpiritsMinCount.Value}");
 
                         // Only cast SRS if we have less than the minimum required count
                         if (totalMinionCount < _settings.summonRagingSpiritsMinCount.Value)
                         {
-                            // Check for rare/unique enemies within 1000 units
+                            // Check for HOSTILE rare/unique enemies within 500 units (exclude player's own minions)
                             bool rareOrUniqueNearby = false;
-                            var entities = GetEntities();
-                            _instance.LogMessage($"SRS: Checking for enemies - Entities found: {entities.Count()}");
+                            var entities = GetEntities().Where(x => x.Type == EntityType.Monster);
+                            _instance.LogMessage($"SRS: Checking for enemies - Monster entities found: {entities.Count()}");
+
+                            // Get list of deployed object IDs to exclude player's own minions
+                            var deployedObjectIds = new HashSet<uint>();
+                            if (_instance.localPlayer.TryGetComponent<Actor>(out var actorComponent))
+                            {
+                                foreach (var deployedObj in actorComponent.DeployedObjects)
+                                {
+                                    if (deployedObj?.Entity != null)
+                                    {
+                                        deployedObjectIds.Add(deployedObj.Entity.Id);
+                                    }
+                                }
+                            }
 
                             foreach (var entity in entities)
                             {
-                                if (entity.IsValid && entity.IsAlive)
+                                if (entity.IsValid && entity.IsAlive && entity.IsHostile)
                                 {
                                     var distanceToEntity = Vector3.Distance(_instance.playerPosition, entity.Pos);
 
-                                    // Check if entity is within range and is rare or unique
-                                    if (distanceToEntity <= 500)
+                                    // Only check entities within 500 units and ensure they're not player's deployed objects
+                                    if (distanceToEntity <= 500 && !deployedObjectIds.Contains(entity.Id))
                                     {
                                         var rarityComponent = entity.GetComponent<ObjectMagicProperties>();
                                         if (rarityComponent != null)
@@ -86,7 +100,7 @@ namespace BetterFollowbotLite.Skills
                                             if (rarity == MonsterRarity.Unique || rarity == MonsterRarity.Rare)
                                             {
                                                 rareOrUniqueNearby = true;
-                                                _instance.LogMessage($"SRS: Found {rarity} enemy within range!");
+                                                _instance.LogMessage($"SRS: Found hostile {rarity} enemy within range! Distance: {distanceToEntity:F1}");
                                                 break;
                                             }
                                             // Also check for magic/white if enabled
@@ -94,7 +108,7 @@ namespace BetterFollowbotLite.Skills
                                                     (rarity == MonsterRarity.Magic || rarity == MonsterRarity.White))
                                             {
                                                 rareOrUniqueNearby = true;
-                                                _instance.LogMessage($"SRS: Found {rarity} enemy within range!");
+                                                _instance.LogMessage($"SRS: Found hostile {rarity} enemy within range! Distance: {distanceToEntity:F1}");
                                                 break;
                                             }
                                         }
@@ -117,7 +131,7 @@ namespace BetterFollowbotLite.Skills
                                 if (summonRagingSpiritsSkill != null && summonRagingSpiritsSkill.IsOnSkillBar && summonRagingSpiritsSkill.CanBeUsed)
                                 {
                                     var enemyType = _settings.summonRagingSpiritsMagicNormal.Value ? "Rare/Unique/Magic/White" : "Rare/Unique";
-                                    _instance.LogMessage($"SRS: Current minions: {totalMinionCount}, Required: {_settings.summonRagingSpiritsMinCount.Value}, Distance to leader: {distanceToLeader:F1} (max: {_settings.autoPilotClearPathDistance.Value}), {enemyType} enemy within 500 units detected");
+                                    _instance.LogMessage($"SRS: Current spirits: {ragingSpiritCount}, Total minions: {totalMinionCount}, Required: {_settings.summonRagingSpiritsMinCount.Value}, Distance to leader: {distanceToLeader:F1} (max: {_settings.autoPilotClearPathDistance.Value}), Hostile {enemyType} enemy within 500 units detected");
 
                                     // Use the Summon Raging Spirits skill
                                     Keyboard.KeyPress(_instance.GetSkillInputKey(summonRagingSpiritsSkill.SkillSlotIndex));
