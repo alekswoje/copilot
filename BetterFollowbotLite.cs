@@ -86,9 +86,24 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
     // Method to get entities from GameController (used by skill classes)
     internal IEnumerable<Entity> GetEntitiesFromGameController()
     {
-        // Temporarily return empty collection to avoid GameController access issues
-        // TODO: Implement proper entity access when framework dependencies are available
-        return new List<Entity>();
+        try
+        {
+            // Try using EntityListWrapper first (as mentioned in original code comments)
+            return GameController.EntityListWrapper.ValidEntitiesByType[EntityType.Monster];
+        }
+        catch
+        {
+            try
+            {
+                // Fallback to direct Entities access
+                return GameController.Entities.Where(x => x.Type == EntityType.Monster);
+            }
+            catch
+            {
+                // Return empty collection if all access methods fail
+                return new List<Entity>();
+            }
+        }
     }
 
     // Method to get resurrect panel (used by RespawnHandler)

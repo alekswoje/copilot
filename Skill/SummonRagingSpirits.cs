@@ -30,15 +30,25 @@ namespace BetterFollowbotLite.Skills
         // Alternative method to access entities
         private IEnumerable<Entity> GetEntities()
         {
-            // Temporarily return empty collection to avoid GameController access issues
-            // TODO: Implement proper entity access when framework dependencies are available
-            return new List<Entity>();
+            try
+            {
+                // Use the main instance to access entities
+                return _instance.GetEntitiesFromGameController();
+            }
+            catch
+            {
+                // Return empty collection if access fails
+                return new List<Entity>();
+            }
         }
 
         public void Execute()
         {
             try
             {
+                // Debug: Always log when SRS Execute is called
+                _instance.LogMessage($"SRS: Execute called - Enabled: {_settings.summonRagingSpiritsEnabled.Value}, AutoPilot: {_autoPilot != null}, FollowTarget: {_autoPilot?.FollowTarget != null}");
+
                 if (_settings.summonRagingSpiritsEnabled.Value && _autoPilot != null && _autoPilot.FollowTarget != null)
                 {
                     var distanceToLeader = Vector3.Distance(_instance.playerPosition, _autoPilot.FollowTargetPosition);
@@ -48,6 +58,7 @@ namespace BetterFollowbotLite.Skills
                     {
                         // Count current summoned minions
                         var totalMinionCount = Summons.GetSkeletonCount();
+                        _instance.LogMessage($"SRS: Minion count check - Current: {totalMinionCount}, Required: {_settings.summonRagingSpiritsMinCount.Value}");
 
                         // Only cast SRS if we have less than the minimum required count
                         if (totalMinionCount < _settings.summonRagingSpiritsMinCount.Value)
@@ -55,6 +66,7 @@ namespace BetterFollowbotLite.Skills
                             // Check for rare/unique enemies within 1000 units
                             bool rareOrUniqueNearby = false;
                             var entities = GetEntities();
+                            _instance.LogMessage($"SRS: Checking for enemies - Entities found: {entities.Count()}");
 
                             foreach (var entity in entities)
                             {
@@ -74,6 +86,7 @@ namespace BetterFollowbotLite.Skills
                                             if (rarity == MonsterRarity.Unique || rarity == MonsterRarity.Rare)
                                             {
                                                 rareOrUniqueNearby = true;
+                                                _instance.LogMessage($"SRS: Found {rarity} enemy within range!");
                                                 break;
                                             }
                                             // Also check for magic/white if enabled
@@ -81,12 +94,15 @@ namespace BetterFollowbotLite.Skills
                                                     (rarity == MonsterRarity.Magic || rarity == MonsterRarity.White))
                                             {
                                                 rareOrUniqueNearby = true;
+                                                _instance.LogMessage($"SRS: Found {rarity} enemy within range!");
                                                 break;
                                             }
                                         }
                                     }
                                 }
                             }
+
+                            _instance.LogMessage($"SRS: Enemy detection result - Rare/Unique nearby: {rareOrUniqueNearby}");
 
                             if (rareOrUniqueNearby)
                             {
@@ -95,6 +111,8 @@ namespace BetterFollowbotLite.Skills
                                     s.Name.Contains("SummonRagingSpirit") ||
                                     s.Name.Contains("Summon Raging Spirit") ||
                                     (s.Name.Contains("summon") && s.Name.Contains("spirit") && s.Name.Contains("rag")));
+
+                                _instance.LogMessage($"SRS: Skill search - Found: {summonRagingSpiritsSkill != null}, OnSkillBar: {summonRagingSpiritsSkill?.IsOnSkillBar}, CanBeUsed: {summonRagingSpiritsSkill?.CanBeUsed}");
 
                                 if (summonRagingSpiritsSkill != null && summonRagingSpiritsSkill.IsOnSkillBar && summonRagingSpiritsSkill.CanBeUsed)
                                 {
