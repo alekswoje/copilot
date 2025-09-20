@@ -37,6 +37,8 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
     internal DateTime lastTimeAny;
     private DateTime lastAreaChangeTime = DateTime.MinValue;
     private DateTime lastGraceLogTime = DateTime.MinValue;
+    private Entity lastFollowTarget;
+    private bool lastHadGrace;
     internal Entity localPlayer;
     internal Life player;
     internal Vector3 playerPosition;
@@ -595,21 +597,28 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                     }
                 }
 
-                // Debug AutoPilot status
-                if (autoPilot != null)
+                // Debug AutoPilot status (only log significant changes or errors)
+                if (autoPilot != null && Settings.debugMode.Value)
                 {
                     var followTarget = autoPilot.FollowTarget;
-                    LogMessage($"AUTOPILOT: FollowTarget: {(followTarget != null ? followTarget.GetComponent<Player>()?.PlayerName ?? "Unknown" : "null")}, Distance: {(followTarget != null ? Vector3.Distance(playerPosition, followTarget.Pos).ToString("F1") : "N/A")}");
-
-                    // Debug movement status
-                    if (localPlayer != null)
+                    if (followTarget == null && lastFollowTarget != null)
                     {
-                        LogMessage($"MOVEMENT: Player position: ({playerPosition.X:F1}, {playerPosition.Y:F1})");
-
-                        // Debug grace period status
-                        var hasGrace = buffs != null && buffs.Exists(x => x.Name == "grace_period");
-                        LogMessage($"GRACE: Has grace period: {hasGrace}, AutoPilot enabled: {Settings.autoPilotEnabled.Value}, Grace removal enabled: {Settings.autoPilotGrace.Value}");
+                        LogMessage("AUTOPILOT: Lost follow target");
                     }
+                    else if (followTarget != null && lastFollowTarget == null)
+                    {
+                        LogMessage($"AUTOPILOT: Acquired follow target: {followTarget.GetComponent<Player>()?.PlayerName ?? "Unknown"}");
+                    }
+
+                    // Debug grace period status only when relevant
+                    var hasGrace = buffs != null && buffs.Exists(x => x.Name == "grace_period");
+                    if (!hasGrace && lastHadGrace)
+                    {
+                        LogMessage("GRACE: Grace period ended");
+                    }
+
+                    lastFollowTarget = followTarget;
+                    lastHadGrace = hasGrace;
                 }
                 else
                 {

@@ -22,17 +22,10 @@ namespace BetterFollowbotLite.Automation
 
         public void Execute()
         {
-            // Debug: Check if auto level gems is enabled
-            if (_settings.autoLevelGemsEnabled.Value)
-            {
-                BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Setting value is true, checking GCD...");
-            }
-
             if (_settings.autoLevelGemsEnabled && _instance.Gcd())
             {
                 try
                 {
-                    BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Feature enabled, checking for gem level up panel...");
 
                     // Check if the gem level up panel is visible
                     var gemLvlUpPanel = _instance.GetGemLvlUpPanel();
@@ -42,7 +35,6 @@ namespace BetterFollowbotLite.Automation
                         var gemsToLvlUp = gemLvlUpPanel.GemsToLvlUp;
                         if (gemsToLvlUp != null && gemsToLvlUp.Count > 0)
                         {
-                            BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Found {gemsToLvlUp.Count} gems available for leveling");
 
                             // Process each gem in the array
                             foreach (var gem in gemsToLvlUp)
@@ -63,7 +55,7 @@ namespace BetterFollowbotLite.Automation
                                                 var buttonRect = levelUpButton.GetClientRectCache;
                                                 var buttonCenter = buttonRect.Center;
 
-                                                BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Leveling up gem at position X: {buttonCenter.X:F1}, Y: {buttonCenter.Y:F1}");
+                                                // Removed excessive gem leveling position logging
 
                                                 // Move mouse to the button and click
                                                 Mouse.SetCursorPos(buttonCenter);
@@ -74,12 +66,12 @@ namespace BetterFollowbotLite.Automation
                                                 // Verify mouse position
                                                 var currentMousePos = _instance.GetMousePosition();
                                                 var distanceFromTarget = Vector2.Distance(currentMousePos, buttonCenter);
-                                                BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Mouse distance from target: {distanceFromTarget:F1}");
+                                                // Removed excessive mouse distance logging
 
                                                 if (distanceFromTarget < 5) // Close enough to target
                                                 {
                                                     // Perform click with verification
-                                                    BetterFollowbotLite.Instance.LogMessage("AUTO LEVEL GEMS: Performing left click on level up button");
+                                                    // Removed excessive click attempt logging
 
                                                     // First click attempt - use synchronous mouse events
                                                     Mouse.LeftMouseDown();
@@ -91,11 +83,11 @@ namespace BetterFollowbotLite.Automation
                                                     var buttonStillVisible = levelUpButton.IsVisible;
                                                     if (!buttonStillVisible)
                                                     {
-                                                        BetterFollowbotLite.Instance.LogMessage("AUTO LEVEL GEMS: Click successful - button disappeared");
+// Removed excessive click success logging
                                                     }
                                                     else
                                                     {
-                                                        BetterFollowbotLite.Instance.LogMessage("AUTO LEVEL GEMS: Button still visible, attempting second click");
+                                                        // Removed excessive second click attempt logging
 
                                                         // Exponential backoff: wait longer before second attempt
                                                         Thread.Sleep(500);
@@ -108,23 +100,23 @@ namespace BetterFollowbotLite.Automation
                                                         buttonStillVisible = levelUpButton.IsVisible;
                                                         if (!buttonStillVisible)
                                                         {
-                                                            BetterFollowbotLite.Instance.LogMessage("AUTO LEVEL GEMS: Second click successful");
+// Removed excessive second click success logging
                                                         }
                                                         else
                                                         {
-                                                            BetterFollowbotLite.Instance.LogMessage("AUTO LEVEL GEMS: Both clicks failed - button still visible");
+                                                            // Removed excessive click failure logging
                                                         }
                                                     }
                                                 }
                                                 else
                                                 {
-                                                    BetterFollowbotLite.Instance.LogMessage($"AUTO LEVEL GEMS: Mouse positioning failed - too far from target ({distanceFromTarget:F1})");
+                                                    // Removed excessive mouse positioning failure logging
                                                 }
 
                                                 // Add delay between gem level ups
                                                 Thread.Sleep(300);
 
-                                                BetterFollowbotLite.Instance.LogMessage("AUTO LEVEL GEMS: Gem level up attempt completed");
+                                                // Removed excessive gem level up completion logging
 
                                                 // Update global cooldown after leveling a gem
                                                 _instance.lastTimeAny = DateTime.Now;

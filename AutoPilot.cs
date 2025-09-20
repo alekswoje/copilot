@@ -86,7 +86,7 @@ namespace BetterFollowbotLite;
                 }
                 else if (newPosition != lastTargetPosition)
                 {
-                    BetterFollowbotLite.Instance.LogMessage($"AUTOPILOT: Updated follow target position from {lastTargetPosition} to {newPosition}");
+                    // Removed excessive follow target position logging
                 }
             }
 
@@ -929,11 +929,11 @@ namespace BetterFollowbotLite;
                             if (!hasConflictingTasks)
                             {
                                 tasks.Add(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
-                                BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Added dash task for distance {instantDistanceToLeader:F1}");
+                                // Removed excessive INSTANT PATH OPTIMIZATION logging
                             }
                             else
                             {
-                                BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Skipping dash task - conflicting task active ({tasks.Count(t => t.Type == TaskNodeType.Dash)} dash tasks, {tasks.Count(t => t.Type == TaskNodeType.Transition)} transition tasks)");
+                                // Removed excessive INSTANT PATH OPTIMIZATION logging
                             }
                         }
                         else
@@ -964,11 +964,11 @@ namespace BetterFollowbotLite;
                             if (!hasConflictingTasks)
                             {
                                 tasks.Add(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
-                                BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Added dash task for distance {instantDistanceToLeader:F1}");
+                                // Removed excessive INSTANT PATH OPTIMIZATION logging
                             }
                             else
                             {
-                                BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Skipping dash task - conflicting task active ({tasks.Count(t => t.Type == TaskNodeType.Dash)} dash tasks, {tasks.Count(t => t.Type == TaskNodeType.Transition)} transition tasks)");
+                                // Removed excessive INSTANT PATH OPTIMIZATION logging
                             }
                         }
                         else
@@ -1159,7 +1159,7 @@ namespace BetterFollowbotLite;
                                     //Note: Was getting stuck on close objects... testing hacky fix.
                                     if (taskDistance <= BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance.Value * 1.5)
                                     {
-                                        BetterFollowbotLite.Instance.LogMessage($"Movement task completed - Distance: {taskDistance:F1}");
+                                        // Removed excessive movement completion logging
                                         tasks.Remove(currentTask);
                                         lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
                                     }
@@ -1412,7 +1412,7 @@ namespace BetterFollowbotLite;
                         if (instantPathOptimization)
                         {
                             // INSTANT MODE: Skip delays for immediate path correction
-                            BetterFollowbotLite.Instance.LogMessage("INSTANT PATH OPTIMIZATION: Dash with no delays");
+                            // Removed excessive INSTANT PATH OPTIMIZATION logging
                             Keyboard.KeyPress(BetterFollowbotLite.Instance.Settings.autoPilotDashKey);
                             lastDashTime = DateTime.Now; // Record dash time for cooldown
                             instantPathOptimization = false; // Reset flag after use
@@ -1455,15 +1455,13 @@ namespace BetterFollowbotLite;
 
                         BetterFollowbotLite.Instance.LogMessage("Movement task: Mouse positioned, pressing move key down");
                         BetterFollowbotLite.Instance.LogMessage($"Movement task: Move key: {BetterFollowbotLite.Instance.Settings.autoPilotMoveKey}");
-                        BetterFollowbotLite.Instance.LogMessage($"DEBUG: About to click at screen position: {movementScreenPos}, World position: {currentTask.WorldPosition}");
-                        BetterFollowbotLite.Instance.LogMessage($"DEBUG: Current player position: {BetterFollowbotLite.Instance.playerPosition}");
-                        BetterFollowbotLite.Instance.LogMessage($"DEBUG: Current followTarget position: {followTarget?.Pos}");
+                        // Removed excessive DEBUG logging for cleaner logs
                         yield return Mouse.SetCursorPosHuman(movementScreenPos);
                         
                         if (instantPathOptimization)
                         {
                             // INSTANT MODE: Skip delays for immediate path correction
-                            BetterFollowbotLite.Instance.LogMessage("INSTANT PATH OPTIMIZATION: Movement with no delays");
+                            // Removed excessive INSTANT PATH OPTIMIZATION logging
                             instantPathOptimization = false; // Reset flag after use
                         }
                         else
@@ -1586,7 +1584,7 @@ namespace BetterFollowbotLite;
                         if (instantPathOptimization)
                         {
                             // INSTANT MODE: Skip delays for immediate path correction
-                            BetterFollowbotLite.Instance.LogMessage("INSTANT PATH OPTIMIZATION: Dash task with no delays");
+                            // Removed excessive INSTANT PATH OPTIMIZATION logging
                             Keyboard.KeyPress(BetterFollowbotLite.Instance.Settings.autoPilotDashKey);
                             lastDashTime = DateTime.Now; // Record dash time for cooldown
                             instantPathOptimization = false; // Reset flag after use
@@ -1912,11 +1910,11 @@ namespace BetterFollowbotLite;
                             if (!hasConflictingTasks)
                             {
                                 tasks.Add(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
-                                BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Added dash task for distance {instantDistanceToLeader:F1}");
+                                // Removed excessive INSTANT PATH OPTIMIZATION logging
                             }
                             else
                             {
-                                BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Skipping dash task - conflicting task active ({tasks.Count(t => t.Type == TaskNodeType.Dash)} dash tasks, {tasks.Count(t => t.Type == TaskNodeType.Transition)} transition tasks)");
+                                // Removed excessive INSTANT PATH OPTIMIZATION logging
                             }
                         }
                         else
@@ -1934,7 +1932,7 @@ namespace BetterFollowbotLite;
                 // CHECK PATH EFFICIENCY BEFORE CREATING NEW PATHS - PREVENT INEFFICIENT PATHS
                 if (ShouldAbandonPathForEfficiency())
                 {
-                    BetterFollowbotLite.Instance.LogMessage("INSTANT PATH OPTIMIZATION: Preventing inefficient path creation");
+                    // Removed excessive INSTANT PATH OPTIMIZATION logging
                     instantPathOptimization = true; // Enable instant mode for immediate response
                     ClearPathForEfficiency();
                     
@@ -1945,7 +1943,7 @@ namespace BetterFollowbotLite;
                         var instantDistanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, FollowTargetPosition);
                         // Reduced logging frequency to prevent lag
                         if (instantDistanceToLeader > 200f) // Only log for significant distances
-                            BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Creating direct path to leader - Distance: {instantDistanceToLeader:F1}");
+                            // Removed excessive INSTANT PATH OPTIMIZATION logging
 
                         if (instantDistanceToLeader > 3000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 1000 to 1500 to reduce dash spam
                         {
@@ -1954,11 +1952,11 @@ namespace BetterFollowbotLite;
                             if (!hasConflictingTasks)
                             {
                                 tasks.Add(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
-                                BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Added dash task for distance {instantDistanceToLeader:F1}");
+                                // Removed excessive INSTANT PATH OPTIMIZATION logging
                             }
                             else
                             {
-                                BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Skipping dash task - conflicting task active ({tasks.Count(t => t.Type == TaskNodeType.Dash)} dash tasks, {tasks.Count(t => t.Type == TaskNodeType.Transition)} transition tasks)");
+                                // Removed excessive INSTANT PATH OPTIMIZATION logging
                             }
                         }
                         else
@@ -1968,7 +1966,7 @@ namespace BetterFollowbotLite;
                     }
                     else
                     {
-                        BetterFollowbotLite.Instance.LogMessage("INSTANT PATH OPTIMIZATION: followTarget became null during efficiency check, skipping path creation");
+                        // Removed excessive INSTANT PATH OPTIMIZATION logging
                     }
                     return; // Skip the rest of the path creation logic
                 }
@@ -2377,18 +2375,18 @@ namespace BetterFollowbotLite;
         // Restart coroutine if it died
         if (BetterFollowbotLite.Instance.Settings.autoPilotEnabled && (autoPilotCoroutine == null || !autoPilotCoroutine.Running))
         {
-            BetterFollowbotLite.Instance.LogMessage("AutoPilot: Restarting coroutine - it was dead");
+            // Removed excessive coroutine restart logging
             StartCoroutine();
         }
         else if (BetterFollowbotLite.Instance.Settings.autoPilotEnabled)
         {
             if (tasks?.Count > 0)
             {
-                BetterFollowbotLite.Instance.LogMessage($"AutoPilot: Coroutine status - Running: {autoPilotCoroutine?.Running}, Task count: {tasks?.Count ?? 0}, First task: {tasks[0].Type}");
+                // Removed excessive coroutine status logging
             }
             else
             {
-                BetterFollowbotLite.Instance.LogMessage($"AutoPilot: Coroutine status - Running: {autoPilotCoroutine?.Running}, Task count: {tasks?.Count ?? 0}");
+                // Removed excessive coroutine status logging
             }
         }
 
