@@ -1099,7 +1099,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                         BetterFollowbotLite.Instance.LogMessage("SMITE: No suitable targets found within range, dashing to leader");
 
                                         // Dash to leader to get near monsters
-                                        if (Settings.autoPilotDashEnabled && (DateTime.Now - autoPilot.lastDashTime).TotalMilliseconds >= 3000 && autoPilot.FollowTarget != null)
+                                        if (Settings.autoPilotDashEnabled && autoPilot.FollowTarget != null)
                                         {
                                             var leaderPos = autoPilot.FollowTarget.Pos;
                                             var distanceToLeader = Vector3.Distance(playerPosition, leaderPos);
@@ -1123,20 +1123,58 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                                 }
                                                 else if (distanceToLeader > Settings.autoPilotDashDistance) // Only dash if we're not already close to leader
                                                 {
-                                                    BetterFollowbotLite.Instance.LogMessage($"SMITE: Dashing to leader - Distance: {distanceToLeader:F1}");
+                                                    // Find dash skill to check availability
+                                                    var dashSkill = skills.FirstOrDefault(s =>
+                                                        s.Name.Contains("Dash") ||
+                                                        s.Name.Contains("Whirling Blades") ||
+                                                        s.Name.Contains("Flame Dash") ||
+                                                        s.Name.Contains("Smoke Mine") ||
+                                                        (s.Name.Contains("Blade") && s.Name.Contains("Vortex")) ||
+                                                        s.IsOnSkillBar);
 
-                                                    // Position mouse towards leader
-                                                    var leaderScreenPos = GameController.IngameState.Camera.WorldToScreen(leaderPos);
-                                                    Mouse.SetCursorPos(leaderScreenPos);
+                                                    BetterFollowbotLite.Instance.LogMessage($"SMITE: Dash skill check - Found: {dashSkill != null}, OnSkillBar: {dashSkill?.IsOnSkillBar}, CanBeUsed: {dashSkill?.CanBeUsed}");
 
-                                                    // Small delay to ensure mouse movement is registered
-                                                    System.Threading.Thread.Sleep(50);
+                                                    if (dashSkill != null && dashSkill.IsOnSkillBar && dashSkill.CanBeUsed)
+                                                    {
+                                                        BetterFollowbotLite.Instance.LogMessage($"SMITE: Dashing to leader - Distance: {distanceToLeader:F1}");
 
-                                                    // Execute dash
-                                                    Keyboard.KeyPress(Settings.autoPilotDashKey);
-                                                    autoPilot.lastDashTime = DateTime.Now;
+                                                        // Position mouse towards leader
+                                                        var leaderScreenPos = GameController.IngameState.Camera.WorldToScreen(leaderPos);
+                                                        Mouse.SetCursorPos(leaderScreenPos);
 
-                                                    BetterFollowbotLite.Instance.LogMessage("SMITE: Dash to leader executed");
+                                                        // Small delay to ensure mouse movement is registered
+                                                        System.Threading.Thread.Sleep(50);
+
+                                                        // Execute dash using the skill's key
+                                                        Keyboard.KeyPress(GetSkillInputKey(dashSkill.SkillSlotIndex));
+                                                        autoPilot.lastDashTime = DateTime.Now;
+
+                                                        BetterFollowbotLite.Instance.LogMessage("SMITE: Dash to leader executed");
+                                                    }
+                                                    else if (dashSkill == null)
+                                                    {
+                                                        BetterFollowbotLite.Instance.LogMessage("SMITE: No dash skill found, using configured dash key");
+
+                                                        // Fallback: Use configured dash key directly
+                                                        BetterFollowbotLite.Instance.LogMessage($"SMITE: Dashing to leader - Distance: {distanceToLeader:F1}");
+
+                                                        // Position mouse towards leader
+                                                        var leaderScreenPos = GameController.IngameState.Camera.WorldToScreen(leaderPos);
+                                                        Mouse.SetCursorPos(leaderScreenPos);
+
+                                                        // Small delay to ensure mouse movement is registered
+                                                        System.Threading.Thread.Sleep(50);
+
+                                                        // Execute dash using configured key
+                                                        Keyboard.KeyPress(Settings.autoPilotDashKey);
+                                                        autoPilot.lastDashTime = DateTime.Now;
+
+                                                        BetterFollowbotLite.Instance.LogMessage("SMITE: Dash to leader executed (fallback)");
+                                                    }
+                                                    else if (!dashSkill.CanBeUsed)
+                                                    {
+                                                        BetterFollowbotLite.Instance.LogMessage("SMITE: Dash skill is on cooldown or unavailable");
+                                                    }
                                                 }
                                                 else
                                                 {

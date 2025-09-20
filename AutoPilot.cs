@@ -201,11 +201,11 @@ namespace BetterFollowbotLite;
     }
 
     /// <summary>
-    /// Checks if enough time has passed since the last dash (3 second cooldown)
+    /// Checks if dashing is available (no cooldown)
     /// </summary>
     private bool CanDash()
     {
-        return (DateTime.Now - lastDashTime).TotalMilliseconds >= 3000; // Increased from 1000ms to 3000ms (3 seconds)
+        return true; // Removed cooldown - dash is always available
     }
 
     /// <summary>
@@ -1282,30 +1282,73 @@ namespace BetterFollowbotLite;
 
                              if (CanDash())
                              {
+                                 // Find dash skill to check availability
+                                 var dashSkill = BetterFollowbotLite.Instance.skills.FirstOrDefault(s =>
+                                     s.Name.Contains("Dash") ||
+                                     s.Name.Contains("Whirling Blades") ||
+                                     s.Name.Contains("Flame Dash") ||
+                                     s.Name.Contains("Smoke Mine") ||
+                                     (s.Name.Contains("Blade") && s.Name.Contains("Vortex")) ||
+                                     s.IsOnSkillBar);
+
+                                 BetterFollowbotLite.Instance.LogMessage($"Dash task: Skill check - Found: {dashSkill != null}, OnSkillBar: {dashSkill?.IsOnSkillBar}, CanBeUsed: {dashSkill?.CanBeUsed}");
+
                                  // Check if cursor is pointing towards target
                                  if (IsCursorPointingTowardsTarget(currentTask.WorldPosition))
                                  {
-                                     BetterFollowbotLite.Instance.LogMessage("Dash task: Cursor direction valid, executing dash");
-
-                                     // Position mouse towards target if needed
-                                     var targetScreenPos = Helper.WorldToValidScreenPosition(currentTask.WorldPosition);
-                                     if (targetScreenPos.X >= 0 && targetScreenPos.Y >= 0 &&
-                                         targetScreenPos.X <= BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().Width &&
-                                         targetScreenPos.Y <= BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().Height)
+                                     if (dashSkill != null && dashSkill.IsOnSkillBar && dashSkill.CanBeUsed)
                                      {
-                                         // Target is on-screen, position mouse
-                                         yield return Mouse.SetCursorPosHuman(targetScreenPos);
+                                         BetterFollowbotLite.Instance.LogMessage("Dash task: Cursor direction valid and skill available, executing dash");
+
+                                         // Position mouse towards target if needed
+                                         var targetScreenPos = Helper.WorldToValidScreenPosition(currentTask.WorldPosition);
+                                         if (targetScreenPos.X >= 0 && targetScreenPos.Y >= 0 &&
+                                             targetScreenPos.X <= BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().Width &&
+                                             targetScreenPos.Y <= BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().Height)
+                                         {
+                                             // Target is on-screen, position mouse
+                                             yield return Mouse.SetCursorPosHuman(targetScreenPos);
+                                         }
+
+                                         // Execute the dash using the skill's key
+                                         Keyboard.KeyPress(BetterFollowbotLite.Instance.GetSkillInputKey(dashSkill.SkillSlotIndex));
+                                         lastDashTime = DateTime.Now; // Record dash time
+                                         lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
+
+                                         // Remove the task since dash was executed
+                                         tasks.Remove(currentTask);
+                                         BetterFollowbotLite.Instance.LogMessage("Dash task completed successfully");
+                                         shouldDashAndContinue = true;
                                      }
+                                     else if (dashSkill == null)
+                                     {
+                                         BetterFollowbotLite.Instance.LogMessage("Dash task: No dash skill found, using configured dash key");
 
-                                     // Execute the dash
-                                     Keyboard.KeyPress(BetterFollowbotLite.Instance.Settings.autoPilotDashKey);
-                                     lastDashTime = DateTime.Now; // Record dash time for cooldown
-                                     lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
+                                         // Fallback: Use configured dash key directly
+                                         // Position mouse towards target if needed
+                                         var targetScreenPos = Helper.WorldToValidScreenPosition(currentTask.WorldPosition);
+                                         if (targetScreenPos.X >= 0 && targetScreenPos.Y >= 0 &&
+                                             targetScreenPos.X <= BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().Width &&
+                                             targetScreenPos.Y <= BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().Height)
+                                         {
+                                             // Target is on-screen, position mouse
+                                             yield return Mouse.SetCursorPosHuman(targetScreenPos);
+                                         }
 
-                                     // Remove the task since dash was executed
-                                     tasks.Remove(currentTask);
-                                     BetterFollowbotLite.Instance.LogMessage("Dash task completed successfully");
-                                     shouldDashAndContinue = true;
+                                         // Execute the dash using configured key
+                                         Keyboard.KeyPress(BetterFollowbotLite.Instance.Settings.autoPilotDashKey);
+                                         lastDashTime = DateTime.Now; // Record dash time
+                                         lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
+
+                                         // Remove the task since dash was executed
+                                         tasks.Remove(currentTask);
+                                         BetterFollowbotLite.Instance.LogMessage("Dash task completed successfully (fallback)");
+                                         shouldDashAndContinue = true;
+                                     }
+                                     else if (!dashSkill.CanBeUsed)
+                                     {
+                                         BetterFollowbotLite.Instance.LogMessage("Dash task: Dash skill is on cooldown or unavailable");
+                                     }
                                  }
                                  else
                                  {
@@ -1346,12 +1389,37 @@ namespace BetterFollowbotLite;
                                      // Check again if cursor is now pointing towards target
                                      if (IsCursorPointingTowardsTarget(currentTask.WorldPosition))
                                      {
-                                         BetterFollowbotLite.Instance.LogMessage("Dash task: Cursor now pointing correctly, executing dash");
-                                         Keyboard.KeyPress(BetterFollowbotLite.Instance.Settings.autoPilotDashKey);
-                                         lastDashTime = DateTime.Now;
-                                         lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
-                                         tasks.Remove(currentTask);
-                                         shouldDashAndContinue = true;
+                                         // Find dash skill to check availability
+                                         var retryDashSkill = BetterFollowbotLite.Instance.skills.FirstOrDefault(s =>
+                                             s.Name.Contains("Dash") ||
+                                             s.Name.Contains("Whirling Blades") ||
+                                             s.Name.Contains("Flame Dash") ||
+                                             s.Name.Contains("Smoke Mine") ||
+                                             (s.Name.Contains("Blade") && s.Name.Contains("Vortex")) ||
+                                             s.IsOnSkillBar);
+
+                                         if (retryDashSkill != null && retryDashSkill.IsOnSkillBar && retryDashSkill.CanBeUsed)
+                                         {
+                                             BetterFollowbotLite.Instance.LogMessage("Dash task: Cursor now pointing correctly and skill available, executing dash");
+                                             Keyboard.KeyPress(BetterFollowbotLite.Instance.GetSkillInputKey(retryDashSkill.SkillSlotIndex));
+                                             lastDashTime = DateTime.Now;
+                                             lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
+                                             tasks.Remove(currentTask);
+                                             shouldDashAndContinue = true;
+                                         }
+                                         else if (retryDashSkill == null)
+                                         {
+                                             BetterFollowbotLite.Instance.LogMessage("Dash task: Cursor now pointing correctly, executing dash (fallback)");
+                                             Keyboard.KeyPress(BetterFollowbotLite.Instance.Settings.autoPilotDashKey);
+                                             lastDashTime = DateTime.Now;
+                                             lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
+                                             tasks.Remove(currentTask);
+                                             shouldDashAndContinue = true;
+                                         }
+                                         else if (!retryDashSkill.CanBeUsed)
+                                         {
+                                             BetterFollowbotLite.Instance.LogMessage("Dash task: Retry - Dash skill is on cooldown or unavailable");
+                                         }
                                      }
                                      else
                                      {
