@@ -77,18 +77,20 @@ namespace BetterFollowbotLite
                 return false;
             }
 
+            _instance.LogMessage($"ExecuteDashTask: Starting dash execution at {DateTime.Now:HH:mm:ss.fff}");
+
             if (cursorPointingCorrectly)
             {
                 // Cursor is already positioned by AutoPilot, just execute the dash
                 var result = ExecuteDash(targetPosition, "Dash task: Executing dash", false); // Don't reposition mouse
-                _instance.LogMessage($"ExecuteDashTask: Direct execution result: {result}");
+                _instance.LogMessage($"ExecuteDashTask: Direct execution result: {result} at {DateTime.Now:HH:mm:ss.fff}");
                 return result;
             }
             else
             {
                 // Try to position cursor and then dash
                 var result = ExecuteDashWithCursorPositioning(targetPosition, autoPilot);
-                _instance.LogMessage($"ExecuteDashTask: Cursor positioning execution result: {result}");
+                _instance.LogMessage($"ExecuteDashTask: Cursor positioning execution result: {result} at {DateTime.Now:HH:mm:ss.fff}");
                 return result;
             }
         }
@@ -140,6 +142,11 @@ namespace BetterFollowbotLite
 
                 var executionTime = (DateTime.Now - startTime).TotalMilliseconds;
                 _instance.LogMessage($"Dash executed successfully in {executionTime:F0}ms");
+
+                // Add a small delay to allow dash animation to start and prevent immediate conflicting inputs
+                System.Threading.Thread.Sleep(150);
+
+                _instance.LogMessage("Dash execution completed with animation delay");
                 return true;
             }
             else if (dashSkill == null)
@@ -165,6 +172,11 @@ namespace BetterFollowbotLite
 
                 var executionTime = (DateTime.Now - startTime).TotalMilliseconds;
                 _instance.LogMessage($"Dash executed successfully (fallback) in {executionTime:F0}ms - Key: {_instance.Settings.autoPilotDashKey.Value}");
+
+                // Add a small delay to allow dash animation to start and prevent immediate conflicting inputs
+                System.Threading.Thread.Sleep(150);
+
+                _instance.LogMessage("Dash execution completed with animation delay (fallback)");
                 return true;
             }
             else if (!dashSkill.CanBeUsed)

@@ -1306,12 +1306,17 @@ namespace BetterFollowbotLite;
                                      }
 
                                      // Use DashManager to execute the dash
+                                     BetterFollowbotLite.Instance.LogMessage($"AUTOPILOT: About to execute dash task at {DateTime.Now:HH:mm:ss.fff}");
                                      if (BetterFollowbotLite.Instance.dashManager.ExecuteDashTask(currentTask.WorldPosition, true, this))
                                      {
                                          lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
                                          // Remove the task since dash was executed
                                          tasks.Remove(currentTask);
-                                         BetterFollowbotLite.Instance.LogMessage("Dash task completed successfully");
+                                         BetterFollowbotLite.Instance.LogMessage($"Dash task completed successfully at {DateTime.Now:HH:mm:ss.fff}");
+
+                                         // Add a small yield to allow dash animation to settle before continuing
+                                         yield return new WaitTime(100);
+
                                          shouldDashAndContinue = true;
                                      }
                                  }
@@ -1422,6 +1427,10 @@ namespace BetterFollowbotLite;
                             // INSTANT MODE: Skip delays for immediate path correction
                             BetterFollowbotLite.Instance.LogMessage("INSTANT PATH OPTIMIZATION: Dash with no delays");
                             BetterFollowbotLite.Instance.dashManager.ExecuteDashTask(FollowTargetPosition, true, this);
+
+                            // Add small delay for dash animation even in instant mode
+                            System.Threading.Thread.Sleep(100);
+
                             instantPathOptimization = false; // Reset flag after use
                         }
                         else
