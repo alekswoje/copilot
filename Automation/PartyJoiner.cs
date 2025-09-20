@@ -27,7 +27,7 @@ namespace BetterFollowbotLite.Automation
         {
             try
             {
-                return BetterFollowbotLite.Instance.GameController.IngameState.IngameUi.TradePanel;
+                return BetterFollowbotLite.Instance.GameController.IngameState.IngameUi.TradeWindow;
             }
             catch
             {
