@@ -1308,35 +1308,38 @@ namespace BetterFollowbotLite;
                                      // Use DashManager to execute the dash
                                      BetterFollowbotLite.Instance.LogMessage($"AUTOPILOT: About to execute dash task at {DateTime.Now:HH:mm:ss.fff}");
                                      var dashStartTime = DateTime.Now;
+                                     bool dashSuccessful = false;
                                      try
                                      {
-                                         if (BetterFollowbotLite.Instance.dashManager.ExecuteDashTask(currentTask.WorldPosition, true, this))
-                                         {
-                                             var dashExecutionTime = (DateTime.Now - dashStartTime).TotalMilliseconds;
-                                             BetterFollowbotLite.Instance.LogMessage($"Dash task execution completed in {dashExecutionTime:F0}ms at {DateTime.Now:HH:mm:ss.fff}");
-
-                                             lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
-                                             // Remove the task since dash was executed
-                                             tasks.Remove(currentTask);
-                                             BetterFollowbotLite.Instance.LogMessage($"Dash task completed successfully at {DateTime.Now:HH:mm:ss.fff}");
-
-                                             // Add yield to allow dash animation to complete and prevent freezing
-                                             BetterFollowbotLite.Instance.LogMessage($"Starting 200ms dash animation delay at {DateTime.Now:HH:mm:ss.fff}");
-                                             yield return new WaitTime(200);
-                                             BetterFollowbotLite.Instance.LogMessage($"Dash animation delay completed at {DateTime.Now:HH:mm:ss.fff}");
-
-                                             shouldDashAndContinue = true;
-                                         }
-                                         else
-                                         {
-                                             BetterFollowbotLite.Instance.LogMessage($"Dash task failed at {DateTime.Now:HH:mm:ss.fff}");
-                                         }
+                                         dashSuccessful = BetterFollowbotLite.Instance.dashManager.ExecuteDashTask(currentTask.WorldPosition, true, this);
                                      }
                                      catch (Exception ex)
                                      {
                                          BetterFollowbotLite.Instance.LogMessage($"CRITICAL: Dash execution threw exception: {ex.Message} at {DateTime.Now:HH:mm:ss.fff}");
                                          BetterFollowbotLite.Instance.LogMessage($"Exception details: {ex.StackTrace}");
-                                         // Continue without removing the task so it can be retried
+                                         dashSuccessful = false;
+                                     }
+
+                                     if (dashSuccessful)
+                                     {
+                                         var dashExecutionTime = (DateTime.Now - dashStartTime).TotalMilliseconds;
+                                         BetterFollowbotLite.Instance.LogMessage($"Dash task execution completed in {dashExecutionTime:F0}ms at {DateTime.Now:HH:mm:ss.fff}");
+
+                                         lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
+                                         // Remove the task since dash was executed
+                                         tasks.Remove(currentTask);
+                                         BetterFollowbotLite.Instance.LogMessage($"Dash task completed successfully at {DateTime.Now:HH:mm:ss.fff}");
+
+                                         // Add yield to allow dash animation to complete and prevent freezing
+                                         BetterFollowbotLite.Instance.LogMessage($"Starting 200ms dash animation delay at {DateTime.Now:HH:mm:ss.fff}");
+                                         yield return new WaitTime(200);
+                                         BetterFollowbotLite.Instance.LogMessage($"Dash animation delay completed at {DateTime.Now:HH:mm:ss.fff}");
+
+                                         shouldDashAndContinue = true;
+                                     }
+                                     else
+                                     {
+                                         BetterFollowbotLite.Instance.LogMessage($"Dash task failed at {DateTime.Now:HH:mm:ss.fff}");
                                      }
                                  }
                                  else
@@ -1445,16 +1448,21 @@ namespace BetterFollowbotLite;
                         {
                             // INSTANT MODE: Skip delays for immediate path correction
                             BetterFollowbotLite.Instance.LogMessage("INSTANT PATH OPTIMIZATION: Dash with no delays");
+                            bool instantDashSuccessful = false;
                             try
                             {
-                                BetterFollowbotLite.Instance.dashManager.ExecuteDashTask(FollowTargetPosition, true, this);
-
-                                // Add yield for dash animation even in instant mode
-                                yield return new WaitTime(200);
+                                instantDashSuccessful = BetterFollowbotLite.Instance.dashManager.ExecuteDashTask(FollowTargetPosition, true, this);
                             }
                             catch (Exception ex)
                             {
                                 BetterFollowbotLite.Instance.LogMessage($"CRITICAL: Instant dash execution threw exception: {ex.Message}");
+                                instantDashSuccessful = false;
+                            }
+
+                            if (instantDashSuccessful)
+                            {
+                                // Add yield for dash animation even in instant mode
+                                yield return new WaitTime(200);
                             }
 
                             instantPathOptimization = false; // Reset flag after use
@@ -1463,14 +1471,20 @@ namespace BetterFollowbotLite;
                         {
                             // Normal delays
                             yield return new WaitTime(random.Next(25) + 30);
+                            bool normalDashSuccessful = false;
                             try
                             {
-                                BetterFollowbotLite.Instance.dashManager.ExecuteDashTask(FollowTargetPosition, true, this);
-                                yield return new WaitTime(random.Next(25) + 30);
+                                normalDashSuccessful = BetterFollowbotLite.Instance.dashManager.ExecuteDashTask(FollowTargetPosition, true, this);
                             }
                             catch (Exception ex)
                             {
                                 BetterFollowbotLite.Instance.LogMessage($"CRITICAL: Normal dash execution threw exception: {ex.Message}");
+                                normalDashSuccessful = false;
+                            }
+
+                            if (normalDashSuccessful)
+                            {
+                                yield return new WaitTime(random.Next(25) + 30);
                             }
                         }
                         yield return null;
