@@ -41,8 +41,6 @@ namespace BetterFollowbotLite.Automation
             var timeSinceLastAttempt = (DateTime.Now - _lastAutoJoinPartyAttempt).TotalSeconds;
             if (_settings.autoJoinPartyEnabled.Value && timeSinceLastAttempt >= 0.5 && _instance.Gcd())
             {
-                // Debug: Always log when executing to see if this method is being called
-                BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY & ACCEPT TRADE: Execute called - enabled: {_settings.autoJoinPartyEnabled.Value}, time since last: {timeSinceLastAttempt:F1}s");
                 try
                 {
                     // Check if player is already in a party - if so, don't accept party invites (but still accept trades)
@@ -51,57 +49,36 @@ namespace BetterFollowbotLite.Automation
 
                     // Check if the invites panel is visible
                     var invitesPanel = _instance.GetInvitesPanel();
-                    BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY & ACCEPT TRADE: InvitesPanel object: {(invitesPanel != null ? "Found" : "NULL")}");
-
-                    if (invitesPanel != null)
+                    if (invitesPanel != null && invitesPanel.IsVisible)
                     {
-                        BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY & ACCEPT TRADE: InvitesPanel.IsVisible: {invitesPanel.IsVisible}");
-
                         // Try to get invites using different property names
                         dynamic invites = null;
-                        string invitesPropertyUsed = "";
 
                         try
                         {
                             invites = invitesPanel.Invites;
-                            invitesPropertyUsed = "Invites";
-                            BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY & ACCEPT TRADE: Found Invites property");
                         }
                         catch (Exception ex)
                         {
-                            BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY & ACCEPT TRADE: Invites property error: {ex.Message}");
-                        }
-
-                        // If Invites property didn't work, try alternative property names
-                        if (invites == null)
-                        {
+                            // Try alternative property names if Invites fails
                             try
                             {
                                 invites = invitesPanel.InviteList;
-                                invitesPropertyUsed = "InviteList";
-                                BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY & ACCEPT TRADE: Found InviteList property");
                             }
-                            catch (Exception ex)
+                            catch
                             {
-                                BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY & ACCEPT TRADE: InviteList property error: {ex.Message}");
+                                try
+                                {
+                                    invites = invitesPanel.Children;
+                                }
+                                catch (Exception ex2)
+                                {
+                                    BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY & ACCEPT TRADE: Error accessing invites: {ex2.Message}");
+                                }
                             }
                         }
 
-                        if (invites == null)
-                        {
-                            try
-                            {
-                                invites = invitesPanel.Children;
-                                invitesPropertyUsed = "Children";
-                                BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY & ACCEPT TRADE: Found Children property");
-                            }
-                            catch (Exception ex)
-                            {
-                                BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY & ACCEPT TRADE: Children property error: {ex.Message}");
-                            }
-                        }
-
-                        if (invitesPanel.IsVisible && invites != null)
+                        if (invites != null)
                         {
                             int inviteCount = 0;
                             try
@@ -114,7 +91,6 @@ namespace BetterFollowbotLite.Automation
                                 {
                                     inviteCount = invites.Count;
                                 }
-                                BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY & ACCEPT TRADE: Found {inviteCount} invite(s) using {invitesPropertyUsed} property");
                             }
                             catch (Exception ex)
                             {
@@ -165,8 +141,6 @@ namespace BetterFollowbotLite.Automation
 
                                                 if (shouldProcess)
                                                 {
-                                                    BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY & ACCEPT TRADE: Processing {inviteType} invite");
-
                                                     // Get the accept button
                                                     var acceptButton = invite.AcceptButton;
                                                     if (acceptButton != null && acceptButton.IsVisible)
@@ -174,8 +148,6 @@ namespace BetterFollowbotLite.Automation
                                                         // Get the center position of the accept button
                                                         var buttonRect = acceptButton.GetClientRectCache;
                                                         var buttonCenter = buttonRect.Center;
-
-                                                        BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY & ACCEPT TRADE: {inviteType} accept button position - X: {buttonCenter.X:F1}, Y: {buttonCenter.Y:F1}");
 
                                                         // Move mouse to the accept button
                                                         Mouse.SetCursorPos(buttonCenter);
@@ -186,13 +158,9 @@ namespace BetterFollowbotLite.Automation
                                                         // Verify mouse position
                                                         var currentMousePos = _instance.GetMousePosition();
                                                         var distanceFromTarget = Vector2.Distance(currentMousePos, buttonCenter);
-                                                        BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY & ACCEPT TRADE: {inviteType} mouse distance from target: {distanceFromTarget:F1}");
 
                                                         if (distanceFromTarget < 15) // Allow slightly more tolerance
                                                         {
-                                                            // Perform click with verification
-                                                            BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY & ACCEPT TRADE: Performing left click on {inviteType} accept button");
-
                                                             // First click attempt - use synchronous mouse events
                                                             Mouse.LeftMouseDown();
                                                             Thread.Sleep(40);
@@ -297,24 +265,6 @@ namespace BetterFollowbotLite.Automation
                                         }
                                     }
                                 }
-                            }
-                            else
-                            {
-                                var timeSinceLastLog = (DateTime.Now - _lastAutoJoinPartyAttempt).TotalSeconds;
-                                if (timeSinceLastLog >= 30.0)
-                                {
-                                    BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY & ACCEPT TRADE: No invites found in invites panel");
-                                }
-                            }
-                        }
-                        else
-                        {
-                            // Don't log when no invites are present - this is normal operation
-                            // Only log occasionally if there might be an issue
-                            var timeSinceLastLog = (DateTime.Now - _lastAutoJoinPartyAttempt).TotalSeconds;
-                            if (timeSinceLastLog >= 60.0) // Log once per minute when no invites
-                            {
-                                BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY & ACCEPT TRADE: No invites detected");
                             }
                         }
                     }
