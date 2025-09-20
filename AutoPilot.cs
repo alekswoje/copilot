@@ -205,7 +205,7 @@ namespace BetterFollowbotLite;
     /// </summary>
     private bool CanDash()
     {
-        return true; // Removed cooldown - dash is always available
+        return BetterFollowbotLite.Instance.dashManager.CanDash();
     }
 
     /// <summary>
@@ -432,7 +432,7 @@ namespace BetterFollowbotLite;
         lastTargetPosition = Vector3.Zero;
         lastPlayerPosition = Vector3.Zero;
         hasUsedWp = false;
-        lastDashTime = DateTime.MinValue; // Reset dash cooldown on area change
+        BetterFollowbotLite.Instance.dashManager.ResetDashTracking(); // Reset dash tracking on area change
         instantPathOptimization = false; // Reset instant optimization flag
         lastPathClearTime = DateTime.MinValue; // Reset responsiveness tracking
         lastResponsivenessCheck = DateTime.MinValue; // Reset responsiveness check cooldown
@@ -922,7 +922,7 @@ namespace BetterFollowbotLite;
                     {
                         var instantDistanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, FollowTargetPosition);
 
-                        if (instantDistanceToLeader > 3000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 700 to 1000
+                        if (instantDistanceToLeader > BetterFollowbotLite.Instance.Settings.autoPilotDashDistance && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled)
                         {
                             // CRITICAL: Don't add dash tasks if we have an active transition task OR another dash task
                             var hasConflictingTasks = tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
@@ -957,7 +957,7 @@ namespace BetterFollowbotLite;
                     {
                         var instantDistanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, FollowTargetPosition);
 
-                        if (instantDistanceToLeader > 3000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 700 to 1000
+                        if (instantDistanceToLeader > BetterFollowbotLite.Instance.Settings.autoPilotDashDistance && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled)
                         {
                             // CRITICAL: Don't add dash tasks if we have an active transition task OR another dash task
                             var hasConflictingTasks = tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
@@ -1083,7 +1083,7 @@ namespace BetterFollowbotLite;
                                 try
                                 {
                                     var distanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, FollowTargetPosition);
-                                    if (distanceToLeader > 700 && IsCursorPointingTowardsTarget(followTarget.Pos)) // Dash if more than 700 units away and cursor is pointing towards leader
+                                    if (distanceToLeader > BetterFollowbotLite.Instance.Settings.autoPilotDashDistance && IsCursorPointingTowardsTarget(followTarget.Pos)) // Dash if more than threshold units away and cursor is pointing towards leader
                                     {
                                         shouldDashToLeader = true;
                                     }
@@ -1282,72 +1282,27 @@ namespace BetterFollowbotLite;
 
                              if (CanDash())
                              {
-                                 // Find dash skill to check availability
-                                 var dashSkill = BetterFollowbotLite.Instance.skills.FirstOrDefault(s =>
-                                     s.Name.Contains("Dash") ||
-                                     s.Name.Contains("Whirling Blades") ||
-                                     s.Name.Contains("Flame Dash") ||
-                                     s.Name.Contains("Smoke Mine") ||
-                                     (s.Name.Contains("Blade") && s.Name.Contains("Vortex")) ||
-                                     s.IsOnSkillBar);
-
-                                 BetterFollowbotLite.Instance.LogMessage($"Dash task: Skill check - Found: {dashSkill != null}, OnSkillBar: {dashSkill?.IsOnSkillBar}, CanBeUsed: {dashSkill?.CanBeUsed}");
-
                                  // Check if cursor is pointing towards target
                                  if (IsCursorPointingTowardsTarget(currentTask.WorldPosition))
                                  {
-                                     if (dashSkill != null && dashSkill.IsOnSkillBar && dashSkill.CanBeUsed)
+                                     // Position mouse towards target if needed
+                                     var targetScreenPos = Helper.WorldToValidScreenPosition(currentTask.WorldPosition);
+                                     if (targetScreenPos.X >= 0 && targetScreenPos.Y >= 0 &&
+                                         targetScreenPos.X <= BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().Width &&
+                                         targetScreenPos.Y <= BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().Height)
                                      {
-                                         BetterFollowbotLite.Instance.LogMessage("Dash task: Cursor direction valid and skill available, executing dash");
+                                         // Target is on-screen, position mouse
+                                         yield return Mouse.SetCursorPosHuman(targetScreenPos);
+                                     }
 
-                                         // Position mouse towards target if needed
-                                         var targetScreenPos = Helper.WorldToValidScreenPosition(currentTask.WorldPosition);
-                                         if (targetScreenPos.X >= 0 && targetScreenPos.Y >= 0 &&
-                                             targetScreenPos.X <= BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().Width &&
-                                             targetScreenPos.Y <= BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().Height)
-                                         {
-                                             // Target is on-screen, position mouse
-                                             yield return Mouse.SetCursorPosHuman(targetScreenPos);
-                                         }
-
-                                         // Execute the dash using the skill's key
-                                         Keyboard.KeyPress(BetterFollowbotLite.Instance.GetSkillInputKey(dashSkill.SkillSlotIndex));
-                                         lastDashTime = DateTime.Now; // Record dash time
+                                     // Use DashManager to execute the dash
+                                     if (BetterFollowbotLite.Instance.dashManager.ExecuteDashTask(currentTask.WorldPosition, true, this))
+                                     {
                                          lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
-
                                          // Remove the task since dash was executed
                                          tasks.Remove(currentTask);
                                          BetterFollowbotLite.Instance.LogMessage("Dash task completed successfully");
                                          shouldDashAndContinue = true;
-                                     }
-                                     else if (dashSkill == null)
-                                     {
-                                         BetterFollowbotLite.Instance.LogMessage("Dash task: No dash skill found, using configured dash key");
-
-                                         // Fallback: Use configured dash key directly
-                                         // Position mouse towards target if needed
-                                         var targetScreenPos = Helper.WorldToValidScreenPosition(currentTask.WorldPosition);
-                                         if (targetScreenPos.X >= 0 && targetScreenPos.Y >= 0 &&
-                                             targetScreenPos.X <= BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().Width &&
-                                             targetScreenPos.Y <= BetterFollowbotLite.Instance.GameController.Window.GetWindowRectangle().Height)
-                                         {
-                                             // Target is on-screen, position mouse
-                                             yield return Mouse.SetCursorPosHuman(targetScreenPos);
-                                         }
-
-                                         // Execute the dash using configured key
-                                         Keyboard.KeyPress(BetterFollowbotLite.Instance.Settings.autoPilotDashKey);
-                                         lastDashTime = DateTime.Now; // Record dash time
-                                         lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
-
-                                         // Remove the task since dash was executed
-                                         tasks.Remove(currentTask);
-                                         BetterFollowbotLite.Instance.LogMessage("Dash task completed successfully (fallback)");
-                                         shouldDashAndContinue = true;
-                                     }
-                                     else if (!dashSkill.CanBeUsed)
-                                     {
-                                         BetterFollowbotLite.Instance.LogMessage("Dash task: Dash skill is on cooldown or unavailable");
                                      }
                                  }
                                  else
@@ -1389,36 +1344,12 @@ namespace BetterFollowbotLite;
                                      // Check again if cursor is now pointing towards target
                                      if (IsCursorPointingTowardsTarget(currentTask.WorldPosition))
                                      {
-                                         // Find dash skill to check availability
-                                         var retryDashSkill = BetterFollowbotLite.Instance.skills.FirstOrDefault(s =>
-                                             s.Name.Contains("Dash") ||
-                                             s.Name.Contains("Whirling Blades") ||
-                                             s.Name.Contains("Flame Dash") ||
-                                             s.Name.Contains("Smoke Mine") ||
-                                             (s.Name.Contains("Blade") && s.Name.Contains("Vortex")) ||
-                                             s.IsOnSkillBar);
-
-                                         if (retryDashSkill != null && retryDashSkill.IsOnSkillBar && retryDashSkill.CanBeUsed)
+                                         // Use DashManager to execute the retry dash
+                                         if (BetterFollowbotLite.Instance.dashManager.ExecuteRetryDash(currentTask.WorldPosition))
                                          {
-                                             BetterFollowbotLite.Instance.LogMessage("Dash task: Cursor now pointing correctly and skill available, executing dash");
-                                             Keyboard.KeyPress(BetterFollowbotLite.Instance.GetSkillInputKey(retryDashSkill.SkillSlotIndex));
-                                             lastDashTime = DateTime.Now;
                                              lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
                                              tasks.Remove(currentTask);
                                              shouldDashAndContinue = true;
-                                         }
-                                         else if (retryDashSkill == null)
-                                         {
-                                             BetterFollowbotLite.Instance.LogMessage("Dash task: Cursor now pointing correctly, executing dash (fallback)");
-                                             Keyboard.KeyPress(BetterFollowbotLite.Instance.Settings.autoPilotDashKey);
-                                             lastDashTime = DateTime.Now;
-                                             lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
-                                             tasks.Remove(currentTask);
-                                             shouldDashAndContinue = true;
-                                         }
-                                         else if (!retryDashSkill.CanBeUsed)
-                                         {
-                                             BetterFollowbotLite.Instance.LogMessage("Dash task: Retry - Dash skill is on cooldown or unavailable");
                                          }
                                      }
                                      else
@@ -1475,22 +1406,19 @@ namespace BetterFollowbotLite;
                 {
                     if (shouldDashToLeader)
                     {
-                        yield return Mouse.SetCursorPosHuman(Helper.WorldToValidScreenPosition(FollowTargetPosition));
-                        BetterFollowbotLite.Instance.LogMessage("Movement task: Dash mouse positioned, pressing key");
+                        BetterFollowbotLite.Instance.LogMessage("Movement task: Executing dash to leader");
                         if (instantPathOptimization)
                         {
                             // INSTANT MODE: Skip delays for immediate path correction
                             BetterFollowbotLite.Instance.LogMessage("INSTANT PATH OPTIMIZATION: Dash with no delays");
-                            Keyboard.KeyPress(BetterFollowbotLite.Instance.Settings.autoPilotDashKey);
-                            lastDashTime = DateTime.Now; // Record dash time for cooldown
+                            BetterFollowbotLite.Instance.dashManager.ExecuteDashTask(FollowTargetPosition, true, this);
                             instantPathOptimization = false; // Reset flag after use
                         }
                         else
                         {
                             // Normal delays
                             yield return new WaitTime(random.Next(25) + 30);
-                            Keyboard.KeyPress(BetterFollowbotLite.Instance.Settings.autoPilotDashKey);
-                            lastDashTime = DateTime.Now; // Record dash time for cooldown
+                            BetterFollowbotLite.Instance.dashManager.ExecuteDashTask(FollowTargetPosition, true, this);
                             yield return new WaitTime(random.Next(25) + 30);
                         }
                         yield return null;
@@ -1499,7 +1427,7 @@ namespace BetterFollowbotLite;
 
                     if (shouldTerrainDash)
                     {
-                        lastDashTime = DateTime.Now; // Record dash time for cooldown (CheckDashTerrain already performed the dash)
+                                        BetterFollowbotLite.Instance.dashManager.UpdateLastDashTime(); // Record dash time for cooldown (CheckDashTerrain already performed the dash)
                         yield return null;
                         continue;
                     }
@@ -1640,7 +1568,7 @@ namespace BetterFollowbotLite;
                                 BetterFollowbotLite.Instance.LogMessage($"DEBUG: Dash override - Correction target: {correctionTarget}");
                                 yield return Mouse.SetCursorPosHuman(correctScreenPos);
                                 Keyboard.KeyPress(BetterFollowbotLite.Instance.Settings.autoPilotDashKey);
-                                lastDashTime = DateTime.Now; // Record dash time for cooldown
+                                        BetterFollowbotLite.Instance.dashManager.UpdateLastDashTime(); // Record dash time for cooldown
                                 BetterFollowbotLite.Instance.LogMessage("DASH OVERRIDE: Dashed towards player position to override old dash");
                             }
                             else
@@ -1656,7 +1584,7 @@ namespace BetterFollowbotLite;
                             // INSTANT MODE: Skip delays for immediate path correction
                             BetterFollowbotLite.Instance.LogMessage("INSTANT PATH OPTIMIZATION: Dash task with no delays");
                             Keyboard.KeyPress(BetterFollowbotLite.Instance.Settings.autoPilotDashKey);
-                            lastDashTime = DateTime.Now; // Record dash time for cooldown
+                                        BetterFollowbotLite.Instance.dashManager.UpdateLastDashTime(); // Record dash time for cooldown
                             instantPathOptimization = false; // Reset flag after use
                         }
                         else
@@ -1664,7 +1592,7 @@ namespace BetterFollowbotLite;
                             // Normal delays
                             yield return new WaitTime(random.Next(25) + 30);
                             Keyboard.KeyPress(BetterFollowbotLite.Instance.Settings.autoPilotDashKey);
-                            lastDashTime = DateTime.Now; // Record dash time for cooldown
+                                        BetterFollowbotLite.Instance.dashManager.UpdateLastDashTime(); // Record dash time for cooldown
                             yield return new WaitTime(random.Next(25) + 30);
                         }
                         yield return null;
@@ -1973,7 +1901,7 @@ namespace BetterFollowbotLite;
                         var instantDistanceToLeader = Vector3.Distance(BetterFollowbotLite.Instance.playerPosition, FollowTargetPosition);
                         BetterFollowbotLite.Instance.LogMessage($"RESPONSIVENESS: Creating direct path to leader - Distance: {instantDistanceToLeader:F1}");
 
-                        if (instantDistanceToLeader > 3000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 1000 to 1500 to reduce dash spam
+                        if (instantDistanceToLeader > BetterFollowbotLite.Instance.Settings.autoPilotDashDistance && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 1000 to 1500 to reduce dash spam
                         {
                             // CRITICAL: Don't add dash tasks if we have an active transition task OR another dash task
                             var hasConflictingTasks = tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
@@ -2015,7 +1943,7 @@ namespace BetterFollowbotLite;
                         if (instantDistanceToLeader > 200f) // Only log for significant distances
                             BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Creating direct path to leader - Distance: {instantDistanceToLeader:F1}");
 
-                        if (instantDistanceToLeader > 3000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 1000 to 1500 to reduce dash spam
+                        if (instantDistanceToLeader > BetterFollowbotLite.Instance.Settings.autoPilotDashDistance && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 1000 to 1500 to reduce dash spam
                         {
                             // CRITICAL: Don't add dash tasks if we have an active transition task OR another dash task
                             var hasConflictingTasks = tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
@@ -2214,8 +2142,8 @@ namespace BetterFollowbotLite;
                         // Validate followTarget position before creating tasks
                         if (followTarget?.Pos != null && !float.IsNaN(followTarget.Pos.X) && !float.IsNaN(followTarget.Pos.Y) && !float.IsNaN(followTarget.Pos.Z))
                         {
-                            // If very far away, add dash task instead of movement task
-                            if (distanceToLeader > 3000 && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled) // Increased from 1500 to 3000 to reduce dash spam significantly
+                            // If far away, add dash task instead of movement task
+                            if (distanceToLeader > BetterFollowbotLite.Instance.Settings.autoPilotDashDistance && BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled)
                             {
                             // CRITICAL: Don't add dash tasks if we have any active transition-related task OR another dash task OR teleport in progress
                             var shouldSkipDashTasks = tasks.Any(t =>
@@ -2236,7 +2164,7 @@ namespace BetterFollowbotLite;
                             }
                             else
                             {
-                                BetterFollowbotLite.Instance.LogMessage($"Adding Movement task - Distance: {distanceToLeader:F1}, Dash enabled: {BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled}, Dash threshold: 700");
+                                BetterFollowbotLite.Instance.LogMessage($"Adding Movement task - Distance: {distanceToLeader:F1}, Dash enabled: {BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled}, Dash threshold: {BetterFollowbotLite.Instance.Settings.autoPilotDashDistance}");
                                 tasks.Add(new TaskNode(FollowTargetPosition, BetterFollowbotLite.Instance.Settings.autoPilotPathfindingNodeDistance));
                             }
                         }

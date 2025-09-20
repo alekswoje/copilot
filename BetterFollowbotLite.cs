@@ -43,6 +43,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
     private Coroutine skillCoroutine;
     internal List<ActorSkill> skills = new List<ActorSkill>();
     private List<ActorVaalSkill> vaalSkills = new List<ActorVaalSkill>();
+    internal DashManager dashManager;
 
 
 
@@ -63,6 +64,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
         // Initialize skill classes
         summonRagingSpirits = new SummonRagingSpirits(this, Settings, autoPilot, summons);
+        dashManager = new DashManager(this);
 
         // Initialize automation classes
         respawnHandler = new RespawnHandler(this, Settings);
@@ -1099,92 +1101,11 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                         BetterFollowbotLite.Instance.LogMessage("SMITE: No suitable targets found within range, dashing to leader");
 
                                         // Dash to leader to get near monsters
-                                        if (Settings.autoPilotDashEnabled && autoPilot.FollowTarget != null)
+                                        if (autoPilot.FollowTarget != null)
                                         {
                                             var leaderPos = autoPilot.FollowTarget.Pos;
                                             var distanceToLeader = Vector3.Distance(playerPosition, leaderPos);
-
-                                            // CRITICAL: Don't dash if teleport is in progress (strongest protection)
-                                            if (AutoPilot.IsTeleportInProgress)
-                                            {
-                                                BetterFollowbotLite.Instance.LogMessage("SMITE: TELEPORT IN PROGRESS - blocking all dash attempts");
-                                            }
-                                            else
-                                            {
-                                                // Fallback: Check for transition tasks
-                                                var hasTransitionTask = autoPilot.Tasks.Any(t =>
-                                                    t.Type == TaskNodeType.Transition ||
-                                                    t.Type == TaskNodeType.TeleportConfirm ||
-                                                    t.Type == TaskNodeType.TeleportButton);
-
-                                                if (hasTransitionTask)
-                                                {
-                                                    BetterFollowbotLite.Instance.LogMessage($"SMITE: Transition/teleport task active ({autoPilot.Tasks.Count} tasks), skipping dash");
-                                                }
-                                                else if (distanceToLeader > Settings.autoPilotDashDistance) // Only dash if we're not already close to leader
-                                                {
-                                                    // Find dash skill to check availability
-                                                    var dashSkill = skills.FirstOrDefault(s =>
-                                                        s.Name.Contains("Dash") ||
-                                                        s.Name.Contains("Whirling Blades") ||
-                                                        s.Name.Contains("Flame Dash") ||
-                                                        s.Name.Contains("Smoke Mine") ||
-                                                        (s.Name.Contains("Blade") && s.Name.Contains("Vortex")) ||
-                                                        s.IsOnSkillBar);
-
-                                                    BetterFollowbotLite.Instance.LogMessage($"SMITE: Dash skill check - Found: {dashSkill != null}, OnSkillBar: {dashSkill?.IsOnSkillBar}, CanBeUsed: {dashSkill?.CanBeUsed}");
-
-                                                    if (dashSkill != null && dashSkill.IsOnSkillBar && dashSkill.CanBeUsed)
-                                                    {
-                                                        BetterFollowbotLite.Instance.LogMessage($"SMITE: Dashing to leader - Distance: {distanceToLeader:F1}");
-
-                                                        // Position mouse towards leader
-                                                        var leaderScreenPos = GameController.IngameState.Camera.WorldToScreen(leaderPos);
-                                                        Mouse.SetCursorPos(leaderScreenPos);
-
-                                                        // Small delay to ensure mouse movement is registered
-                                                        System.Threading.Thread.Sleep(50);
-
-                                                        // Execute dash using the skill's key
-                                                        Keyboard.KeyPress(GetSkillInputKey(dashSkill.SkillSlotIndex));
-                                                        autoPilot.lastDashTime = DateTime.Now;
-
-                                                        BetterFollowbotLite.Instance.LogMessage("SMITE: Dash to leader executed");
-                                                    }
-                                                    else if (dashSkill == null)
-                                                    {
-                                                        BetterFollowbotLite.Instance.LogMessage("SMITE: No dash skill found, using configured dash key");
-
-                                                        // Fallback: Use configured dash key directly
-                                                        BetterFollowbotLite.Instance.LogMessage($"SMITE: Dashing to leader - Distance: {distanceToLeader:F1}");
-
-                                                        // Position mouse towards leader
-                                                        var leaderScreenPos = GameController.IngameState.Camera.WorldToScreen(leaderPos);
-                                                        Mouse.SetCursorPos(leaderScreenPos);
-
-                                                        // Small delay to ensure mouse movement is registered
-                                                        System.Threading.Thread.Sleep(50);
-
-                                                        // Execute dash using configured key
-                                                        Keyboard.KeyPress(Settings.autoPilotDashKey);
-                                                        autoPilot.lastDashTime = DateTime.Now;
-
-                                                        BetterFollowbotLite.Instance.LogMessage("SMITE: Dash to leader executed (fallback)");
-                                                    }
-                                                    else if (!dashSkill.CanBeUsed)
-                                                    {
-                                                        BetterFollowbotLite.Instance.LogMessage("SMITE: Dash skill is on cooldown or unavailable");
-                                                    }
-                                                }
-                                                else
-                                                {
-                                                    BetterFollowbotLite.Instance.LogMessage("SMITE: Already close to leader, skipping dash");
-                                                }
-                                            }
-                                        }
-                                        else
-                                        {
-                                            BetterFollowbotLite.Instance.LogMessage("SMITE: Dash not available or not enabled");
+                                            dashManager.TryDashToLeader(leaderPos, distanceToLeader, autoPilot);
                                         }
                                     }
                                 }
