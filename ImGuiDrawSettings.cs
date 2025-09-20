@@ -97,6 +97,8 @@ internal class ImGuiDrawSettings
                     "Close Follow", BetterFollowbotLite.Instance.Settings.autoPilotCloseFollow.Value);
                 BetterFollowbotLite.Instance.Settings.autoPilotDashKey.Value = ImGuiExtension.HotkeySelector(
                     "Dash Key: " + BetterFollowbotLite.Instance.Settings.autoPilotDashKey.Value, BetterFollowbotLite.Instance.Settings.autoPilotDashKey);
+                BetterFollowbotLite.Instance.Settings.autoPilotDashDistance.Value =
+                    ImGuiExtension.IntSlider("Dash Distance", BetterFollowbotLite.Instance.Settings.autoPilotDashDistance);
                 BetterFollowbotLite.Instance.Settings.autoPilotMoveKey.Value = ImGuiExtension.HotkeySelector(
                     "Move Key: " + BetterFollowbotLite.Instance.Settings.autoPilotMoveKey.Value, BetterFollowbotLite.Instance.Settings.autoPilotMoveKey);
                 BetterFollowbotLite.Instance.Settings.autoPilotToggleKey.Value = ImGuiExtension.HotkeySelector(
