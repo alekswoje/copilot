@@ -1307,17 +1307,36 @@ namespace BetterFollowbotLite;
 
                                      // Use DashManager to execute the dash
                                      BetterFollowbotLite.Instance.LogMessage($"AUTOPILOT: About to execute dash task at {DateTime.Now:HH:mm:ss.fff}");
-                                     if (BetterFollowbotLite.Instance.dashManager.ExecuteDashTask(currentTask.WorldPosition, true, this))
+                                     var dashStartTime = DateTime.Now;
+                                     try
                                      {
-                                         lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
-                                         // Remove the task since dash was executed
-                                         tasks.Remove(currentTask);
-                                         BetterFollowbotLite.Instance.LogMessage($"Dash task completed successfully at {DateTime.Now:HH:mm:ss.fff}");
+                                         if (BetterFollowbotLite.Instance.dashManager.ExecuteDashTask(currentTask.WorldPosition, true, this))
+                                         {
+                                             var dashExecutionTime = (DateTime.Now - dashStartTime).TotalMilliseconds;
+                                             BetterFollowbotLite.Instance.LogMessage($"Dash task execution completed in {dashExecutionTime:F0}ms at {DateTime.Now:HH:mm:ss.fff}");
 
-                                         // Add a small yield to allow dash animation to settle before continuing
-                                         yield return new WaitTime(100);
+                                             lastPlayerPosition = BetterFollowbotLite.Instance.playerPosition;
+                                             // Remove the task since dash was executed
+                                             tasks.Remove(currentTask);
+                                             BetterFollowbotLite.Instance.LogMessage($"Dash task completed successfully at {DateTime.Now:HH:mm:ss.fff}");
 
-                                         shouldDashAndContinue = true;
+                                             // Add yield to allow dash animation to complete and prevent freezing
+                                             BetterFollowbotLite.Instance.LogMessage($"Starting 200ms dash animation delay at {DateTime.Now:HH:mm:ss.fff}");
+                                             yield return new WaitTime(200);
+                                             BetterFollowbotLite.Instance.LogMessage($"Dash animation delay completed at {DateTime.Now:HH:mm:ss.fff}");
+
+                                             shouldDashAndContinue = true;
+                                         }
+                                         else
+                                         {
+                                             BetterFollowbotLite.Instance.LogMessage($"Dash task failed at {DateTime.Now:HH:mm:ss.fff}");
+                                         }
+                                     }
+                                     catch (Exception ex)
+                                     {
+                                         BetterFollowbotLite.Instance.LogMessage($"CRITICAL: Dash execution threw exception: {ex.Message} at {DateTime.Now:HH:mm:ss.fff}");
+                                         BetterFollowbotLite.Instance.LogMessage($"Exception details: {ex.StackTrace}");
+                                         // Continue without removing the task so it can be retried
                                      }
                                  }
                                  else
@@ -1426,10 +1445,17 @@ namespace BetterFollowbotLite;
                         {
                             // INSTANT MODE: Skip delays for immediate path correction
                             BetterFollowbotLite.Instance.LogMessage("INSTANT PATH OPTIMIZATION: Dash with no delays");
-                            BetterFollowbotLite.Instance.dashManager.ExecuteDashTask(FollowTargetPosition, true, this);
+                            try
+                            {
+                                BetterFollowbotLite.Instance.dashManager.ExecuteDashTask(FollowTargetPosition, true, this);
 
-                            // Add small delay for dash animation even in instant mode
-                            System.Threading.Thread.Sleep(100);
+                                // Add yield for dash animation even in instant mode
+                                yield return new WaitTime(200);
+                            }
+                            catch (Exception ex)
+                            {
+                                BetterFollowbotLite.Instance.LogMessage($"CRITICAL: Instant dash execution threw exception: {ex.Message}");
+                            }
 
                             instantPathOptimization = false; // Reset flag after use
                         }
@@ -1437,8 +1463,15 @@ namespace BetterFollowbotLite;
                         {
                             // Normal delays
                             yield return new WaitTime(random.Next(25) + 30);
-                            BetterFollowbotLite.Instance.dashManager.ExecuteDashTask(FollowTargetPosition, true, this);
-                            yield return new WaitTime(random.Next(25) + 30);
+                            try
+                            {
+                                BetterFollowbotLite.Instance.dashManager.ExecuteDashTask(FollowTargetPosition, true, this);
+                                yield return new WaitTime(random.Next(25) + 30);
+                            }
+                            catch (Exception ex)
+                            {
+                                BetterFollowbotLite.Instance.LogMessage($"CRITICAL: Normal dash execution threw exception: {ex.Message}");
+                            }
                         }
                         yield return null;
                         continue;
@@ -2407,7 +2440,7 @@ namespace BetterFollowbotLite;
         // Restart coroutine if it died
         if (BetterFollowbotLite.Instance.Settings.autoPilotEnabled && (autoPilotCoroutine == null || !autoPilotCoroutine.Running))
         {
-            BetterFollowbotLite.Instance.LogMessage("AutoPilot: Restarting coroutine - it was dead");
+            BetterFollowbotLite.Instance.LogMessage($"AutoPilot: Restarting coroutine - it was dead at {DateTime.Now:HH:mm:ss.fff}. Previous status: {(autoPilotCoroutine == null ? "null" : autoPilotCoroutine.Running.ToString())}");
             StartCoroutine();
         }
         else if (BetterFollowbotLite.Instance.Settings.autoPilotEnabled)

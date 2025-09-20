@@ -132,8 +132,8 @@ namespace BetterFollowbotLite
                     var targetScreenPos = _instance.GameController.IngameState.Camera.WorldToScreen(targetPosition);
                     Mouse.SetCursorPos(targetScreenPos);
 
-                    // Small delay to ensure mouse movement is registered
-                    System.Threading.Thread.Sleep(50);
+                    // Small delay to ensure mouse movement is registered (reduced from 50ms)
+                    System.Threading.Thread.Sleep(10);
                 }
 
                 // Execute dash using the skill's key
@@ -141,12 +141,8 @@ namespace BetterFollowbotLite
                 _lastDashTime = DateTime.Now;
 
                 var executionTime = (DateTime.Now - startTime).TotalMilliseconds;
-                _instance.LogMessage($"Dash executed successfully in {executionTime:F0}ms");
+                _instance.LogMessage($"Dash executed successfully in {executionTime:F0}ms - animation delay will be handled by caller");
 
-                // Add a small delay to allow dash animation to start and prevent immediate conflicting inputs
-                System.Threading.Thread.Sleep(150);
-
-                _instance.LogMessage("Dash execution completed with animation delay");
                 return true;
             }
             else if (dashSkill == null)
@@ -162,8 +158,8 @@ namespace BetterFollowbotLite
                     var targetScreenPos = _instance.GameController.IngameState.Camera.WorldToScreen(targetPosition);
                     Mouse.SetCursorPos(targetScreenPos);
 
-                    // Small delay to ensure mouse movement is registered
-                    System.Threading.Thread.Sleep(50);
+                    // Small delay to ensure mouse movement is registered (reduced from 50ms)
+                    System.Threading.Thread.Sleep(10);
                 }
 
                 // Execute dash using configured key
@@ -171,12 +167,8 @@ namespace BetterFollowbotLite
                 _lastDashTime = DateTime.Now;
 
                 var executionTime = (DateTime.Now - startTime).TotalMilliseconds;
-                _instance.LogMessage($"Dash executed successfully (fallback) in {executionTime:F0}ms - Key: {_instance.Settings.autoPilotDashKey.Value}");
+                _instance.LogMessage($"Dash executed successfully (fallback) in {executionTime:F0}ms - Key: {_instance.Settings.autoPilotDashKey.Value} - animation delay will be handled by caller");
 
-                // Add a small delay to allow dash animation to start and prevent immediate conflicting inputs
-                System.Threading.Thread.Sleep(150);
-
-                _instance.LogMessage("Dash execution completed with animation delay (fallback)");
                 return true;
             }
             else if (!dashSkill.CanBeUsed)
