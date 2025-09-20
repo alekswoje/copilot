@@ -66,124 +66,40 @@ namespace BetterFollowbotLite.Automation
                                 {
                                     try
                                     {
-                                        // Check the invite kind to determine invite type
-                                        string inviteType = "";
-                                        bool shouldProcess = false;
-
-                                        try
+                                        // Check the action text to determine invite type
+                                        var actionText = invite.ActionText;
+                                        if (actionText != null)
                                         {
-                                            var inviteKind = invite.Kind;
-                                            BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY & ACCEPT TRADE: Processing invite with Kind: '{inviteKind}'");
+                                            string inviteType = "";
+                                            bool shouldProcess = false;
 
-                                            if (inviteKind != null)
+                                            if (actionText.Contains("party invite") || actionText.Contains("sent you a party invite"))
                                             {
-                                                // Convert invite kind to string for comparison
-                                                string kindString = inviteKind.ToString().ToLower();
-
-                                                if (kindString.Contains("party"))
+                                                inviteType = "PARTY";
+                                                // Only process party invites if not already in party
+                                                shouldProcess = !isInParty;
+                                                if (isInParty)
                                                 {
-                                                    inviteType = "PARTY";
-                                                    // Only process party invites if not already in party
-                                                    shouldProcess = !isInParty;
-                                                    if (isInParty)
+                                                    if (timeSinceLastAttempt >= 15.0)
                                                     {
-                                                        if (timeSinceLastAttempt >= 15.0)
-                                                        {
-                                                            BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY & ACCEPT TRADE: Skipping party invite - already in party ({partyElement.Count} members)");
-                                                        }
-                                                        continue;
+                                                        BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY & ACCEPT TRADE: Skipping party invite - already in party ({partyElement.Count} members)");
                                                     }
-                                                }
-                                                else if (kindString.Contains("trade"))
-                                                {
-                                                    inviteType = "TRADE";
-                                                    // Always process trade requests
-                                                    shouldProcess = true;
-                                                }
-                                                else
-                                                {
-                                                    BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY & ACCEPT TRADE: Unknown invite kind: '{inviteKind}' (string: '{kindString}')");
                                                     continue;
                                                 }
+                                            }
+                                            else if (actionText.Contains("trade request") || actionText.Contains("sent you a trade request"))
+                                            {
+                                                inviteType = "TRADE";
+                                                // Always process trade requests
+                                                shouldProcess = true;
                                             }
                                             else
                                             {
-                                                // Fallback to ActionText if Kind is null
-                                                BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY & ACCEPT TRADE: Kind is null, falling back to ActionText");
-                                                var actionText = invite.ActionText;
-                                                if (actionText != null)
-                                                {
-                                                    if (actionText.Contains("party invite") || actionText.Contains("sent you a party invite"))
-                                                    {
-                                                        inviteType = "PARTY";
-                                                        shouldProcess = !isInParty;
-                                                        if (isInParty)
-                                                        {
-                                                            if (timeSinceLastAttempt >= 15.0)
-                                                            {
-                                                                BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY & ACCEPT TRADE: Skipping party invite - already in party ({partyElement.Count} members)");
-                                                            }
-                                                            continue;
-                                                        }
-                                                    }
-                                                    else if (actionText.Contains("trade request") || actionText.Contains("sent you a trade request"))
-                                                    {
-                                                        inviteType = "TRADE";
-                                                        shouldProcess = true;
-                                                    }
-                                                    else
-                                                    {
-                                                        BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY & ACCEPT TRADE: Unknown invite type with action text: '{actionText}'");
-                                                        continue;
-                                                    }
-                                                }
-                                                else
-                                                {
-                                                    BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY & ACCEPT TRADE: Both Kind and ActionText are null");
-                                                    continue;
-                                                }
-                                            }
-                                        }
-                                        catch (Exception kindEx)
-                                        {
-                                            BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY & ACCEPT TRADE: Error accessing invite.Kind, falling back to ActionText: {kindEx.Message}");
-
-                                            // Fallback to ActionText if Kind property doesn't exist
-                                            var actionText = invite.ActionText;
-                                            if (actionText != null)
-                                            {
-                                                if (actionText.Contains("party invite") || actionText.Contains("sent you a party invite"))
-                                                {
-                                                    inviteType = "PARTY";
-                                                    shouldProcess = !isInParty;
-                                                    if (isInParty)
-                                                    {
-                                                        if (timeSinceLastAttempt >= 15.0)
-                                                        {
-                                                            BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY & ACCEPT TRADE: Skipping party invite - already in party ({partyElement.Count} members)");
-                                                        }
-                                                        continue;
-                                                    }
-                                                }
-                                                else if (actionText.Contains("trade request") || actionText.Contains("sent you a trade request"))
-                                                {
-                                                    inviteType = "TRADE";
-                                                    shouldProcess = true;
-                                                }
-                                                else
-                                                {
-                                                    BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY & ACCEPT TRADE: Unknown invite type with action text: '{actionText}'");
-                                                    continue;
-                                                }
-                                            }
-                                            else
-                                            {
-                                                BetterFollowbotLite.Instance.LogMessage("AUTO JOIN PARTY & ACCEPT TRADE: Both Kind and ActionText are inaccessible");
+                                                BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY & ACCEPT TRADE: Unknown invite type with action text: '{actionText}'");
                                                 continue;
                                             }
-                                        }
 
-                                        if (shouldProcess)
+                                            if (shouldProcess)
                                             {
                                                 BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY & ACCEPT TRADE: Processing {inviteType} invite");
 
