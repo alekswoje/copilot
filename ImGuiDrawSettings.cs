@@ -342,13 +342,13 @@ internal class ImGuiDrawSettings
 
         try
         {
-            // Auto Join Party
+            // Auto Join Party & Accept Trade
             ImGui.PushStyleColor(ImGuiCol.Header, BetterFollowbotLite.Instance.Settings.autoJoinPartyEnabled ? green : red);
             ImGui.PushID(35);
-            if (ImGui.TreeNodeEx("Auto Join Party", collapsingHeaderFlags))
+            if (ImGui.TreeNodeEx("Auto Join Party & Accept Trade", collapsingHeaderFlags))
             {
                 BetterFollowbotLite.Instance.Settings.autoJoinPartyEnabled.Value =
-                    ImGuiExtension.Checkbox("Auto Join Party Invites", BetterFollowbotLite.Instance.Settings.autoJoinPartyEnabled.Value);
+                    ImGuiExtension.Checkbox("Auto Join Party & Accept Trade Invites", BetterFollowbotLite.Instance.Settings.autoJoinPartyEnabled.Value);
 
                 // Debug: Show current value
                 ImGui.Text($"Current: {BetterFollowbotLite.Instance.Settings.autoJoinPartyEnabled.Value}");
@@ -356,7 +356,7 @@ internal class ImGuiDrawSettings
         }
         catch (Exception e)
         {
-            BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY UI ERROR: {e.Message}");
+            BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY & ACCEPT TRADE UI ERROR: {e.Message}");
         }
 
         //ImGui.End();

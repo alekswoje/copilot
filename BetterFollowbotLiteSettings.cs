@@ -106,7 +106,7 @@ public class BetterFollowbotLiteSettings : ISettings
 
     #endregion
 
-    #region Auto Join Party
+    #region Auto Join Party & Accept Trade
 
     public ToggleNode autoJoinPartyEnabled = new ToggleNode(false);
 

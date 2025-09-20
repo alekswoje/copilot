@@ -157,6 +157,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
             return null;
         }
     }
+
         
 
     private bool MonsterCheck(int range, int minAny, int minRare, int minUnique)
@@ -782,7 +783,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
 
             #endregion
 
-            #region Auto Join Party
+            #region Auto Join Party & Accept Trade
 
             partyJoiner?.Execute();
 
