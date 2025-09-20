@@ -113,7 +113,7 @@ namespace BetterFollowbotLite
                 _instance.LogMessage(logMessage);
 
                 // Position mouse towards target
-                var targetScreenPos = GameController.IngameState.Camera.WorldToScreen(targetPosition);
+                var targetScreenPos = _instance.GameController.IngameState.Camera.WorldToScreen(targetPosition);
                 Mouse.SetCursorPos(targetScreenPos);
 
                 // Small delay to ensure mouse movement is registered
@@ -134,7 +134,7 @@ namespace BetterFollowbotLite
                 _instance.LogMessage(logMessage + " (fallback)");
 
                 // Position mouse towards target
-                var targetScreenPos = GameController.IngameState.Camera.WorldToScreen(targetPosition);
+                var targetScreenPos = _instance.GameController.IngameState.Camera.WorldToScreen(targetPosition);
                 Mouse.SetCursorPos(targetScreenPos);
 
                 // Small delay to ensure mouse movement is registered
