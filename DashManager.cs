@@ -69,19 +69,26 @@ namespace BetterFollowbotLite
         /// <returns>True if dash was successful, false otherwise</returns>
         public bool ExecuteDashTask(Vector3 targetPosition, bool cursorPointingCorrectly, AutoPilot autoPilot)
         {
+            _instance.LogMessage($"ExecuteDashTask called - Target: {targetPosition}, CursorOK: {cursorPointingCorrectly}, CanDash: {CanDash()}");
+
             if (!CanDash())
             {
+                _instance.LogMessage("ExecuteDashTask: Cannot dash - cooldown or other restriction");
                 return false;
             }
 
             if (cursorPointingCorrectly)
             {
-                return ExecuteDash(targetPosition, "Dash task: Executing dash");
+                var result = ExecuteDash(targetPosition, "Dash task: Executing dash");
+                _instance.LogMessage($"ExecuteDashTask: Direct execution result: {result}");
+                return result;
             }
             else
             {
                 // Try to position cursor and then dash
-                return ExecuteDashWithCursorPositioning(targetPosition, autoPilot);
+                var result = ExecuteDashWithCursorPositioning(targetPosition, autoPilot);
+                _instance.LogMessage($"ExecuteDashTask: Cursor positioning execution result: {result}");
+                return result;
             }
         }
 
@@ -106,7 +113,7 @@ namespace BetterFollowbotLite
             // Find dash skill to check availability
             var dashSkill = FindDashSkill();
 
-            _instance.LogMessage($"Dash skill check - Found: {dashSkill != null}, OnSkillBar: {dashSkill?.IsOnSkillBar}, CanBeUsed: {dashSkill?.CanBeUsed}");
+            _instance.LogMessage($"Dash skill check - Found: {dashSkill != null}, OnSkillBar: {dashSkill?.IsOnSkillBar}, CanBeUsed: {dashSkill?.CanBeUsed}, SkillName: {dashSkill?.Name ?? "null"}");
 
             if (dashSkill != null && dashSkill.IsOnSkillBar && dashSkill.CanBeUsed)
             {
@@ -144,7 +151,7 @@ namespace BetterFollowbotLite
                 Keyboard.KeyPress(_instance.Settings.autoPilotDashKey);
                 _lastDashTime = DateTime.Now;
 
-                _instance.LogMessage("Dash executed successfully (fallback)");
+                _instance.LogMessage($"Dash executed successfully (fallback) - Key: {_instance.Settings.autoPilotDashKey.Value}");
                 return true;
             }
             else if (!dashSkill.CanBeUsed)

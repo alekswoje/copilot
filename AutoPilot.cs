@@ -926,10 +926,15 @@ namespace BetterFollowbotLite;
                         {
                             // CRITICAL: Don't add dash tasks if we have an active transition task OR another dash task
                             var hasConflictingTasks = tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
+                            var dashTaskCount = tasks.Count(t => t.Type == TaskNodeType.Dash);
+                            var transitionTaskCount = tasks.Count(t => t.Type == TaskNodeType.Transition);
+
+                            BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Distance {instantDistanceToLeader:F1} > threshold {BetterFollowbotLite.Instance.Settings.autoPilotDashDistance}, conflicting tasks: {hasConflictingTasks} (dash: {dashTaskCount}, transition: {transitionTaskCount})");
+
                             if (!hasConflictingTasks)
                             {
                                 tasks.Add(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
-                                BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Added dash task for distance {instantDistanceToLeader:F1}");
+                                BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Added dash task for distance {instantDistanceToLeader:F1}, total tasks now: {tasks.Count}");
                             }
                             else
                             {
@@ -961,10 +966,15 @@ namespace BetterFollowbotLite;
                         {
                             // CRITICAL: Don't add dash tasks if we have an active transition task OR another dash task
                             var hasConflictingTasks = tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
+                            var dashTaskCount = tasks.Count(t => t.Type == TaskNodeType.Dash);
+                            var transitionTaskCount = tasks.Count(t => t.Type == TaskNodeType.Transition);
+
+                            BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Distance {instantDistanceToLeader:F1} > threshold {BetterFollowbotLite.Instance.Settings.autoPilotDashDistance}, conflicting tasks: {hasConflictingTasks} (dash: {dashTaskCount}, transition: {transitionTaskCount})");
+
                             if (!hasConflictingTasks)
                             {
                                 tasks.Add(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
-                                BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Added dash task for distance {instantDistanceToLeader:F1}");
+                                BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Added dash task for distance {instantDistanceToLeader:F1}, total tasks now: {tasks.Count}");
                             }
                             else
                             {
@@ -1905,10 +1915,15 @@ namespace BetterFollowbotLite;
                         {
                             // CRITICAL: Don't add dash tasks if we have an active transition task OR another dash task
                             var hasConflictingTasks = tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
+                            var dashTaskCount = tasks.Count(t => t.Type == TaskNodeType.Dash);
+                            var transitionTaskCount = tasks.Count(t => t.Type == TaskNodeType.Transition);
+
+                            BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Distance {instantDistanceToLeader:F1} > threshold {BetterFollowbotLite.Instance.Settings.autoPilotDashDistance}, conflicting tasks: {hasConflictingTasks} (dash: {dashTaskCount}, transition: {transitionTaskCount})");
+
                             if (!hasConflictingTasks)
                             {
                                 tasks.Add(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
-                                BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Added dash task for distance {instantDistanceToLeader:F1}");
+                                BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Added dash task for distance {instantDistanceToLeader:F1}, total tasks now: {tasks.Count}");
                             }
                             else
                             {
@@ -1947,10 +1962,15 @@ namespace BetterFollowbotLite;
                         {
                             // CRITICAL: Don't add dash tasks if we have an active transition task OR another dash task
                             var hasConflictingTasks = tasks.Any(t => t.Type == TaskNodeType.Transition || t.Type == TaskNodeType.Dash);
+                            var dashTaskCount = tasks.Count(t => t.Type == TaskNodeType.Dash);
+                            var transitionTaskCount = tasks.Count(t => t.Type == TaskNodeType.Transition);
+
+                            BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Distance {instantDistanceToLeader:F1} > threshold {BetterFollowbotLite.Instance.Settings.autoPilotDashDistance}, conflicting tasks: {hasConflictingTasks} (dash: {dashTaskCount}, transition: {transitionTaskCount})");
+
                             if (!hasConflictingTasks)
                             {
                                 tasks.Add(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
-                                BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Added dash task for distance {instantDistanceToLeader:F1}");
+                                BetterFollowbotLite.Instance.LogMessage($"INSTANT PATH OPTIMIZATION: Added dash task for distance {instantDistanceToLeader:F1}, total tasks now: {tasks.Count}");
                             }
                             else
                             {
@@ -2152,13 +2172,18 @@ namespace BetterFollowbotLite;
                                 t.Type == TaskNodeType.TeleportButton ||
                                 t.Type == TaskNodeType.Dash);
 
+                            var dashTaskCount = tasks.Count(t => t.Type == TaskNodeType.Dash);
+                            var transitionTaskCount = tasks.Count(t => t.Type == TaskNodeType.Transition);
+
+                            BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Distance {distanceToLeader:F1} > threshold {BetterFollowbotLite.Instance.Settings.autoPilotDashDistance}, should skip: {shouldSkipDashTasks}, teleport: {IsTeleportInProgress} (dash: {dashTaskCount}, transition: {transitionTaskCount})");
+
                             if (shouldSkipDashTasks || IsTeleportInProgress)
                             {
                                 BetterFollowbotLite.Instance.LogMessage($"ZONE TRANSITION: Skipping dash task creation - conflicting tasks active ({tasks.Count(t => t.Type == TaskNodeType.Dash)} dash tasks, {tasks.Count(t => t.Type == TaskNodeType.Transition)} transition tasks, teleport={IsTeleportInProgress})");
                             }
                             else
                             {
-                                BetterFollowbotLite.Instance.LogMessage($"Adding Dash task - Distance: {distanceToLeader:F1}, Dash enabled: {BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled}");
+                                BetterFollowbotLite.Instance.LogMessage($"Adding Dash task - Distance: {distanceToLeader:F1}, Dash enabled: {BetterFollowbotLite.Instance.Settings.autoPilotDashEnabled}, total tasks now: {tasks.Count + 1}");
                                 tasks.Add(new TaskNode(FollowTargetPosition, 0, TaskNodeType.Dash));
                             }
                             }
