@@ -28,15 +28,12 @@ namespace BetterFollowbotLite.Automation
             var timeSinceLastAttempt = (DateTime.Now - _lastAutoJoinPartyAttempt).TotalSeconds;
             if (_settings.autoJoinPartyEnabled && timeSinceLastAttempt >= 0.5 && _instance.Gcd())
             {
-                // Only log every 10 seconds to avoid spam
-                if (timeSinceLastAttempt >= 10.0 || _lastAutoJoinPartyAttempt == DateTime.MinValue)
-                {
-                    BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Active - checking for party invites");
-                }
+                // Debug: Always log when executing to see if this method is being called
+                BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY: Execute called - enabled: {_settings.autoJoinPartyEnabled}, time since last: {timeSinceLastAttempt:F1}s");
                 try
                 {
                     // Check if player is already in a party - if so, don't accept invites
-                    var partyElement = PartyElements.GetPlayerInfoElementList();
+                    var partyElement = _instance.GetPartyElements();
                     var isInParty = partyElement != null && partyElement.Count > 0;
 
                     if (isInParty)
@@ -102,7 +99,7 @@ namespace BetterFollowbotLite.Automation
                                             Thread.Sleep(300); // Longer delay
 
                                             // Check if we successfully joined a party
-                                            var partyAfterClick = PartyElements.GetPlayerInfoElementList();
+                                            var partyAfterClick = _instance.GetPartyElements();
                                             var joinedParty = partyAfterClick != null && partyAfterClick.Count > 0;
 
                                             if (joinedParty)
@@ -119,7 +116,7 @@ namespace BetterFollowbotLite.Automation
                                                 Thread.Sleep(300);
 
                                                 // Check again
-                                                partyAfterClick = PartyElements.GetPlayerInfoElementList();
+                                                partyAfterClick = _instance.GetPartyElements();
                                                 joinedParty = partyAfterClick != null && partyAfterClick.Count > 0;
 
                                                 if (joinedParty)

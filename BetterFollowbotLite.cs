@@ -129,6 +129,19 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
             return null;
         }
     }
+
+    // Method to get party elements (used by PartyJoiner)
+    internal dynamic GetPartyElements()
+    {
+        try
+        {
+            return PartyElements.GetPlayerInfoElementList();
+        }
+        catch
+        {
+            return null;
+        }
+    }
         
 
     private bool MonsterCheck(int range, int minAny, int minRare, int minUnique)
