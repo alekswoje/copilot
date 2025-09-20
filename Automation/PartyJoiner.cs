@@ -19,7 +19,7 @@ namespace BetterFollowbotLite.Automation
         {
             _instance = instance;
             _settings = settings;
-            _lastAutoJoinPartyAttempt = DateTime.MinValue;
+            _lastAutoJoinPartyAttempt = DateTime.Now.AddSeconds(-1); // Initialize to 1 second ago to allow immediate execution
         }
 
         // Method to get trade panel (used internally by this class)
@@ -39,10 +39,10 @@ namespace BetterFollowbotLite.Automation
         {
             // Check if auto join party & accept trade is enabled and enough time has passed since last attempt (0.5 second cooldown)
             var timeSinceLastAttempt = (DateTime.Now - _lastAutoJoinPartyAttempt).TotalSeconds;
-            if (_settings.autoJoinPartyEnabled && timeSinceLastAttempt >= 0.5 && _instance.Gcd())
+            if (_settings.autoJoinPartyEnabled.Value && timeSinceLastAttempt >= 0.5 && _instance.Gcd())
             {
                 // Debug: Always log when executing to see if this method is being called
-                BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY & ACCEPT TRADE: Execute called - enabled: {_settings.autoJoinPartyEnabled}, time since last: {timeSinceLastAttempt:F1}s");
+                BetterFollowbotLite.Instance.LogMessage($"AUTO JOIN PARTY & ACCEPT TRADE: Execute called - enabled: {_settings.autoJoinPartyEnabled.Value}, time since last: {timeSinceLastAttempt:F1}s");
                 try
                 {
                     // Check if player is already in a party - if so, don't accept party invites (but still accept trades)
