@@ -57,7 +57,7 @@ namespace BetterFollowbotLite
                 return false;
             }
 
-            return ExecuteDash(leaderPos, $"SMITE: Dashing to leader - Distance: {distanceToLeader:F1}");
+            return ExecuteDash(leaderPos, $"SMITE: Dashing to leader - Distance: {distanceToLeader:F1}", true);
         }
 
         /// <summary>
@@ -79,7 +79,8 @@ namespace BetterFollowbotLite
 
             if (cursorPointingCorrectly)
             {
-                var result = ExecuteDash(targetPosition, "Dash task: Executing dash");
+                // Cursor is already positioned by AutoPilot, just execute the dash
+                var result = ExecuteDash(targetPosition, "Dash task: Executing dash", false); // Don't reposition mouse
                 _instance.LogMessage($"ExecuteDashTask: Direct execution result: {result}");
                 return result;
             }
@@ -107,9 +108,12 @@ namespace BetterFollowbotLite
         /// </summary>
         /// <param name="targetPosition">Position to dash towards</param>
         /// <param name="logMessage">Log message to display</param>
+        /// <param name="repositionMouse">Whether to reposition the mouse cursor</param>
         /// <returns>True if dash was attempted, false otherwise</returns>
-        private bool ExecuteDash(Vector3 targetPosition, string logMessage)
+        private bool ExecuteDash(Vector3 targetPosition, string logMessage, bool repositionMouse = true)
         {
+            var startTime = DateTime.Now;
+
             // Find dash skill to check availability
             var dashSkill = FindDashSkill();
 
@@ -117,46 +121,55 @@ namespace BetterFollowbotLite
 
             if (dashSkill != null && dashSkill.IsOnSkillBar && dashSkill.CanBeUsed)
             {
+                _instance.LogMessage($"Dash: Using skill '{dashSkill.Name}' on slot {dashSkill.SkillSlotIndex}");
                 _instance.LogMessage(logMessage);
 
-                // Position mouse towards target
-                var targetScreenPos = _instance.GameController.IngameState.Camera.WorldToScreen(targetPosition);
-                Mouse.SetCursorPos(targetScreenPos);
+                // Position mouse towards target (only if requested)
+                if (repositionMouse)
+                {
+                    var targetScreenPos = _instance.GameController.IngameState.Camera.WorldToScreen(targetPosition);
+                    Mouse.SetCursorPos(targetScreenPos);
 
-                // Small delay to ensure mouse movement is registered
-                System.Threading.Thread.Sleep(50);
+                    // Small delay to ensure mouse movement is registered
+                    System.Threading.Thread.Sleep(50);
+                }
 
                 // Execute dash using the skill's key
                 Keyboard.KeyPress(_instance.GetSkillInputKey(dashSkill.SkillSlotIndex));
                 _lastDashTime = DateTime.Now;
 
-                _instance.LogMessage("Dash executed successfully");
+                var executionTime = (DateTime.Now - startTime).TotalMilliseconds;
+                _instance.LogMessage($"Dash executed successfully in {executionTime:F0}ms");
                 return true;
             }
             else if (dashSkill == null)
             {
                 _instance.LogMessage("No dash skill found, using configured dash key");
-
-                // Fallback: Use configured dash key directly
                 _instance.LogMessage(logMessage + " (fallback)");
 
-                // Position mouse towards target
-                var targetScreenPos = _instance.GameController.IngameState.Camera.WorldToScreen(targetPosition);
-                Mouse.SetCursorPos(targetScreenPos);
+                // Fallback: Use configured dash key directly
 
-                // Small delay to ensure mouse movement is registered
-                System.Threading.Thread.Sleep(50);
+                // Position mouse towards target (only if requested)
+                if (repositionMouse)
+                {
+                    var targetScreenPos = _instance.GameController.IngameState.Camera.WorldToScreen(targetPosition);
+                    Mouse.SetCursorPos(targetScreenPos);
+
+                    // Small delay to ensure mouse movement is registered
+                    System.Threading.Thread.Sleep(50);
+                }
 
                 // Execute dash using configured key
                 Keyboard.KeyPress(_instance.Settings.autoPilotDashKey);
                 _lastDashTime = DateTime.Now;
 
-                _instance.LogMessage($"Dash executed successfully (fallback) - Key: {_instance.Settings.autoPilotDashKey.Value}");
+                var executionTime = (DateTime.Now - startTime).TotalMilliseconds;
+                _instance.LogMessage($"Dash executed successfully (fallback) in {executionTime:F0}ms - Key: {_instance.Settings.autoPilotDashKey.Value}");
                 return true;
             }
             else if (!dashSkill.CanBeUsed)
             {
-                _instance.LogMessage("Dash skill is on cooldown or unavailable");
+                _instance.LogMessage($"Dash skill '{dashSkill.Name}' is on cooldown or unavailable");
                 return false;
             }
 
