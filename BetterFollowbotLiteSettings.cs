@@ -37,6 +37,7 @@ public class BetterFollowbotLiteSettings : ISettings
     public RangeNode<int> autoPilotInputFrequency = new RangeNode<int>(50, 1, 100);
     public RangeNode<int> autoPilotPathfindingNodeDistance = new RangeNode<int>(200, 10, 1000);
     public RangeNode<int> autoPilotClearPathDistance = new RangeNode<int>(500, 100, 5000);
+    public RangeNode<int> autoPilotDashDistance = new RangeNode<int>(500, 50, 2000);
 
     #endregion
         

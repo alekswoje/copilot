@@ -1121,7 +1121,7 @@ public class BetterFollowbotLite : BaseSettingsPlugin<BetterFollowbotLiteSetting
                                                 {
                                                     BetterFollowbotLite.Instance.LogMessage($"SMITE: Transition/teleport task active ({autoPilot.Tasks.Count} tasks), skipping dash");
                                                 }
-                                                else if (distanceToLeader > 50) // Only dash if we're not already close to leader
+                                                else if (distanceToLeader > Settings.autoPilotDashDistance) // Only dash if we're not already close to leader
                                                 {
                                                     BetterFollowbotLite.Instance.LogMessage($"SMITE: Dashing to leader - Distance: {distanceToLeader:F1}");
 
