@@ -39,4 +39,35 @@ internal class Summons
             return 0;
         }
     }
+
+    public static int GetRagingSpiritCount()
+    {
+        try
+        {
+            return BetterFollowbotLite.Instance.localPlayer.GetComponent<Actor>().DeployedObjects
+                .Count(x => x?.Entity != null && x.Entity.IsAlive &&
+                           (x.Entity.Path.Contains("RagingSpirit") ||
+                            x.Entity.Path.Contains("ragingspirit") ||
+                            x.Entity.Metadata.ToLower().Contains("ragingspirit") ||
+                            x.Entity.Path.Contains("Raging Spirit") ||
+                            x.Entity.Metadata.ToLower().Contains("raging spirit")));
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
+    public static int GetTotalMinionCount()
+    {
+        try
+        {
+            return BetterFollowbotLite.Instance.localPlayer.GetComponent<Actor>().DeployedObjects
+                .Count(x => x?.Entity != null && x.Entity.IsAlive);
+        }
+        catch
+        {
+            return 0;
+        }
+    }
 }
